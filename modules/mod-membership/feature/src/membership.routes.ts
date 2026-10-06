@@ -3,6 +3,12 @@ import { roleGuard } from '@yoga/platform/auth';
 
 export const MEMBERSHIP_ROUTES: Routes = [
   {
+    path: 'orders',
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
+    loadComponent: () => import('./order-list/order-list.component').then(m => m.OrderListComponent),
+    title: 'Danh Sách Đơn Hàng - An Yên Yoga'
+  },
+  {
     path: '',
     redirectTo: 'pos',
     pathMatch: 'full'

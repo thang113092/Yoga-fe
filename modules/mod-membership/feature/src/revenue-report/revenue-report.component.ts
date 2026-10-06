@@ -9,6 +9,7 @@ import { AuthService } from '@yoga/platform/auth';
 import {
   ZenButtonComponent,
   ZenInputComponent,
+  ZenSearchComponent,
   ZenSelectComponent,
   ZenSelectOption
 } from '@yoga/platform/ui';
@@ -24,6 +25,7 @@ type DatePreset = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'CUS
     RouterModule,
     ZenButtonComponent,
     ZenInputComponent,
+    ZenSearchComponent,
     ZenSelectComponent
   ],
   templateUrl: './revenue-report.component.html',

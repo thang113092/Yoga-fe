@@ -1,0 +1,191 @@
+<div class="orders-mgmt-container">
+  <!-- Alerts Feedback -->
+  @if (error()) {
+    <div class="alert alert-danger" role="alert">
+      <div class="alert-content">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ error() }}</span>
+      </div>
+      <button type="button" class="btn-close" (click)="error.set('')" aria-label="Đóng thông báo">✕</button>
+    </div>
+  }
+
+  <!-- Header Banner -->
+  <div class="mgmt-header">
+    <div class="header-info">
+      <div class="pre-title">QUẢN LÝ GIAO DỊCH & THANH TOÁN</div>
+      <div class="title-with-badge">
+        <h2>Danh Sách Đơn Hàng</h2>
+        @if (result(); as data) {
+          <span class="count-badge">{{ data.totalElements }} đơn hàng</span>
+        }
+      </div>
+      <p class="subtitle">Theo dõi, tra cứu và kiểm soát tình trạng thanh toán đơn hàng tại các chi nhánh bạn quản lý</p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn-refresh-list" (click)="load(0)" [disabled]="loading()" title="Làm mới danh sách">
+        <svg [class.spin]="loading()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"/>
+          <path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        <span>Làm mới</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Card (Search và Lọc lên trên, tự động lọc, không cần nút tìm kiếm) -->
+  <div class="filters-card">
+    <div class="filter-item filter-search">
+      <zen-search
+        placeholder="Tìm theo mã đơn hàng..."
+        [ngModel]="search"
+        [debounce]="350"
+        (ngModelChange)="onSearchChange($event)"
+        (search)="load(0)"
+        (clear)="onSearchClear()"
+      />
+    </div>
+
+    <div class="filter-item">
+      <zen-select
+        id="branchFilter"
+        [options]="branchFilterOptions()"
+        [ngModel]="branchId"
+        (ngModelChange)="onBranchChange($event)"
+        placeholder="Tất cả cơ sở"
+      />
+    </div>
+
+    <div class="filter-item">
+      <zen-select
+        id="statusFilter"
+        [options]="statusFilterOptions"
+        [ngModel]="status"
+        (ngModelChange)="onStatusChange($event)"
+        placeholder="Tất cả trạng thái"
+      />
+    </div>
+  </div>
+
+  <!-- Loading Bar Indicator -->
+  @if (loading()) {
+    <div class="loading-state-banner">
+      <div class="spinner"></div>
+      <span>Đang đồng bộ dữ liệu đơn hàng...</span>
+    </div>
+  }
+
+  <!-- Table Card -->
+  @if (!loading() && result(); as data) {
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Mã Đơn Hàng</th>
+              <th>Thời Gian Tạo</th>
+              <th>Học Viên</th>
+              <th>Số Điện Thoại</th>
+              <th>Email</th>
+              <th>Cơ Sở Thực Hiện</th>
+              <th class="amount-header">Tổng Thanh Toán</th>
+              <th>Trạng Thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of data.content; track order.id) {
+              <tr>
+                <td>
+                  <span class="order-code">{{ order.orderCode }}</span>
+                </td>
+                <td>
+                  <span class="order-date">{{ order.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
+                </td>
+                <td>
+                  <span class="customer-name">{{ order.customerName || 'Tài khoản chưa định danh' }}</span>
+                </td>
+                <td>
+                  <span class="customer-phone">{{ order.customerPhone || '—' }}</span>
+                </td>
+                <td>
+                  <span class="customer-email">{{ order.customerEmail || '—' }}</span>
+                </td>
+                <td>
+                  <span class="branch-name">{{ order.branchName || 'Chưa chỉ định' }}</span>
+                </td>
+                <td class="amount-cell">
+                  <span class="amount-value">{{ order.totalAmount | number:'1.0-0' }} ₫</span>
+                </td>
+                <td>
+                  <span
+                    class="status-pill"
+                    [class.paid]="order.status === 'PAID'"
+                    [class.pending]="order.status === 'PENDING'"
+                    [class.cancelled]="order.status === 'CANCELLED'"
+                    [class.refunded]="order.status === 'REFUNDED'"
+                  >
+                    <span class="status-dot"></span>
+                    {{ statuses[order.status] || order.status }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="empty-cell">
+                  <div class="empty-state">
+                    <div class="empty-icon-circle">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                    </div>
+                    <p>Không có đơn hàng nào phù hợp với bộ lọc hiện tại.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      @if (data.totalPages > 1) {
+        <div class="pagination-footer">
+          <div class="pagination-info">
+            Trang <strong>{{ data.number + 1 }}</strong> trên <strong>{{ data.totalPages }}</strong>
+          </div>
+          <div class="pagination-actions">
+            <button
+              type="button"
+              class="btn-page"
+              [disabled]="data.number === 0"
+              (click)="load(data.number - 1)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              <span>Trang trước</span>
+            </button>
+            <button
+              type="button"
+              class="btn-page"
+              [disabled]="data.number + 1 >= data.totalPages"
+              (click)="load(data.number + 1)"
+            >
+              <span>Trang sau</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

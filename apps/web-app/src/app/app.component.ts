@@ -33,6 +33,9 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             </a>
           }
           @if (auth.isSuperAdmin() || auth.isBranchManager()) {
+            <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab highlight-tab">
+              Danh Sách Đơn Hàng
+            </a>
             <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab highlight-tab">
               Báo Cáo Doanh Thu
             </a>

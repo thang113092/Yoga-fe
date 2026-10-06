@@ -19,12 +19,14 @@
     .pos-container,
     .schedule-calendar-container,
     .branch-container,
-    .qr-scanner-container
+    .qr-scanner-container,
+    .orders,
+    .orders-mgmt-container
   ) {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 1.75rem 1.75rem 4rem !important;
+    padding: 1.75rem 2rem 4rem !important;
     box-sizing: border-box !important;
   }
 
@@ -276,7 +278,9 @@
       .pos-container,
       .schedule-calendar-container,
       .branch-container,
-      .qr-scanner-container
+      .qr-scanner-container,
+      .orders,
+      .orders-mgmt-container
     ) {
       padding: 1.25rem 1rem 3rem !important;
     }
