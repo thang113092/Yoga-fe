@@ -368,6 +368,11 @@
   .branch-name {
     font-size: 12px;
     color: #475569;
+
+    &.unassigned {
+      color: #94a3b8;
+      font-style: italic;
+    }
   }
 
   .status-dot {
@@ -404,6 +409,12 @@
     white-space: nowrap;
   }
 
+  .action-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .btn-icon-action {
     position: relative;
     display: inline-flex;
@@ -420,6 +431,20 @@
     svg {
       flex-shrink: 0;
       transition: transform 0.15s ease;
+    }
+
+    &.btn-detail {
+      color: #0f766e;
+      border-color: rgba(15, 118, 110, 0.25);
+      background: #f0fdfa;
+
+      &:hover:not(:disabled) {
+        color: #144634;
+        background: #e6f4ea;
+        border-color: rgba(20, 70, 52, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.15);
+      }
     }
 
     &.btn-lock {
@@ -936,6 +961,497 @@
     opacity: 0.65;
     cursor: not-allowed;
   }
+}
+
+/* ─── Student Detail Modal ─── */
+.modal-detail-card {
+  max-width: 900px;
+  width: 94vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+
+  .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    flex-shrink: 0;
+
+    .header-student-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+
+      .student-avatar-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #e6f4ea;
+        color: #144634;
+        font-weight: 700;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(20, 70, 52, 0.15);
+        flex-shrink: 0;
+      }
+
+      .student-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        h3 {
+          font-family: var(--font-serif);
+          font-size: 19px;
+          margin: 0;
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .student-role-pill {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 12px;
+          background: #f1f5f9;
+          color: #475569;
+        }
+      }
+
+      .modal-subtitle {
+        margin: 3px 0 0;
+        font-size: 12.5px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+
+        .dot-separator {
+          color: #cbd5e1;
+        }
+      }
+    }
+  }
+
+  .detail-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+    flex-shrink: 0;
+
+    .detail-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+
+      svg {
+        flex-shrink: 0;
+      }
+
+      .tab-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 10px;
+        background: #e2e8f0;
+        color: #475569;
+      }
+
+      &:hover {
+        color: #144634;
+        background: rgba(20, 70, 52, 0.03);
+      }
+
+      &.active {
+        color: #144634;
+        font-weight: 700;
+        border-bottom-color: #144634;
+        background: transparent;
+
+        .tab-badge {
+          background: #e6f4ea;
+          color: #144634;
+        }
+      }
+    }
+  }
+
+  .detail-modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+    background: #ffffff;
+  }
+
+  .detail-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    gap: 12px;
+    color: #64748b;
+    font-size: 13.5px;
+
+    .spinner-circle {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #0f766e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+  }
+
+  .tab-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    text-align: center;
+    color: #64748b;
+
+    .empty-icon-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 13.5px;
+    }
+  }
+
+  /* Profile Tab */
+  .profile-tab-content {
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+
+      .info-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .info-label {
+          font-size: 11.5px;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .info-value {
+          font-size: 13.5px;
+          color: #0f172a;
+          word-break: break-word;
+        }
+      }
+    }
+
+    .quick-stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+
+      .stat-box {
+        background: #fbf9f5;
+        border: 1px solid rgba(20, 70, 52, 0.12);
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+
+        .stat-number {
+          display: block;
+          font-family: var(--font-serif);
+          font-size: 24px;
+          font-weight: 700;
+          color: #144634;
+          line-height: 1.1;
+        }
+
+        .stat-label {
+          display: block;
+          font-size: 12px;
+          color: #64748b;
+          margin-top: 4px;
+        }
+      }
+    }
+  }
+
+  /* Passes Tab */
+  .passes-tab-content {
+    .passes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 14px;
+
+      .pass-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+        &:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+          transform: translateY(-1px);
+        }
+
+        .pass-card-header {
+          background: #f8fafc;
+          padding: 12px 16px;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 10px;
+
+          .pass-code {
+            display: block;
+            font-family: monospace;
+            font-size: 11px;
+            color: #64748b;
+            letter-spacing: 0.05em;
+          }
+
+          .pass-plan-name {
+            margin: 2px 0 0;
+            font-family: var(--font-serif);
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+
+          .pass-status-pill {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+
+            &.status-active { background: #dcfce7; color: #166534; }
+            &.status-pending { background: #fef3c7; color: #b45309; }
+            &.status-frozen { background: #e0f2fe; color: #0369a1; }
+            &.status-expired { background: #f1f5f9; color: #64748b; }
+            &.status-cancelled { background: #fee2e2; color: #b91c1c; }
+            &.status-default { background: #f1f5f9; color: #475569; }
+          }
+        }
+
+        .pass-card-body {
+          padding: 14px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+
+          .pass-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12.5px;
+
+            .lbl { color: #64748b; }
+            .val { color: #0f172a; font-weight: 500; }
+            .val.price { font-weight: 700; color: #0f766e; }
+          }
+
+          .pass-notes-row {
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px dashed #e2e8f0;
+            font-size: 12px;
+            display: flex;
+            gap: 6px;
+
+            .lbl { color: #94a3b8; }
+            .val.notes { color: #475569; font-style: italic; }
+          }
+        }
+      }
+    }
+  }
+
+  /* Sub Tables (Orders & Bookings) */
+  .zen-sub-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+
+    thead th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover td {
+      background: #fafcfb;
+    }
+
+    .code-pill {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 11px;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .order-item-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .item-name {
+        color: #0f172a;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .item-mb-code {
+        font-family: monospace;
+        font-size: 11px;
+        color: #0f766e;
+        letter-spacing: 0.03em;
+      }
+    }
+
+    .item-sessions-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .sessions-val {
+        color: #144634;
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+
+      .expiry-val {
+        color: #64748b;
+        font-size: 11px;
+      }
+    }
+
+    .price-text {
+      color: #0f766e;
+      font-weight: 700;
+    }
+
+    .order-status-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      color: #64748b;
+
+      &.paid { background: #dcfce7; color: #166534; }
+      &.pending { background: #fef3c7; color: #b45309; }
+    }
+
+    .booking-status-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+
+      &.booking-attended { background: #dcfce7; color: #166534; }
+      &.booking-confirmed { background: #e0f2fe; color: #0369a1; }
+      &.booking-cancelled { background: #f1f5f9; color: #64748b; }
+      &.booking-noshow { background: #fee2e2; color: #b91c1c; }
+      &.booking-default { background: #f1f5f9; color: #475569; }
+    }
+
+    .time-block {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+
+      span { font-weight: 500; font-size: 12.5px; }
+      small { color: #64748b; font-size: 11px; }
+    }
+
+    .mat-number {
+      font-weight: 600;
+      color: #0f766e;
+    }
+  }
+
+  .detail-modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 

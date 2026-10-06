@@ -87,7 +87,6 @@
         [options]="branchFilterOptions()"
         [ngModel]="filterBranchId()"
         (ngModelChange)="onFilterBranchChange($event)"
-        [disabled]="auth.isBranchManager()"
         placeholder="Chọn cơ sở"
       />
     </div>
@@ -184,7 +183,9 @@
                   </span>
                 </td>
                 <td>
-                  <span class="branch-name">{{ u.branchName || 'Toàn hệ thống' }}</span>
+                  <span class="branch-name" [class.unassigned]="!u.homeBranchId">
+                    {{ u.branchName || (u.roleCode === 'SUPER_ADMIN' ? 'Toàn hệ thống' : 'Chưa phân chi nhánh') }}
+                  </span>
                 </td>
                 <td>
                   <span class="status-dot" [class.active]="u.isActive">
@@ -197,38 +198,57 @@
                 <td class="action-cell">
                   @if (u.id === auth.currentUserId()) {
                     <span class="self-tag" title="Tài khoản đang đăng nhập hiện tại">Đang dùng</span>
-                  } @else if (canManageUser(u)) {
-                    @if (u.isActive) {
-                      <button
-                        type="button"
-                        class="btn-icon-action btn-lock"
-                        (click)="openConfirmModal(u)"
-                        [disabled]="updatingUserId() === u.id"
-                        data-tooltip="Khóa tài khoản"
-                        aria-label="Khóa tài khoản"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                      </button>
-                    } @else {
-                      <button
-                        type="button"
-                        class="btn-icon-action btn-unlock"
-                        (click)="openConfirmModal(u)"
-                        [disabled]="updatingUserId() === u.id"
-                        data-tooltip="Mở khóa tài khoản"
-                        aria-label="Mở khóa tài khoản"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                          <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-                        </svg>
-                      </button>
-                    }
                   } @else {
-                    <span class="no-perm-tag">—</span>
+                    <div class="action-buttons">
+                      @if (u.roleCode === 'STUDENT') {
+                        <button
+                          type="button"
+                          class="btn-icon-action btn-detail"
+                          (click)="openStudentDetail(u)"
+                          data-tooltip="Xem chi tiết học viên"
+                          aria-label="Xem chi tiết học viên"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                          </svg>
+                        </button>
+                      }
+                      @if (canManageUser(u)) {
+                        @if (u.isActive) {
+                          <button
+                            type="button"
+                            class="btn-icon-action btn-lock"
+                            (click)="openConfirmModal(u)"
+                            [disabled]="updatingUserId() === u.id"
+                            data-tooltip="Khóa tài khoản"
+                            aria-label="Khóa tài khoản"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                          </button>
+                        } @else {
+                          <button
+                            type="button"
+                            class="btn-icon-action btn-unlock"
+                            (click)="openConfirmModal(u)"
+                            [disabled]="updatingUserId() === u.id"
+                            data-tooltip="Mở khóa tài khoản"
+                            aria-label="Mở khóa tài khoản"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                              <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                            </svg>
+                          </button>
+                        }
+                      } @else if (u.roleCode !== 'STUDENT') {
+                        <span class="no-perm-tag">—</span>
+                      }
+                    </div>
                   }
                 </td>
               </tr>
@@ -474,6 +494,325 @@
               <span>Xác Nhận Mở Khóa</span>
             }
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Student Detail Modal Dialog -->
+  @if (selectedStudent(); as student) {
+    <div class="modal-backdrop" (click)="closeStudentDetail()">
+      <div class="modal-card modal-detail-card" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="header-student-info">
+            <div class="student-avatar-circle">
+              {{ student.fullName.slice(0, 1).toUpperCase() }}
+            </div>
+            <div>
+              <div class="student-title-row">
+                <h3>{{ student.fullName }}</h3>
+                <span class="student-role-pill">Học Viên</span>
+                <span class="status-dot" [class.active]="student.isActive">
+                  {{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
+                </span>
+              </div>
+              <p class="modal-subtitle">
+                <span>SĐT: {{ student.phone }}</span>
+                @if (student.email) {
+                  <span class="dot-separator">•</span>
+                  <span>{{ student.email }}</span>
+                }
+                <span class="dot-separator">•</span>
+                <span>{{ student.branchName || 'Chưa phân chi nhánh' }}</span>
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" (click)="closeStudentDetail()" aria-label="Đóng">✕</button>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="detail-tabs-bar">
+          <button
+            type="button"
+            class="detail-tab-btn"
+            [class.active]="activeStudentTab() === 'profile'"
+            (click)="activeStudentTab.set('profile')"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span>Thông Tin Cá Nhân</span>
+          </button>
+
+          <button
+            type="button"
+            class="detail-tab-btn"
+            [class.active]="activeStudentTab() === 'orders'"
+            (click)="activeStudentTab.set('orders')"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="21" r="1"/>
+              <circle cx="19" cy="21" r="1"/>
+              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+            </svg>
+            <span>Lịch Sử Mua Thẻ</span>
+            @if (studentOrders().length > 0) {
+              <span class="tab-badge">{{ studentOrders().length }}</span>
+            }
+          </button>
+
+          <button
+            type="button"
+            class="detail-tab-btn"
+            [class.active]="activeStudentTab() === 'history'"
+            (click)="activeStudentTab.set('history')"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Lịch Sử Tập Luyện</span>
+            @if (studentBookings().length > 0) {
+              <span class="tab-badge">{{ studentBookings().length }}</span>
+            }
+          </button>
+        </div>
+
+        <!-- Modal Body Content -->
+        <div class="modal-body detail-modal-body">
+          @if (isDetailLoading()) {
+            <div class="detail-loading-state">
+              <div class="spinner-circle"></div>
+              <span>Đang đồng bộ dữ liệu học viên...</span>
+            </div>
+          } @else {
+            <!-- TAB 1: THÔNG TIN CÁ NHÂN -->
+            @if (activeStudentTab() === 'profile') {
+              <div class="profile-tab-content">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <span class="info-label">Họ và tên</span>
+                    <strong class="info-value">{{ student.fullName }}</strong>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Số điện thoại</span>
+                    <strong class="info-value">{{ student.phone }}</strong>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Địa chỉ Email</span>
+                    <span class="info-value">{{ student.email || 'Chưa cập nhật' }}</span>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Giới tính</span>
+                    <span class="info-value">{{ formatGender(student.gender) }}</span>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Ngày sinh</span>
+                    <span class="info-value">{{ student.dob ? (student.dob | date:'dd/MM/yyyy') : 'Chưa cập nhật' }}</span>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Cơ sở đăng ký / phụ trách</span>
+                    <span class="info-value">{{ student.branchName || 'Chưa phân chi nhánh' }}</span>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Ngày tham gia hệ thống</span>
+                    <span class="info-value">{{ student.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  <div class="info-card">
+                    <span class="info-label">Trạng thái tài khoản</span>
+                    <span class="info-value">
+                      <span class="status-dot" [class.active]="student.isActive">
+                        {{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Thống kê nhanh -->
+                <div class="quick-stats-row">
+                  <div class="stat-box">
+                    <span class="stat-number">{{ studentMemberships().length }}</span>
+                    <span class="stat-label">Thẻ tập sở hữu</span>
+                  </div>
+                  <div class="stat-box">
+                    <span class="stat-number">{{ studentOrders().length }}</span>
+                    <span class="stat-label">Đơn hàng mua thẻ</span>
+                  </div>
+                  <div class="stat-box">
+                    <span class="stat-number">{{ studentBookings().length }}</span>
+                    <span class="stat-label">Lượt ca học đã đặt</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- TAB 2: LỊCH SỬ MUA THẺ & THẺ TẬP -->
+            @if (activeStudentTab() === 'orders') {
+              <div class="orders-tab-content">
+                @if (studentOrders().length === 0) {
+                  <div class="tab-empty-state">
+                    <div class="empty-icon-circle">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="8" cy="21" r="1"/>
+                        <circle cx="19" cy="21" r="1"/>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                      </svg>
+                    </div>
+                    <p>Chưa ghi nhận đơn hàng mua thẻ tập nào từ học viên này.</p>
+                  </div>
+                } @else {
+                  <div class="table-responsive">
+                    <table class="zen-sub-table">
+                      <thead>
+                        <tr>
+                          <th>Mã Đơn</th>
+                          <th>Thời Gian</th>
+                          <th>Cơ Sở</th>
+                          <th>Gói Thẻ & Mã Thẻ</th>
+                          <th>Buổi Tập / Hạn Thẻ</th>
+                          <th>Phương Thức</th>
+                          <th>Tổng Tiền</th>
+                          <th>Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (o of studentOrders(); track o.orderId) {
+                          <tr>
+                            <td>
+                              <span class="code-pill">{{ o.orderCode }}</span>
+                            </td>
+                            <td>
+                              <span class="date-text">{{ o.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
+                            </td>
+                            <td>
+                              <span class="branch-text">{{ o.branchName || 'Toàn hệ thống' }}</span>
+                            </td>
+                            <td>
+                              @if (o.items && o.items.length > 0) {
+                                @for (item of o.items; track item.itemId) {
+                                  <div class="order-item-block">
+                                    <strong class="item-name">{{ item.itemName || 'Gói thẻ tập' }}</strong>
+                                    @if (item.membershipCode) {
+                                      <span class="item-mb-code">Mã thẻ: {{ item.membershipCode }}</span>
+                                    }
+                                  </div>
+                                }
+                              } @else {
+                                <span class="plan-items-text">Thẻ tập</span>
+                              }
+                            </td>
+                            <td>
+                              @if (o.items && o.items.length > 0 && o.items[0].membershipCode) {
+                                @let it = o.items[0];
+                                <div class="item-sessions-block">
+                                  <span class="sessions-val">
+                                    {{ it.remainingSessions != null ? (it.remainingSessions + '/' + (it.totalSessions ?? '∞') + ' buổi') : 'Không giới hạn' }}
+                                  </span>
+                                  @if (it.startDate || it.endDate) {
+                                    <small class="expiry-val">
+                                      {{ it.startDate | date:'dd/MM/yy' }} - {{ it.endDate ? (it.endDate | date:'dd/MM/yy') : 'Vô hạn' }}
+                                    </small>
+                                  }
+                                </div>
+                              } @else {
+                                <span class="sessions-val">—</span>
+                              }
+                            </td>
+                            <td>
+                              <span class="payment-method-text">
+                                {{ formatPaymentMethod(o.payments?.[0]?.paymentMethod) }}
+                              </span>
+                            </td>
+                            <td>
+                              <strong class="price-text">{{ o.totalAmount | number:'1.0-0' }} đ</strong>
+                            </td>
+                            <td>
+                              <span class="order-status-pill" [class.paid]="o.status === 'PAID'" [class.pending]="o.status === 'PENDING'">
+                                {{ o.status === 'PAID' ? 'Đã thanh toán' : (o.status === 'PENDING' ? 'Chờ thanh toán' : o.status) }}
+                              </span>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- TAB 4: LỊCH SỬ TẬP LUYỆN -->
+            @if (activeStudentTab() === 'history') {
+              <div class="history-tab-content">
+                @if (studentBookings().length === 0) {
+                  <div class="tab-empty-state">
+                    <div class="empty-icon-circle">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                    </div>
+                    <p>Học viên chưa có lịch sử đặt chỗ hoặc tham gia ca học nào.</p>
+                  </div>
+                } @else {
+                  <div class="table-responsive">
+                    <table class="zen-sub-table">
+                      <thead>
+                        <tr>
+                          <th>Mã Đặt Chỗ</th>
+                          <th>Ca Học & Lớp</th>
+                          <th>Giảng Viên</th>
+                          <th>Cơ Sở & Phòng</th>
+                          <th>Thời Gian</th>
+                          <th>Thảm</th>
+                          <th>Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (b of studentBookings(); track b.id) {
+                          <tr>
+                            <td>
+                              <span class="code-pill">{{ b.bookingCode }}</span>
+                            </td>
+                            <td>
+                              <strong class="class-name-text">{{ b.className }}</strong>
+                            </td>
+                            <td>
+                              <span class="instructor-text">{{ b.instructorName }}</span>
+                            </td>
+                            <td>
+                              <span class="room-branch-text">{{ b.branchName }} • {{ b.roomName }}</span>
+                            </td>
+                            <td>
+                              <div class="time-block">
+                                <span>{{ b.startTime | date:'dd/MM/yyyy' }}</span>
+                                <small>{{ b.startTime | date:'HH:mm' }} - {{ b.endTime | date:'HH:mm' }}</small>
+                              </div>
+                            </td>
+                            <td>
+                              <span class="mat-number">{{ b.matNumber ? '#' + b.matNumber : '—' }}</span>
+                            </td>
+                            <td>
+                              @let bSt = formatBookingStatus(b.status);
+                              <span class="booking-status-pill" [class]="bSt.class">
+                                {{ bSt.label }}
+                              </span>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer detail-modal-footer">
+          <button type="button" class="btn-modal-cancel" (click)="closeStudentDetail()">Đóng</button>
         </div>
       </div>
     </div>

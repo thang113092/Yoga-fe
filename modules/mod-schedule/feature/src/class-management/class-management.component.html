@@ -166,6 +166,7 @@
           [options]="branchSelectOptions()"
           [ngModel]="selectedBranchId()"
           (ngModelChange)="onBranchFilterChange($event)"
+          [disabled]="auth.isBranchManager()"
           placeholder="Chọn cơ sở yoga..."
         />
       </div>
@@ -424,8 +425,12 @@
               [options]="branchSelectOptions()"
               [ngModel]="scheduleForm().branchId"
               (ngModelChange)="onScheduleFormBranchChange($event)"
+              [disabled]="auth.isBranchManager()"
               placeholder="Chọn cơ sở mở lớp..."
             />
+            @if (auth.isBranchManager()) {
+              <small class="field-hint">Cố định theo cơ sở bạn đang quản lý</small>
+            }
           </div>
 
           <!-- Bộ Môn / Loại Lớp -->

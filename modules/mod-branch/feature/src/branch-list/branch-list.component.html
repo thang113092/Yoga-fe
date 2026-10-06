@@ -337,7 +337,7 @@
             <div class="form-group">
               <label for="bCode">Mã Chi Nhánh (*):</label>
               <zen-input
-                id="bCode"
+                id="bCode" name="bCode"
                 placeholder="VD: CN_HOANKIEM hoặc CS01"
                 [ngModel]="bFormCode()"
                 (ngModelChange)="bFormCode.set($event)"
@@ -350,7 +350,7 @@
             <div class="form-group">
               <label for="bName">Tên Chi Nhánh (*):</label>
               <zen-input
-                id="bName"
+                id="bName" name="bName"
                 placeholder="VD: An Yên – Hoàn Kiếm"
                 [ngModel]="bFormName()"
                 (ngModelChange)="bFormName.set($event)"
@@ -363,7 +363,7 @@
           <div class="form-group">
             <label for="bAddress">Địa Chỉ Chi Nhánh (*):</label>
             <zen-input
-              id="bAddress"
+              id="bAddress" name="bAddress"
               placeholder="VD: 12 Hàng Bông, Phường Hàng Gai, Hoàn Kiếm, Hà Nội"
               [ngModel]="bFormAddress()"
               (ngModelChange)="bFormAddress.set($event)"
@@ -376,7 +376,7 @@
             <div class="form-group">
               <label for="bPhone">Số Điện Thoại (*):</label>
               <zen-input
-                id="bPhone"
+                id="bPhone" name="bPhone"
                 type="tel"
                 placeholder="VD: 024 3828 9999"
                 [ngModel]="bFormPhone()"
@@ -390,7 +390,7 @@
             <div class="form-group">
               <label for="bEmail">Email Liên Hệ:</label>
               <zen-input
-                id="bEmail"
+                id="bEmail" name="bEmail"
                 type="email"
                 placeholder="VD: hoankiem@anyen.vn"
                 [ngModel]="bFormEmail()"
@@ -409,7 +409,7 @@
             <div class="form-group">
               <label for="bBankName">Ngân Hàng:</label>
               <zen-input
-                id="bBankName"
+                id="bBankName" name="bBankName"
                 placeholder="VD: Vietcombank"
                 [ngModel]="bFormBankName()"
                 (ngModelChange)="bFormBankName.set($event)"
@@ -420,7 +420,7 @@
             <div class="form-group">
               <label for="bBankNumber">Số Tài Khoản:</label>
               <zen-input
-                id="bBankNumber"
+                id="bBankNumber" name="bBankNumber"
                 placeholder="VD: 9988776655"
                 [ngModel]="bFormBankAccountNumber()"
                 (ngModelChange)="bFormBankAccountNumber.set($event)"
@@ -432,7 +432,7 @@
           <div class="form-group">
             <label for="bBankHolder">Tên Chủ Tài Khoản:</label>
             <zen-input
-              id="bBankHolder"
+              id="bBankHolder" name="bBankHolder"
               placeholder="VD: CONG TY AN YEN YOGA"
               [ngModel]="bFormBankAccountHolder()"
               (ngModelChange)="bFormBankAccountHolder.set($event)"
@@ -502,7 +502,7 @@
           <div class="form-group">
             <label for="rName">Tên Phòng Học (*):</label>
             <zen-input
-              id="rName"
+              id="rName" name="rName"
               placeholder="VD: Phòng Sen Hồng, Phòng Bồ Đề"
               [ngModel]="rFormName()"
               (ngModelChange)="rFormName.set($event)"
@@ -515,7 +515,7 @@
             <div class="form-group">
               <label for="rFloor">Vị Trí / Tầng:</label>
               <zen-input
-                id="rFloor"
+                id="rFloor" name="rFloor"
                 placeholder="VD: Tầng 2, Khu Thiền Định"
                 [ngModel]="rFormFloor()"
                 (ngModelChange)="rFormFloor.set($event)"
@@ -526,7 +526,7 @@
             <div class="form-group">
               <label for="rCapacity">Sức Chứa Tối Đa (Số Thảm Tập) (*):</label>
               <zen-input
-                id="rCapacity"
+                id="rCapacity" name="rCapacity"
                 type="number"
                 placeholder="VD: 20"
                 [ngModel]="rFormMaxCapacity()"

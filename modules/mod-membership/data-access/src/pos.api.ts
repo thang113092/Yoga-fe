@@ -14,4 +14,8 @@ export class PosApi {
   processPayment(req: PaymentReq): Observable<PaymentResp> {
     return this.api.post<PaymentResp>('/pos/payments', req);
   }
+
+  getStudentOrders(studentId: string): Observable<import('./membership.models').StudentOrderHistoryResp[]> {
+    return this.api.get<import('./membership.models').StudentOrderHistoryResp[]>(`/pos/orders/student/${studentId}`);
+  }
 }

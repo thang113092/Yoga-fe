@@ -2,6 +2,8 @@ import { provideExperimentalZonelessChangeDetection, signal } from '@angular/cor
 import { TestBed } from '@angular/core/testing';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
 import { BranchApi } from '@yoga/mod-branch/data-access';
+import { MembershipApi, PosApi } from '@yoga/mod-membership/data-access';
+import { BookingApi } from '@yoga/mod-schedule/data-access';
 import { ZenToastService } from '@yoga/platform/ui';
 import { of } from 'rxjs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -43,6 +45,9 @@ describe('UserManagementComponent', () => {
 
   let mockUserApi: any;
   let mockBranchApi: any;
+  let mockMembershipApi: any;
+  let mockPosApi: any;
+  let mockBookingApi: any;
   let mockAuth: any;
   let mockToast: any;
 
@@ -57,6 +62,19 @@ describe('UserManagementComponent', () => {
 
     mockBranchApi = {
       getAll: vi.fn(() => of([]))
+    };
+
+    mockMembershipApi = {
+      getStudentMemberships: vi.fn(() => of([])),
+      getAllPlans: vi.fn(() => of([]))
+    };
+
+    mockPosApi = {
+      getStudentOrders: vi.fn(() => of([]))
+    };
+
+    mockBookingApi = {
+      getStudentBookingDetails: vi.fn(() => of([]))
     };
 
     mockAuth = {
@@ -79,6 +97,9 @@ describe('UserManagementComponent', () => {
         provideExperimentalZonelessChangeDetection(),
         { provide: UserApi, useValue: mockUserApi },
         { provide: BranchApi, useValue: mockBranchApi },
+        { provide: MembershipApi, useValue: mockMembershipApi },
+        { provide: PosApi, useValue: mockPosApi },
+        { provide: BookingApi, useValue: mockBookingApi },
         { provide: AuthService, useValue: mockAuth },
         { provide: ZenToastService, useValue: mockToast }
       ]
@@ -166,5 +187,119 @@ describe('UserManagementComponent', () => {
     expect(comp.confirmTargetUser()).toEqual(inactiveUser);
     comp.closeConfirmModal();
     expect(comp.confirmTargetUser()).toBeNull();
+  });
+
+  it('provides proper branch filter options and management permissions for Branch Manager', async () => {
+    mockAuth.isSuperAdmin.set(false);
+    mockAuth.isBranchManager.set(true);
+    mockAuth.userHomeBranchId.set('branch-1');
+
+    const { comp } = setupComponent();
+    comp.branches.set([
+      { id: 'branch-1', name: 'Cơ sở Cầu Giấy', code: 'CG' } as any,
+      { id: 'branch-2', name: 'Cơ sở Hoàn Kiếm', code: 'HK' } as any
+    ]);
+
+    const opts = comp.branchFilterOptions();
+    expect(opts.length).toBe(3);
+    expect(opts[0].value).toBe('');
+    expect(opts[0].label).toContain('Chi nhánh của tôi & Chưa phân chi nhánh');
+    expect(opts[1].value).toBe('branch-1');
+    expect(opts[2].value).toBe('UNASSIGNED');
+
+    // User of own branch with STUDENT role -> can manage
+    expect(comp.canManageUser({
+      id: 'student-own',
+      roleCode: 'STUDENT',
+      homeBranchId: 'branch-1'
+    } as any)).toBe(true);
+
+    // User with no branch (unassigned) and STUDENT role -> can manage
+    expect(comp.canManageUser({
+      id: 'student-unassigned',
+      roleCode: 'STUDENT',
+      homeBranchId: null as any
+    } as any)).toBe(true);
+
+    // User of another branch -> cannot manage
+    expect(comp.canManageUser({
+      id: 'student-other',
+      roleCode: 'STUDENT',
+      homeBranchId: 'branch-2'
+    } as any)).toBe(false);
+
+    // Super Admin -> cannot manage
+    expect(comp.canManageUser({
+      id: 'admin-unassigned',
+      roleCode: 'SUPER_ADMIN',
+      homeBranchId: null as any
+    } as any)).toBe(false);
+  });
+
+  it('renders unassigned branch label correctly in template', async () => {
+    const unassignedUser: UserResponse = {
+      id: 'user-unassigned',
+      phone: '0912345678',
+      email: 'test@unassigned.com',
+      fullName: 'Trần Văn Chưa Phân',
+      gender: 'MALE',
+      dob: null as any,
+      roleId: 'role-2',
+      roleCode: 'STUDENT',
+      roleName: 'Học viên',
+      homeBranchId: null as any,
+      branchName: null as any,
+      isActive: true,
+      createdAt: '2026-10-06T10:00:00Z'
+    };
+
+    mockUserApi.getUsers = vi.fn(() => of([unassignedUser]));
+
+    const { fixture } = setupComponent();
+    await fixture.whenStable();
+
+    const branchCell = fixture.nativeElement.querySelector('.branch-name');
+    expect(branchCell).toBeTruthy();
+    expect(branchCell.textContent.trim()).toBe('Chưa phân chi nhánh');
+    expect(branchCell.classList.contains('unassigned')).toBe(true);
+  });
+
+  it('renders detail button with exclamation icon for student and opens detail modal with tabs', async () => {
+    const { fixture, comp } = setupComponent();
+    await fixture.whenStable();
+
+    // Check detail buttons in table: only user-2 (STUDENT) should have detail button
+    const detailButtons = fixture.nativeElement.querySelectorAll('.btn-detail');
+    expect(detailButtons.length).toBe(1);
+
+    const studentUser = mockUsers[1]; // STUDENT
+    comp.openStudentDetail(studentUser);
+    fixture.detectChanges();
+
+    expect(comp.selectedStudent()).toEqual(studentUser);
+    expect(mockPosApi.getStudentOrders).toHaveBeenCalledWith(studentUser.id);
+    expect(mockBookingApi.getStudentBookingDetails).toHaveBeenCalledWith(studentUser.id);
+
+    // Modal dialog is rendered
+    const modal = fixture.nativeElement.querySelector('.modal-detail-card');
+    expect(modal).toBeTruthy();
+    expect(modal.textContent).toContain('Đoàn Thanh Bình');
+    expect(modal.textContent).toContain('Thông Tin Cá Nhân');
+    expect(modal.textContent).toContain('Lịch Sử Mua Thẻ');
+    expect(modal.textContent).toContain('Lịch Sử Tập Luyện');
+
+    // Tab switching
+    comp.activeStudentTab.set('orders');
+    fixture.detectChanges();
+    expect(comp.activeStudentTab()).toBe('orders');
+
+    comp.activeStudentTab.set('history');
+    fixture.detectChanges();
+    expect(comp.activeStudentTab()).toBe('history');
+
+    // Close modal
+    comp.closeStudentDetail();
+    fixture.detectChanges();
+    expect(comp.selectedStudent()).toBeNull();
   });
 });

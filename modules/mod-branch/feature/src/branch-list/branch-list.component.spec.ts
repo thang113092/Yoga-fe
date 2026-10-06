@@ -188,6 +188,18 @@ describe('BranchListComponent', () => {
     expect(mockToastService.success).toHaveBeenCalled();
   });
 
+  it('should render the room form defaults and submit button', async () => {
+    component.openRoomsModal(mockBranches[0]);
+    component.openCreateRoomModal();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const modal = fixture.nativeElement.querySelector('.modal-room-card');
+    expect(modal.querySelector('button[type="submit"]').textContent.trim()).toBe('Tạo Phòng Mới');
+    expect(modal.querySelector('#rCapacity input').value).toBe('20');
+    expect(modal.querySelector('input[type="checkbox"]').checked).toBe(true);
+  });
+
   it('should open create room modal and submit new room', () => {
     component.openRoomsModal(mockBranches[0]);
     component.openCreateRoomModal();

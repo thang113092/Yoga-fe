@@ -23,5 +23,11 @@ export const MEMBERSHIP_ROUTES: Routes = [
     canActivate: [roleGuard(['STUDENT'])],
     loadComponent: () => import('./student-passes/student-passes.component').then(m => m.StudentPassesComponent),
     title: 'Thẻ Hội Viên Của Tôi - Yoga Center'
+  },
+  {
+    path: 'revenue',
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
+    loadComponent: () => import('./revenue-report/revenue-report.component').then(m => m.RevenueReportComponent),
+    title: 'Báo Cáo Doanh Thu - An Yên Yoga'
   }
 ];

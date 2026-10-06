@@ -1,0 +1,459 @@
+<div class="revenue-dashboard">
+  <!-- Header & Title (Compact Zen Bar) -->
+  <header class="dashboard-header">
+    <div class="header-left">
+      <span class="pre-title">BÁO CÁO TÀI CHÍNH & VẬN HÀNH</span>
+      <div class="title-with-badge">
+        <h1 class="main-title">Tổng Hợp Doanh Thu</h1>
+        <span class="branch-pill-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span>{{ reportData()?.filteredBranchName || 'Toàn hệ thống An Yên' }}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="header-actions no-print">
+      <button
+        type="button"
+        class="btn-action-outline"
+        (click)="loadReport()"
+        [disabled]="isLoading()"
+        title="Làm mới số liệu"
+      >
+        <svg class="icon-svg" [class.spin]="isLoading()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>Làm mới</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn-action-primary"
+        (click)="printReport()"
+        title="In hoặc lưu báo cáo PDF"
+      >
+        <svg class="icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        <span>In Báo Cáo</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Filter Bar: Compact Single-Row Toolbar -->
+  <section class="compact-filter-bar no-print" aria-label="Bộ lọc báo cáo doanh thu">
+    <!-- Presets với zen-button -->
+    <div class="preset-pill-group" role="group" aria-label="Chọn khoảng thời gian nhanh">
+      <zen-button
+        [variant]="selectedPreset() === 'TODAY' ? 'primary' : 'outline'"
+        size="sm"
+        (clicked)="applyDatePreset('TODAY')"
+      >
+        Hôm nay
+      </zen-button>
+      <zen-button
+        [variant]="selectedPreset() === 'LAST_7_DAYS' ? 'primary' : 'outline'"
+        size="sm"
+        (clicked)="applyDatePreset('LAST_7_DAYS')"
+      >
+        7 ngày
+      </zen-button>
+      <zen-button
+        [variant]="selectedPreset() === 'LAST_30_DAYS' ? 'primary' : 'outline'"
+        size="sm"
+        (clicked)="applyDatePreset('LAST_30_DAYS')"
+      >
+        30 ngày
+      </zen-button>
+      <zen-button
+        [variant]="selectedPreset() === 'THIS_MONTH' ? 'primary' : 'outline'"
+        size="sm"
+        (clicked)="applyDatePreset('THIS_MONTH')"
+      >
+        Tháng này
+      </zen-button>
+    </div>
+
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
+    <!-- Khoảng ngày với zen-input -->
+    <div class="filter-field-group date-range-field">
+      <zen-input
+        id="startDateInput"
+        name="startDate"
+        type="date"
+        [ngModel]="startDate()"
+        (ngModelChange)="onStartDateChange($event)"
+        title="Từ ngày"
+      />
+      <span class="range-separator" aria-hidden="true">—</span>
+      <zen-input
+        id="endDateInput"
+        name="endDate"
+        type="date"
+        [ngModel]="endDate()"
+        (ngModelChange)="onEndDateChange($event)"
+        title="Đến ngày"
+      />
+    </div>
+
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
+    <!-- Cơ sở áp dụng với zen-select -->
+    <div class="filter-field-group branch-select-field">
+      <span class="filter-field-label">Cơ sở:</span>
+      <div class="select-container">
+        <zen-select
+          id="branchSelect"
+          name="branchSelect"
+          [options]="branchOptions()"
+          [ngModel]="selectedBranchId() || 'ALL'"
+          (ngModelChange)="onBranchChange($event)"
+          [disabled]="auth.isBranchManager() && !auth.isSuperAdmin()"
+          placeholder="Tất cả cơ sở"
+        />
+      </div>
+    </div>
+
+    <!-- Phương thức thanh toán với zen-select -->
+    <div class="filter-field-group method-select-field">
+      <span class="filter-field-label">Hình thức:</span>
+      <div class="select-container">
+        <zen-select
+          id="methodSelect"
+          name="methodSelect"
+          [options]="paymentMethodOptions"
+          [ngModel]="selectedPaymentMethod()"
+          (ngModelChange)="onPaymentMethodChange($event)"
+          placeholder="Tất cả hình thức"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- Error Banner -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <svg class="error-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- Loading State Overlay -->
+  @if (isLoading()) {
+    <div class="loading-bar-wrapper">
+      <div class="loading-bar-inner"></div>
+    </div>
+  }
+
+  @if (reportData(); as data) {
+    <!-- 1. KPI Cards Row -->
+    <section class="kpi-grid">
+      <!-- Card 1: Tổng Doanh Thu -->
+      <div class="kpi-card highlight-card">
+        <div class="kpi-header">
+          <span class="kpi-caption">TỔNG DOANH THU THỰC THU</span>
+          <div class="kpi-icon-pill revenue-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value serif-value">{{ formatCurrency(data.overview.totalRevenue) }}</div>
+        <div class="kpi-subtext">
+          Đã bao gồm VAT & giảm giá thực tế
+        </div>
+      </div>
+
+      <!-- Card 2: Đơn Hàng Thành Công -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-caption">ĐƠN HÀNG HOÀN TẤT</span>
+          <div class="kpi-icon-pill orders-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-7z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value serif-value">{{ data.overview.totalOrders | number }}</div>
+        <div class="kpi-subtext">
+          Giao dịch thanh toán thành công
+        </div>
+      </div>
+
+      <!-- Card 3: Giá Trị Trung Bình / Đơn -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-caption">GIÁ TRỊ TRUNG BÌNH (AOV)</span>
+          <div class="kpi-icon-pill aov-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value serif-value">{{ formatCurrency(data.overview.averageOrderValue) }}</div>
+        <div class="kpi-subtext">
+          Trung bình trên mỗi đơn kích hoạt
+        </div>
+      </div>
+
+      <!-- Card 4: Thẻ Tập Kích Hoạt -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-caption">THẺ HỘI VIÊN KÍCH HOẠT</span>
+          <div class="kpi-icon-pill member-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <circle cx="9" cy="10" r="2"/>
+              <path d="M15 8h2M15 12h2M7 16h10"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value serif-value">{{ data.overview.totalMembershipsActivated | number }}</div>
+        <div class="kpi-subtext">
+          Hội viên mới & gia hạn gói tập
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Charts & Analytics Section -->
+    <section class="analytics-row">
+      <!-- Biểu đồ cột xu hướng theo ngày -->
+      <div class="chart-panel card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Xu Hướng Doanh Thu Theo Ngày</h2>
+            <p class="panel-subtitle">
+              Biến động dòng tiền từ {{ formatDateDisplay(data.fromDate) }} đến {{ formatDateDisplay(data.toDate) }}
+            </p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot"></span>
+            <span>Doanh thu ngày</span>
+          </div>
+        </div>
+
+        <div class="bar-chart-container">
+          @if (data.dailyTrends.length === 0) {
+            <div class="empty-chart">Chưa có phát sinh giao dịch trong khoảng thời gian này.</div>
+          } @else {
+            <div class="chart-bars-track">
+              @for (day of data.dailyTrends; track day.date; let idx = $index; let total = $count) {
+                <div class="bar-column" [title]="day.date + ': ' + formatCurrency(day.amount) + ' (' + day.orderCount + ' đơn)'">
+                  <div class="bar-tooltip">
+                    <span class="tooltip-date">{{ formatDateDisplay(day.date) }}</span>
+                    <span class="tooltip-rev">{{ formatCurrency(day.amount) }}</span>
+                    <span class="tooltip-count">{{ day.orderCount }} đơn</span>
+                  </div>
+                  <div class="bar-fill-wrapper">
+                    <div
+                      class="bar-fill"
+                      [style.height.%]="(day.amount / maxDailyRevenue()) * 100"
+                      [class.has-data]="day.amount > 0"
+                    ></div>
+                  </div>
+                  @if (total <= 14 || idx % 2 === 0 || idx === total - 1) {
+                    <span class="bar-label">{{ day.date.slice(8) }}/{{ day.date.slice(5, 7) }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Cột phụ: Cơ cấu phương thức thanh toán & Gói tập -->
+      <div class="side-breakdown-col">
+        <!-- Phương thức thanh toán -->
+        <div class="card breakdown-card">
+          <div class="panel-header">
+            <h2 class="panel-title">Phương Thức Thanh Toán</h2>
+          </div>
+
+          <div class="breakdown-list">
+            @for (m of data.paymentMethodSummaries; track m.paymentMethod) {
+              <div class="breakdown-item">
+                <div class="item-meta">
+                  <span class="method-name">{{ m.methodName }}</span>
+                  <span class="item-amount">{{ formatCurrency(m.totalAmount) }}</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" [style.width.%]="m.percentage"></div>
+                </div>
+                <div class="item-sub">
+                  <span>{{ m.transactionCount }} giao dịch</span>
+                  <span class="pct">{{ m.percentage }}%</span>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-state-sm">Chưa có dữ liệu phương thức</div>
+            }
+          </div>
+        </div>
+
+        <!-- Top Gói Tập Bán Chạy -->
+        <div class="card breakdown-card">
+          <div class="panel-header">
+            <h2 class="panel-title">Gói Thẻ Tập Bán Chạy</h2>
+          </div>
+
+          <div class="breakdown-list">
+            @for (p of data.planSummaries.slice(0, 5); track p.planId || p.planName) {
+              <div class="breakdown-item">
+                <div class="item-meta">
+                  <span class="plan-name" [title]="p.planName">{{ p.planName }}</span>
+                  <span class="item-amount">{{ formatCurrency(p.totalRevenue) }}</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill plan-progress" [style.width.%]="p.percentage"></div>
+                </div>
+                <div class="item-sub">
+                  <span>{{ p.quantitySold }} thẻ đã kích hoạt</span>
+                  <span class="pct">{{ p.percentage }}%</span>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-state-sm">Chưa có dữ liệu gói tập</div>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Phân Tích Theo Chi Nhánh (Chỉ hiển thị cho Super Admin hoặc khi xem toàn chuỗi) -->
+    @if (data.branchSummaries.length > 1 && !data.filteredBranchId) {
+      <section class="card branches-comparison-card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Tỷ Trọng Doanh Thu Giữa Các Chi Nhánh</h2>
+            <p class="panel-subtitle">So sánh kết quả kinh doanh giữa các cơ sở trong hệ sinh thái An Yên</p>
+          </div>
+        </div>
+
+        <div class="branch-grid">
+          @for (b of data.branchSummaries; track b.branchId) {
+            <div class="branch-card-item">
+              <div class="branch-card-top">
+                <span class="branch-code">{{ b.branchCode }}</span>
+                <span class="branch-share-pill">{{ b.percentage }}%</span>
+              </div>
+              <h3 class="branch-name">{{ b.branchName }}</h3>
+              <div class="branch-rev serif-value">{{ formatCurrency(b.totalRevenue) }}</div>
+              <div class="branch-orders-count">{{ b.orderCount }} đơn thanh toán hoàn tất</div>
+              <div class="progress-track">
+                <div class="progress-fill branch-bar" [style.width.%]="b.percentage"></div>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- 4. Sổ Cái / Danh Sách Giao Dịch Gần Nhất -->
+    <section class="card ledger-card">
+      <div class="ledger-header">
+        <div>
+          <h2 class="panel-title">Sổ Cái Đối Soát Giao Dịch Gần Nhất</h2>
+          <p class="panel-subtitle">50 giao dịch thanh toán thành công mới nhất trong kỳ báo cáo</p>
+        </div>
+
+        <div class="table-search-box no-print">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Tìm theo mã đơn, khách hàng, SĐT..."
+            class="search-input"
+            [ngModel]="transactionSearch()"
+            (ngModelChange)="transactionSearch.set($event)"
+          />
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Mã Đơn / GD</th>
+              <th>Thời Gian</th>
+              <th>Học Viên</th>
+              <th>Gói Thẻ Tập</th>
+              <th>Cơ Sở</th>
+              <th class="text-right">Số Tiền Thực Thu</th>
+              <th>Phương Thức</th>
+              <th>Thu Ngân</th>
+              <th class="text-center">Trạng Thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tx of filteredTransactions(); track tx.paymentId) {
+              <tr>
+                <td>
+                  <div class="code-col">
+                    <span class="order-code">{{ tx.orderCode }}</span>
+                    <span class="pay-code">{{ tx.paymentCode }}</span>
+                  </div>
+                </td>
+                <td class="time-col">
+                  {{ formatDateTimeDisplay(tx.paymentTime) }}
+                </td>
+                <td>
+                  <div class="student-col">
+                    <span class="student-name">{{ tx.customerName || 'Khách vãng lai' }}</span>
+                    <span class="student-phone">{{ tx.customerPhone || '—' }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="plan-badge">{{ tx.planName }}</span>
+                </td>
+                <td class="branch-col">
+                  {{ tx.branchName || '—' }}
+                </td>
+                <td class="text-right font-medium text-emerald">
+                  {{ formatCurrency(tx.amount) }}
+                </td>
+                <td>
+                  <span class="method-tag">{{ tx.paymentMethodName }}</span>
+                </td>
+                <td class="cashier-col">
+                  {{ tx.cashierName || 'Quầy thu ngân' }}
+                </td>
+                <td class="text-center">
+                  <span class="status-pill status-success">Thành công</span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty-table-row">
+                  <div class="empty-state-inner">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2"/>
+                      <line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                    <p>Không tìm thấy giao dịch nào phù hợp với bộ lọc hiện tại.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

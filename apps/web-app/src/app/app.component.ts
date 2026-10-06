@@ -32,12 +32,17 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               Quản Lý Lớp Học
             </a>
           }
-          @if (auth.canAccessPos() && !auth.isSuperAdmin()) {
+          @if (auth.isSuperAdmin() || auth.isBranchManager()) {
+            <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab highlight-tab">
+              Báo Cáo Doanh Thu
+            </a>
+          }
+          @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
             <a routerLink="/membership/pos" routerLinkActive="active" class="nav-tab">
               Quầy Bán Thẻ (POS)
             </a>
           }
-          @if (auth.canAccessCheckIn() && !auth.isSuperAdmin()) {
+          @if (auth.canAccessCheckIn() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
             <a routerLink="/schedule/check-in" routerLinkActive="active" class="nav-tab">
               Điểm Danh QR
             </a>
@@ -50,7 +55,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
             Gói Thẻ Tập
           </a>
-          @if (!auth.isSuperAdmin()) {
+          @if (!auth.isSuperAdmin() && !auth.isBranchManager()) {
             <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
               Lịch & Đặt Chỗ
             </a>
@@ -203,12 +208,19 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                         </a>
                       }
 
+                      @if (auth.isSuperAdmin() || auth.isBranchManager()) {
+                        <a routerLink="/membership/revenue" (click)="closeAllPopovers()" class="setting-link">
+                          <span>Báo cáo & Tổng hợp doanh thu</span>
+                          <span class="arrow">›</span>
+                        </a>
+                      }
+
                       <a routerLink="/membership/plans" (click)="closeAllPopovers()" class="setting-link">
                         <span>Danh mục gói thẻ tập</span>
                         <span class="arrow">›</span>
                       </a>
 
-                      @if (!auth.isSuperAdmin()) {
+                      @if (!auth.isSuperAdmin() && !auth.isBranchManager()) {
                         <a routerLink="/schedule/calendar" (click)="closeAllPopovers()" class="setting-link">
                           <span>Lịch tập & Đặt chỗ</span>
                           <span class="arrow">›</span>

@@ -94,3 +94,42 @@ export interface MembershipResp {
   readonly purchasedPrice: number;
   readonly notes?: string;
 }
+
+export interface OrderItemResp {
+  readonly itemId?: string;
+  readonly itemType?: string;
+  readonly itemName?: string;
+  readonly unitPrice?: number;
+  readonly quantity?: number;
+  readonly lineTotal?: number;
+  readonly membershipCode?: string;
+  readonly membershipStatus?: string;
+  readonly remainingSessions?: number;
+  readonly totalSessions?: number;
+  readonly startDate?: string;
+  readonly endDate?: string;
+}
+
+export interface OrderPaymentResp {
+  readonly paymentId?: string;
+  readonly paymentCode?: string;
+  readonly amount?: number;
+  readonly paymentMethod?: string;
+  readonly paymentStatus?: string;
+  readonly paymentTime?: string;
+}
+
+export interface StudentOrderHistoryResp {
+  readonly orderId: string;
+  readonly orderCode: string;
+  readonly branchId: string;
+  readonly branchName?: string;
+  readonly orderDate: string;
+  readonly subtotal: number;
+  readonly discountAmount: number;
+  readonly totalAmount: number;
+  readonly status: string;
+  readonly notes?: string;
+  readonly items: OrderItemResp[];
+  readonly payments: OrderPaymentResp[];
+}

@@ -4,6 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { AuthService, CreateUserReq, UserApi, UserResponse } from '@yoga/platform/auth';
 import { ZenSelectComponent, ZenInputComponent, ZenSearchComponent, ZenToastService } from '@yoga/platform/ui';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
+import { MembershipApi, PosApi, MembershipResp, StudentOrderHistoryResp } from '@yoga/mod-membership/data-access';
+import { BookingApi, StudentBookingDetail } from '@yoga/mod-schedule/data-access';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 interface RoleOption {
   code: string;
@@ -22,6 +26,9 @@ interface RoleOption {
 export class UserManagementComponent implements OnInit {
   private readonly userApi = inject(UserApi);
   private readonly branchApi = inject(BranchApi);
+  private readonly membershipApi = inject(MembershipApi);
+  private readonly posApi = inject(PosApi);
+  private readonly bookingApi = inject(BookingApi);
   private readonly toast = inject(ZenToastService);
   protected readonly auth = inject(AuthService);
 
@@ -32,6 +39,15 @@ export class UserManagementComponent implements OnInit {
   readonly isCreating = signal<boolean>(false);
   readonly updatingUserId = signal<string | null>(null);
   readonly confirmTargetUser = signal<UserResponse | null>(null);
+
+  // Student Detail Dialog signals
+  readonly selectedStudent = signal<UserResponse | null>(null);
+  readonly activeStudentTab = signal<'profile' | 'orders' | 'history'>('profile');
+  readonly isDetailLoading = signal<boolean>(false);
+  readonly studentMemberships = signal<MembershipResp[]>([]);
+  readonly studentOrders = signal<StudentOrderHistoryResp[]>([]);
+  readonly studentBookings = signal<StudentBookingDetail[]>([]);
+  readonly membershipPlansMap = signal<Map<string, string>>(new Map());
 
   // Filter signals
   readonly searchQuery = signal<string>('');
@@ -51,15 +67,29 @@ export class UserManagementComponent implements OnInit {
   });
 
   readonly branchFilterOptions = computed(() => {
-    const list = this.branches().map(b => ({
-      value: b.id,
-      label: b.name,
-      sublabel: b.code
-    }));
     if (this.auth.isSuperAdmin()) {
-      return [{ value: '', label: 'Tất cả chi nhánh', sublabel: undefined }, ...list];
+      const list = this.branches().map(b => ({
+        value: b.id,
+        label: b.name,
+        sublabel: b.code
+      }));
+      return [
+        { value: '', label: 'Tất cả chi nhánh', sublabel: undefined },
+        { value: 'UNASSIGNED', label: 'Chưa phân chi nhánh', sublabel: undefined },
+        ...list
+      ];
+    } else if (this.auth.isBranchManager()) {
+      const mb = this.managerBranch();
+      const myBranchName = mb ? mb.name : 'Chi nhánh của tôi';
+      const myBranchCode = mb ? mb.code : undefined;
+      const myBranchId = mb ? mb.id : (this.auth.userHomeBranchId() ?? '');
+      return [
+        { value: '', label: 'Chi nhánh của tôi & Chưa phân chi nhánh', sublabel: undefined },
+        ...(myBranchId ? [{ value: myBranchId, label: myBranchName, sublabel: myBranchCode }] : []),
+        { value: 'UNASSIGNED', label: 'Chưa phân chi nhánh', sublabel: undefined }
+      ];
     }
-    return list;
+    return [];
   });
 
   readonly roleFilterOptions = [
@@ -300,8 +330,9 @@ export class UserManagementComponent implements OnInit {
     if (this.auth.isBranchManager()) {
       const allowedRoles = ['RECEPTIONIST', 'INSTRUCTOR', 'STUDENT'];
       const isAllowedRole = allowedRoles.includes(u.roleCode.toUpperCase());
-      const isSameBranch = u.homeBranchId === this.auth.userHomeBranchId();
-      return isAllowedRole && isSameBranch;
+      const isSameBranch = !!(this.auth.userHomeBranchId() && u.homeBranchId === this.auth.userHomeBranchId());
+      const isUnassigned = !u.homeBranchId;
+      return isAllowedRole && (isSameBranch || isUnassigned);
     }
     return false;
   }
@@ -343,5 +374,65 @@ export class UserManagementComponent implements OnInit {
 
   toggleUserStatus(user: UserResponse): void {
     this.openConfirmModal(user);
+  }
+
+  openStudentDetail(user: UserResponse): void {
+    this.selectedStudent.set(user);
+    this.activeStudentTab.set('profile');
+    this.isDetailLoading.set(true);
+
+    forkJoin({
+      passes: this.membershipApi.getStudentMemberships(user.id).pipe(catchError(() => of([]))),
+      orders: this.posApi.getStudentOrders(user.id).pipe(catchError(() => of([]))),
+      bookings: this.bookingApi.getStudentBookingDetails(user.id).pipe(catchError(() => of([]))),
+      plans: this.membershipApi.getAllPlans().pipe(catchError(() => of([])))
+    }).subscribe({
+      next: (res) => {
+        this.studentMemberships.set(res.passes || []);
+        this.studentOrders.set(res.orders || []);
+        this.studentBookings.set(res.bookings || []);
+        const pMap = new Map<string, string>();
+        res.plans?.forEach(p => pMap.set(p.id, p.name));
+        this.membershipPlansMap.set(pMap);
+        this.isDetailLoading.set(false);
+      },
+      error: () => {
+        this.isDetailLoading.set(false);
+      }
+    });
+  }
+
+  closeStudentDetail(): void {
+    this.selectedStudent.set(null);
+  }
+
+  formatPaymentMethod(method?: string): string {
+    if (!method) return '—';
+    const m = method.toUpperCase();
+    if (m === 'CASH') return 'Tiền mặt';
+    if (m === 'POS_CARD') return 'Thẻ POS';
+    if (m === 'BANK_TRANSFER_QR' || m === 'BANK_TRANSFER') return 'Chuyển khoản QR';
+    return method;
+  }
+
+  formatMembershipStatus(status?: string): { label: string; class: string } {
+    switch (status) {
+      case 'ACTIVE': return { label: 'Đang hoạt động', class: 'status-active' };
+      case 'PENDING_PAYMENT': return { label: 'Chờ thanh toán', class: 'status-pending' };
+      case 'FROZEN': return { label: 'Tạm bảo lưu', class: 'status-frozen' };
+      case 'EXPIRED': return { label: 'Hết hạn', class: 'status-expired' };
+      case 'CANCELLED': return { label: 'Đã hủy', class: 'status-cancelled' };
+      default: return { label: status || '—', class: 'status-default' };
+    }
+  }
+
+  formatBookingStatus(status?: string): { label: string; class: string } {
+    switch (status) {
+      case 'ATTENDED': return { label: 'Đã tham gia', class: 'booking-attended' };
+      case 'CONFIRMED': return { label: 'Đã đặt chỗ', class: 'booking-confirmed' };
+      case 'CANCELLED': return { label: 'Đã hủy', class: 'booking-cancelled' };
+      case 'NO_SHOW': return { label: 'Vắng mặt', class: 'booking-noshow' };
+      default: return { label: status || '—', class: 'booking-default' };
+    }
   }
 }

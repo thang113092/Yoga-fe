@@ -94,7 +94,14 @@ export class ClassManagementComponent implements OnInit {
 
   // Computed Options for ZenSelect
   readonly branchSelectOptions = computed(() => {
-    return this.branches().map(b => ({
+    let list = this.branches();
+    if (this.auth.isBranchManager()) {
+      const homeBranch = this.auth.userHomeBranchId();
+      if (homeBranch) {
+        list = list.filter(b => b.id === homeBranch);
+      }
+    }
+    return list.map(b => ({
       value: b.id,
       label: b.name,
       sublabel: b.address
@@ -189,6 +196,13 @@ export class ClassManagementComponent implements OnInit {
     const insId = this.selectedInstructorId();
     const targetDate = this.dateFilter();
 
+    if (this.auth.isBranchManager()) {
+      const homeBranch = this.auth.userHomeBranchId();
+      if (homeBranch) {
+        list = list.filter(s => s.branchId === homeBranch);
+      }
+    }
+
     if (st !== 'ALL') {
       list = list.filter(s => s.status === st);
     }
@@ -223,13 +237,19 @@ export class ClassManagementComponent implements OnInit {
     this.scheduleApi.getBranches().subscribe({
       next: (data) => {
         this.branches.set(data || []);
-        if (data && data.length > 0 && !this.selectedBranchId()) {
-          // If branch manager, try to match homeBranchId
-          const homeBranch = this.auth.userHomeBranchId();
-          const target = data.find(b => b.id === homeBranch) || data[0];
-          this.selectedBranchId.set(target.id);
-          this.loadSchedules();
-          this.loadRooms(target.id);
+        if (data && data.length > 0) {
+          if (this.auth.isBranchManager()) {
+            const homeBranch = this.auth.userHomeBranchId();
+            const target = (homeBranch ? data.find(b => b.id === homeBranch) : null) || data[0];
+            this.selectedBranchId.set(target.id);
+            this.loadSchedules();
+            this.loadRooms(target.id);
+          } else if (!this.selectedBranchId()) {
+            const target = data[0];
+            this.selectedBranchId.set(target.id);
+            this.loadSchedules();
+            this.loadRooms(target.id);
+          }
         }
       },
       error: (err) => {
@@ -297,9 +317,17 @@ export class ClassManagementComponent implements OnInit {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.scheduleApi.getSchedules(this.selectedBranchId() || undefined).subscribe({
+    const branchId = this.auth.isBranchManager()
+      ? (this.auth.userHomeBranchId() || this.selectedBranchId() || undefined)
+      : (this.selectedBranchId() || undefined);
+
+    this.scheduleApi.getSchedules(branchId).subscribe({
       next: (res) => {
-        this.schedules.set(res || []);
+        let list = res || [];
+        if (this.auth.isBranchManager() && branchId) {
+          list = list.filter(s => s.branchId === branchId);
+        }
+        this.schedules.set(list);
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -311,6 +339,9 @@ export class ClassManagementComponent implements OnInit {
   }
 
   onBranchFilterChange(branchId: string): void {
+    if (this.auth.isBranchManager()) {
+      return;
+    }
     this.selectedBranchId.set(branchId);
     this.loadSchedules();
     this.loadRooms(branchId);
@@ -318,18 +349,31 @@ export class ClassManagementComponent implements OnInit {
 
   // --- Modal Openers ---
   openCreateScheduleModal(): void {
-    const curBranch = this.selectedBranchId() || (this.branches()[0]?.id ?? '');
+    let curBranch = this.selectedBranchId() || (this.branches()[0]?.id ?? '');
+    if (this.auth.isBranchManager()) {
+      const managerBranchId = this.auth.userHomeBranchId();
+      if (managerBranchId) {
+        curBranch = managerBranchId;
+      }
+    }
+
+    const isSameBranchRooms = this.rooms().length > 0 && this.rooms()[0]?.branchId === curBranch;
+    const initialRoom = isSameBranchRooms ? this.rooms()[0] : null;
+
+    if (!isSameBranchRooms) {
+      this.rooms.set([]);
+    }
     this.loadRooms(curBranch);
 
     this.scheduleForm.set({
       branchId: curBranch,
-      roomId: this.rooms()[0]?.id ?? '',
+      roomId: initialRoom?.id ?? '',
       classTypeId: this.classTypes()[0]?.id ?? '',
       instructorId: this.instructors()[0]?.id ?? '',
       date: this.getDefaultDate(),
       startTimeStr: '08:00',
       durationMinutes: this.classTypes()[0]?.defaultDurationMinutes ?? 60,
-      maxCapacity: this.rooms()[0]?.maxCapacity ?? 20
+      maxCapacity: initialRoom?.maxCapacity ?? 20
     });
 
     this.errorMessage.set(null);
@@ -343,6 +387,9 @@ export class ClassManagementComponent implements OnInit {
   }
 
   onScheduleFormBranchChange(branchId: string): void {
+    if (this.auth.isBranchManager()) {
+      return;
+    }
     this.scheduleForm.update(f => ({ ...f, branchId }));
     this.loadRooms(branchId);
   }
@@ -371,6 +418,14 @@ export class ClassManagementComponent implements OnInit {
 
   submitCreateSchedule(): void {
     const form = this.scheduleForm();
+    if (this.auth.isBranchManager()) {
+      const managerBranchId = this.auth.userHomeBranchId();
+      if (managerBranchId && form.branchId !== managerBranchId) {
+        this.errorMessage.set('Bạn chỉ có thể tạo ca học cho cơ sở mình đang phụ trách.');
+        return;
+      }
+    }
+
     if (!form.branchId || !form.roomId || !form.classTypeId || !form.instructorId || !form.date || !form.startTimeStr) {
       this.errorMessage.set('Vui lòng điền đầy đủ các trường thông tin bắt buộc.');
       return;
