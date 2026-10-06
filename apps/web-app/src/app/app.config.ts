@@ -7,6 +7,7 @@ import { appRoutes } from './app.routes';
 import { SUPABASE_CONFIG } from '@yoga/platform/supabase';
 import { environment } from '../environments/environment';
 import { AuthService, authInterceptor } from '@yoga/platform/auth';
+import { API_BASE_URL } from '@yoga/platform/api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -24,6 +25,10 @@ export const appConfig: ApplicationConfig = {
     }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    {
+      provide: API_BASE_URL,
+      useValue: environment.apiUrl
+    },
     {
       provide: SUPABASE_CONFIG,
       useValue: environment.supabase
