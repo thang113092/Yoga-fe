@@ -59,7 +59,7 @@
       <div class="receipt-body">
         <div class="receipt-item-row">
           <span>Học viên:</span>
-          <strong>{{ studentName }} ({{ studentPhone }})</strong>
+          <strong>{{ studentName }} ({{ studentPhone }}{{ studentEmail ? ' • ' + studentEmail : '' }})</strong>
         </div>
         <div class="receipt-item-row">
           <span>Gói thẻ đăng ký:</span>
@@ -103,18 +103,118 @@
             <span class="card-badge">BƯỚC 1</span>
             <h2 class="card-title">Thông Tin Học Viên</h2>
           </div>
-          <div class="form-grid">
+
+          <!-- Ô tìm kiếm nhanh chung (gọn gàng, thanh thoát) -->
+          <div class="student-quick-search">
+            <zen-input
+              id="pos-student-search"
+              type="text"
+              prefixIcon="search"
+              [(ngModel)]="searchQuery"
+              (inputChange)="onSearchQueryChange($event)"
+              (enterPressed)="executeStudentSearch(searchQuery)"
+              placeholder="Tìm nhanh học viên theo Tên, Số điện thoại hoặc Email..."
+              [disabled]="isProcessing() || !!pendingCheckout()"
+              [clearable]="true"
+            />
+
+            <!-- DROPDOWN SUGGESTIONS -->
+            @if (isSearchDropdownOpen()) {
+              <div class="search-dropdown-menu">
+                @if (isSearchingDropdown()) {
+                  <div class="dropdown-item state-info">
+                    <span class="loading-spinner"></span>
+                    <span>Đang tìm kiếm học viên phù hợp...</span>
+                  </div>
+                } @else if (searchResults().length > 0) {
+                  <div class="dropdown-header">
+                    <span>Tìm thấy {{ searchResults().length }} học viên phù hợp:</span>
+                  </div>
+                  <div class="dropdown-list">
+                    @for (item of searchResults(); track item.id) {
+                      <div
+                        class="dropdown-item student-item"
+                        [class.active]="resolvedStudent()?.id === item.id"
+                        (click)="selectStudentFromSearch(item)"
+                      >
+                        <div class="student-avatar">
+                          {{ item.fullName.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="student-info-col">
+                          <div class="student-item-top">
+                            <span class="student-name">{{ item.fullName }}</span>
+                            @if (item.branchName) {
+                              <span class="branch-tag">{{ item.branchName }}</span>
+                            }
+                          </div>
+                          <div class="student-item-bottom">
+                            <span class="student-meta-item">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                              </svg>
+                              {{ item.phone }}
+                            </span>
+                            @if (item.email) {
+                              <span class="student-meta-item">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                  <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                                {{ item.email }}
+                              </span>
+                            }
+                          </div>
+                        </div>
+                        <div class="select-action-badge">
+                          <span>Chọn</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="dropdown-item state-empty">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Không tìm thấy học viên phù hợp với từ khóa "{{ searchQuery }}".</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="student-form-grid">
             <div class="form-field">
-              <label for="pos-phone">Số điện thoại *</label>
+              <label for="pos-phone">Số điện thoại</label>
               <zen-input
                 id="pos-phone"
                 type="tel"
                 prefixIcon="phone"
                 [(ngModel)]="studentPhone"
+                (inputChange)="onPhoneChange($event)"
+                (enterPressed)="triggerLookup('phone')"
                 placeholder="0912 345 678"
                 [disabled]="isProcessing() || !!pendingCheckout()"
                 [clearable]="true"
-                required
+              />
+            </div>
+            <div class="form-field">
+              <label for="pos-email">Email</label>
+              <zen-input
+                id="pos-email"
+                type="email"
+                prefixIcon="mail"
+                [(ngModel)]="studentEmail"
+                (inputChange)="onEmailChange($event)"
+                (enterPressed)="triggerLookup('email')"
+                placeholder="hocvien@gmail.com"
+                [disabled]="isProcessing() || !!pendingCheckout()"
+                [clearable]="true"
               />
             </div>
             <div class="form-field">
@@ -125,12 +225,45 @@
                 prefixIcon="user"
                 [(ngModel)]="studentName"
                 [readonly]="true"
-                placeholder="Nguyễn Văn A"
+                placeholder="Tự động điền sau khi tìm"
                 [disabled]="isProcessing() || !!pendingCheckout()"
                 required
               />
             </div>
           </div>
+
+          @if (isLookingUpStudent()) {
+            <div class="student-feedback status-loading">
+              <span class="loading-spinner"></span>
+              <span>Đang tra cứu hồ sơ học viên...</span>
+            </div>
+          } @else if (studentLookupStatus() === 'found' && resolvedStudent()) {
+            @if (resolvedStudent(); as student) {
+              <div class="student-feedback status-success">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <div class="feedback-content">
+                  <strong>Đã xác nhận: {{ student.fullName }}</strong>
+                  <span class="feedback-meta">
+                    SĐT: {{ student.phone }} • Email: {{ student.email || 'Chưa cập nhật email' }}
+                    @if (student.branchName) {
+                      • CS: {{ student.branchName }}
+                    }
+                  </span>
+                </div>
+              </div>
+            }
+          } @else if (studentLookupStatus() === 'not_found') {
+            <div class="student-feedback status-not-found">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>Không tìm thấy học viên với SĐT / Email đã nhập. Vui lòng kiểm tra lại hoặc tạo tài khoản trước.</span>
+            </div>
+          }
         </div>
 
         <!-- 2. Membership Plan Picker -->

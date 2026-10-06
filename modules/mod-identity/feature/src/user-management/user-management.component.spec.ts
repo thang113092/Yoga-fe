@@ -80,6 +80,7 @@ describe('UserManagementComponent', () => {
     mockAuth = {
       isSuperAdmin: signal(true),
       isBranchManager: signal(false),
+      isReceptionist: signal(false),
       currentUserId: signal('admin-id'),
       userHomeBranchId: signal('branch-1')
     };
@@ -301,5 +302,65 @@ describe('UserManagementComponent', () => {
     comp.closeStudentDetail();
     fixture.detectChanges();
     expect(comp.selectedStudent()).toBeNull();
+  });
+
+  it('configures UI for receptionist: student title, no role filter, student create modal without branch', async () => {
+    mockAuth.isSuperAdmin.set(false);
+    mockAuth.isBranchManager.set(false);
+    mockAuth.isReceptionist.set(true);
+
+    const { fixture, comp } = setupComponent();
+    await fixture.whenStable();
+
+    // Check header title for receptionist
+    const headerTitle = fixture.nativeElement.querySelector('.mgmt-header h2');
+    expect(headerTitle.textContent.trim()).toBe('Danh Sách Học Viên');
+
+    // Check create button text for receptionist
+    const createBtn = fixture.nativeElement.querySelector('.btn-create-user');
+    expect(createBtn.textContent.trim()).toContain('Thêm Mới Học Viên');
+
+    // Role filter should NOT be in the DOM for receptionist
+    const roleFilter = fixture.nativeElement.querySelector('#filterRole');
+    expect(roleFilter).toBeNull();
+
+    // Default filterRoleCode is STUDENT
+    expect(comp.filterRoleCode()).toBe('STUDENT');
+
+    // Open create modal
+    comp.openCreateModal();
+    fixture.detectChanges();
+
+    expect(comp.newRoleCode()).toBe('STUDENT');
+    expect(comp.newBranchId()).toBe('');
+
+    // Fill student info without selecting a branch
+    comp.newFullName.set('Nguyễn Văn Mới');
+    comp.newPhone.set('0988112233');
+    comp.newPassword.set('12345678');
+    comp.newEmail.set('hocvien.moi@an-yen.vn');
+    comp.newGender.set('MALE');
+
+    mockUserApi.createUser = vi.fn(() => of({
+      id: 'new-id',
+      fullName: 'Nguyễn Văn Mới',
+      roleCode: 'STUDENT',
+      roleName: 'Học viên',
+      homeBranchId: null
+    }));
+
+    comp.submitCreateUser();
+
+    expect(mockUserApi.createUser).toHaveBeenCalledWith({
+      fullName: 'Nguyễn Văn Mới',
+      phone: '0988112233',
+      password: '12345678',
+      email: 'hocvien.moi@an-yen.vn',
+      gender: 'MALE',
+      dob: undefined,
+      roleCode: 'STUDENT',
+      homeBranchId: undefined // Branch is not required!
+    });
+    expect(comp.errorMessage()).toBeNull();
   });
 });

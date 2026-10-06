@@ -4,8 +4,8 @@
   <header class="page-header">
     <div class="header-main-row">
       <div class="header-titles">
-        <div class="pre-title">Phân hệ Quản trị Lớp học</div>
-        <h1 class="main-title">Quản Lý Lớp & Ca Học</h1>
+        <div class="pre-title">{{ auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học' }}</div>
+        <h1 class="main-title">{{ auth.isReceptionist() ? 'Danh Sách Lớp & Ca Học' : 'Quản Lý Lớp & Ca Học' }}</h1>
       </div>
 
       <!-- Navigation Tabs & Actions Group -->
@@ -44,25 +44,27 @@
           </button>
         </div>
 
-        <div class="header-actions">
-          @if (activeTab() === 'schedules') {
-            <button type="button" class="btn-primary" (click)="openCreateScheduleModal()">
-              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Mở Ca Học Mới</span>
-            </button>
-          } @else {
-            <button type="button" class="btn-primary" (click)="openCreateClassTypeModal()">
-              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Thêm Bộ Môn Mới</span>
-            </button>
-          }
-        </div>
+        @if (!auth.isReceptionist()) {
+          <div class="header-actions">
+            @if (activeTab() === 'schedules') {
+              <button type="button" class="btn-primary" (click)="openCreateScheduleModal()">
+                <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Mở Ca Học Mới</span>
+              </button>
+            } @else {
+              <button type="button" class="btn-primary" (click)="openCreateClassTypeModal()">
+                <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Thêm Bộ Môn Mới</span>
+              </button>
+            }
+          </div>
+        }
       </div>
     </div>
   </header>
@@ -163,7 +165,7 @@
 
       <div class="filter-group branch-selector">
         <zen-select
-          [options]="branchSelectOptions()"
+          [options]="branchFilterOptions()"
           [ngModel]="selectedBranchId()"
           (ngModelChange)="onBranchFilterChange($event)"
           [disabled]="auth.isBranchManager()"
@@ -233,9 +235,11 @@
             </div>
             <h3>Chưa có ca học nào được điều phối</h3>
             <p>Nhấp nút "Mở Ca Học Mới" ở góc phải để xếp lịch lớp cho học viên đăng ký.</p>
-            <button type="button" class="btn-secondary" (click)="openCreateScheduleModal()">
-              Mở Ca Học Mới
-            </button>
+            @if (!auth.isReceptionist()) {
+              <button type="button" class="btn-secondary" (click)="openCreateScheduleModal()">
+                Mở Ca Học Mới
+              </button>
+            }
           </div>
         }
       } @else {
@@ -323,7 +327,7 @@
                       <span>Học viên ({{ schedule.bookedCount }})</span>
                     </button>
 
-                    @if (schedule.status === 'SCHEDULED') {
+                    @if (schedule.status === 'SCHEDULED' && !auth.isReceptionist()) {
                       <button
                         type="button"
                         class="btn-row-action btn-action-danger"
@@ -358,21 +362,23 @@
               <span class="type-code-badge">{{ ct.code }}</span>
               <span class="intensity-tag">{{ getIntensityLabel(ct.intensityLevel) }}</span>
             </div>
-            <button
-              type="button"
-              class="btn-delete-type"
-              (click)="deleteClassType(ct)"
-              title="Xóa hoặc tạm dừng bộ môn này"
-              aria-label="Xóa bộ môn"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-              <span>Xóa</span>
-            </button>
+            @if (!auth.isReceptionist()) {
+              <button
+                type="button"
+                class="btn-delete-type"
+                (click)="deleteClassType(ct)"
+                title="Xóa hoặc tạm dừng bộ môn này"
+                aria-label="Xóa bộ môn"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                <span>Xóa</span>
+              </button>
+            }
           </div>
 
           <h3 class="type-name">{{ ct.name }}</h3>

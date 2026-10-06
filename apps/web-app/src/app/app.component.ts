@@ -22,14 +22,14 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
         </div>
 
         <nav class="nav">
-          @if (auth.canManageUsers()) {
+          @if (auth.canManageUsers() || auth.isReceptionist()) {
             <a routerLink="/users" routerLinkActive="active" class="nav-tab highlight-tab">
-              Phân Quyền & Người Dùng
+              {{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Người Dùng' }}
             </a>
           }
           @if (auth.canManageClasses()) {
             <a routerLink="/schedule/manage" routerLinkActive="active" class="nav-tab highlight-tab">
-              Quản Lý Lớp Học
+              {{ auth.isReceptionist() ? 'Danh Sách Lớp Học' : 'Quản Lý Lớp Học' }}
             </a>
           }
           @if (auth.isSuperAdmin() || auth.isBranchManager()) {
@@ -55,7 +55,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
             Gói Thẻ Tập
           </a>
-          @if (!auth.isSuperAdmin() && !auth.isBranchManager()) {
+          @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist()) {
             <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
               Lịch & Đặt Chỗ
             </a>
@@ -203,7 +203,14 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
                       @if (auth.canManageClasses()) {
                         <a routerLink="/schedule/manage" (click)="closeAllPopovers()" class="setting-link">
-                          <span>Quản lý lớp & ca học</span>
+                          <span>{{ auth.isReceptionist() ? 'Danh sách lớp & ca học' : 'Quản lý lớp & ca học' }}</span>
+                          <span class="arrow">›</span>
+                        </a>
+                      }
+
+                      @if (auth.isReceptionist()) {
+                        <a routerLink="/users" (click)="closeAllPopovers()" class="setting-link">
+                          <span>Danh sách học viên</span>
                           <span class="arrow">›</span>
                         </a>
                       }
@@ -220,7 +227,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                         <span class="arrow">›</span>
                       </a>
 
-                      @if (!auth.isSuperAdmin() && !auth.isBranchManager()) {
+                      @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist()) {
                         <a routerLink="/schedule/calendar" (click)="closeAllPopovers()" class="setting-link">
                           <span>Lịch tập & Đặt chỗ</span>
                           <span class="arrow">›</span>

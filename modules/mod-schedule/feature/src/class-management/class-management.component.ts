@@ -41,7 +41,7 @@ export class ClassManagementComponent implements OnInit {
   readonly schedules = signal<ClassSchedule[]>([]);
 
   // Selected filters
-  readonly selectedBranchId = signal<string>('');
+  readonly selectedBranchId = signal<string>('ALL');
   readonly selectedInstructorId = signal<string>('ALL');
   readonly searchQuery = signal<string>('');
   readonly dateFilter = signal<string>('');
@@ -93,6 +93,29 @@ export class ClassManagementComponent implements OnInit {
   readonly isLoadingAttendees = signal(false);
 
   // Computed Options for ZenSelect
+  readonly branchFilterOptions = computed(() => {
+    let list = this.branches();
+    if (this.auth.isBranchManager()) {
+      const homeBranch = this.auth.userHomeBranchId();
+      if (homeBranch) {
+        list = list.filter(b => b.id === homeBranch);
+      }
+      return list.map(b => ({
+        value: b.id,
+        label: b.name,
+        sublabel: b.address
+      }));
+    }
+    return [
+      { value: 'ALL', label: 'Tất cả cơ sở', sublabel: 'Toàn bộ hệ thống phòng tập' },
+      ...list.map(b => ({
+        value: b.id,
+        label: b.name,
+        sublabel: b.address
+      }))
+    ];
+  });
+
   readonly branchSelectOptions = computed(() => {
     let list = this.branches();
     if (this.auth.isBranchManager()) {
@@ -177,6 +200,10 @@ export class ClassManagementComponent implements OnInit {
     this.dateFilter.set('');
     this.selectedInstructorId.set('ALL');
     this.statusFilter.set('ALL');
+    if (!this.auth.isBranchManager()) {
+      this.selectedBranchId.set('ALL');
+      this.loadSchedules();
+    }
   }
 
   readonly hasActiveFilters = computed(() => {
@@ -184,7 +211,8 @@ export class ClassManagementComponent implements OnInit {
       this.searchQuery().trim() ||
       this.dateFilter() ||
       this.selectedInstructorId() !== 'ALL' ||
-      this.statusFilter() !== 'ALL'
+      this.statusFilter() !== 'ALL' ||
+      (!this.auth.isBranchManager() && this.selectedBranchId() !== 'ALL')
     );
   });
 
@@ -244,11 +272,11 @@ export class ClassManagementComponent implements OnInit {
             this.selectedBranchId.set(target.id);
             this.loadSchedules();
             this.loadRooms(target.id);
-          } else if (!this.selectedBranchId()) {
-            const target = data[0];
-            this.selectedBranchId.set(target.id);
+          } else {
+            // SUPER_ADMIN, RECEPTIONIST, v.v. mặc định xem Tất cả cơ sở
+            this.selectedBranchId.set('ALL');
             this.loadSchedules();
-            this.loadRooms(target.id);
+            this.loadRooms(data[0].id);
           }
         }
       },
@@ -259,7 +287,7 @@ export class ClassManagementComponent implements OnInit {
   }
 
   loadRooms(branchId: string): void {
-    if (!branchId) return;
+    if (!branchId || branchId === 'ALL') return;
     this.scheduleApi.getRoomsByBranch(branchId).subscribe({
       next: (rooms) => {
         this.rooms.set(rooms || []);
@@ -317,9 +345,10 @@ export class ClassManagementComponent implements OnInit {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
+    const rawBranchId = this.selectedBranchId();
     const branchId = this.auth.isBranchManager()
-      ? (this.auth.userHomeBranchId() || this.selectedBranchId() || undefined)
-      : (this.selectedBranchId() || undefined);
+      ? (this.auth.userHomeBranchId() || (rawBranchId !== 'ALL' ? rawBranchId : undefined))
+      : (rawBranchId && rawBranchId !== 'ALL' ? rawBranchId : undefined);
 
     this.scheduleApi.getSchedules(branchId).subscribe({
       next: (res) => {
@@ -344,12 +373,15 @@ export class ClassManagementComponent implements OnInit {
     }
     this.selectedBranchId.set(branchId);
     this.loadSchedules();
-    this.loadRooms(branchId);
+    if (branchId !== 'ALL') {
+      this.loadRooms(branchId);
+    }
   }
 
   // --- Modal Openers ---
   openCreateScheduleModal(): void {
-    let curBranch = this.selectedBranchId() || (this.branches()[0]?.id ?? '');
+    const rawBranch = this.selectedBranchId();
+    let curBranch = (rawBranch && rawBranch !== 'ALL') ? rawBranch : (this.branches()[0]?.id ?? '');
     if (this.auth.isBranchManager()) {
       const managerBranchId = this.auth.userHomeBranchId();
       if (managerBranchId) {

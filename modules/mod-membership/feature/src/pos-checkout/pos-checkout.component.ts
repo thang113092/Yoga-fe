@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { MembershipApi, MembershipPlan, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
-import { AuthService, UserApi } from '@yoga/platform/auth';
+import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
 import { ZenSelectComponent, ZenInputComponent } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
 interface CheckoutDraft { actorId: string; key: string; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
@@ -26,13 +26,34 @@ export class PosCheckoutComponent implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly successReceipt = signal<{ order: OrderResp; payment: PaymentResp } | null>(null);
   protected readonly pendingCheckout = signal<CheckoutDraft | null>(null);
+
+  protected searchQuery = '';
+  protected readonly searchResults = signal<UserResponse[]>([]);
+  protected readonly isSearchingDropdown = signal(false);
+  protected readonly isSearchDropdownOpen = signal(false);
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   protected studentPhone = '';
+  protected studentEmail = '';
   protected studentName = '';
+  protected readonly isLookingUpStudent = signal(false);
+  protected readonly studentLookupStatus = signal<'idle' | 'found' | 'not_found'>('idle');
+  protected readonly resolvedStudent = signal<UserResponse | null>(null);
   protected selectedPlanId = signal<string | null>(null);
   protected paymentMethod = signal<PaymentMethod>('CASH');
   protected cashierNotes = '';
   protected transactionReference = '';
   protected readonly selectedPlan = computed(() => this.plans().find(p => p.id === this.selectedPlanId()) ?? null);
+  private lookupDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.student-quick-search')) {
+      this.isSearchDropdownOpen.set(false);
+    }
+  }
+
   ngOnInit(): void { this.loadPlans(); }
   loadPlans(): void {
     this.isLoadingPlans.set(true); this.errorMessage.set(null);
@@ -48,22 +69,191 @@ export class PosCheckoutComponent implements OnInit {
   }
   selectPlan(id: string): void { if (!this.pendingCheckout() && !this.isProcessing()) this.selectedPlanId.set(id); }
   setPaymentMethod(method: PaymentMethod): void { if (!this.pendingCheckout() && !this.isProcessing()) this.paymentMethod.set(method); }
+
+  onSearchQueryChange(val: string): void {
+    this.searchQuery = val;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+    const trimmed = val.trim();
+    if (!trimmed) {
+      this.searchResults.set([]);
+      this.isSearchDropdownOpen.set(false);
+      this.isSearchingDropdown.set(false);
+      return;
+    }
+    this.isSearchDropdownOpen.set(true);
+    this.isSearchingDropdown.set(true);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.executeStudentSearch(trimmed);
+    }, 300);
+  }
+
+  executeStudentSearch(query: string): void {
+    const trimmed = query.trim();
+    const branchId = this.selectedBranchId;
+    if (!trimmed || !branchId) {
+      this.searchResults.set([]);
+      this.isSearchingDropdown.set(false);
+      return;
+    }
+    this.isSearchingDropdown.set(true);
+    this.isSearchDropdownOpen.set(true);
+    this.userApi.searchStudents(trimmed, branchId, 10).subscribe({
+      next: list => {
+        this.searchResults.set(list);
+        this.isSearchingDropdown.set(false);
+        this.isSearchDropdownOpen.set(true);
+      },
+      error: () => {
+        this.searchResults.set([]);
+        this.isSearchingDropdown.set(false);
+      }
+    });
+  }
+
+  selectStudentFromSearch(student: UserResponse): void {
+    this.resolvedStudent.set(student);
+    this.studentName = student.fullName;
+    this.studentPhone = student.phone || '';
+    this.studentEmail = student.email || '';
+    this.studentLookupStatus.set('found');
+    this.searchQuery = `${student.fullName} (${student.phone})`;
+    this.isSearchDropdownOpen.set(false);
+    this.searchResults.set([]);
+  }
+
+  clearSearchBox(): void {
+    this.searchQuery = '';
+    this.searchResults.set([]);
+    this.isSearchDropdownOpen.set(false);
+    this.isSearchingDropdown.set(false);
+  }
+
+  onPhoneChange(val: string): void {
+    this.studentPhone = val;
+    this.onStudentFieldChange('phone');
+  }
+
+  onEmailChange(val: string): void {
+    this.studentEmail = val;
+    this.onStudentFieldChange('email');
+  }
+
+  private onStudentFieldChange(source: 'phone' | 'email'): void {
+    if (this.lookupDebounceTimer) {
+      clearTimeout(this.lookupDebounceTimer);
+      this.lookupDebounceTimer = null;
+    }
+    const phone = this.studentPhone.trim();
+    const email = this.studentEmail.trim();
+
+    if (!phone && !email) {
+      this.studentName = '';
+      this.resolvedStudent.set(null);
+      this.studentLookupStatus.set('idle');
+      return;
+    }
+
+    this.lookupDebounceTimer = setTimeout(() => {
+      this.triggerLookup(source);
+    }, 400);
+  }
+
+  triggerLookup(source?: 'phone' | 'email'): void {
+    const branchId = this.selectedBranchId;
+    if (!branchId) return;
+
+    const phone = this.studentPhone.trim();
+    const email = this.studentEmail.trim();
+
+    if (source === 'phone' && phone.length < 8 && !email) return;
+    if (source === 'email' && (!email.includes('@') || email.length < 5) && !phone) return;
+    if (!phone && !email) {
+      this.studentName = '';
+      this.resolvedStudent.set(null);
+      this.studentLookupStatus.set('idle');
+      return;
+    }
+
+    const current = this.resolvedStudent();
+    if (current) {
+      const matchPhone = phone && current.phone === phone;
+      const matchEmail = email && current.email?.toLowerCase() === email.toLowerCase();
+      if ((phone && matchPhone) || (email && matchEmail)) return;
+    }
+
+    this.isLookingUpStudent.set(true);
+    const lookup$ = source === 'email' && email
+      ? this.userApi.lookupStudent({ email, branchId })
+      : phone
+        ? this.userApi.lookupStudent(phone, branchId)
+        : this.userApi.lookupStudent({ email, branchId });
+
+    lookup$.subscribe({
+      next: student => {
+        this.isLookingUpStudent.set(false);
+        this.resolvedStudent.set(student);
+        this.studentLookupStatus.set('found');
+        this.studentName = student.fullName;
+        if (student.phone && (!this.studentPhone || source === 'email')) {
+          this.studentPhone = student.phone;
+        }
+        if (student.email && (!this.studentEmail || source === 'phone')) {
+          this.studentEmail = student.email;
+        }
+      },
+      error: () => {
+        this.isLookingUpStudent.set(false);
+        this.resolvedStudent.set(null);
+        this.studentLookupStatus.set('not_found');
+        this.studentName = '';
+      }
+    });
+  }
+
   handleCheckout(): void {
     if (this.isProcessing()) return;
     const draft = this.pendingCheckout();
     if (draft) { this.isProcessing.set(true); this.errorMessage.set(null); this.completeCheckout(draft); return; }
     const plan = this.selectedPlan(); const actorId = this.auth.currentUserId();
-    if (!plan || !actorId || !this.selectedBranchId || !this.studentPhone.trim()) { this.errorMessage.set('Chọn chi nhánh, gói tập và nhập số điện thoại học viên.'); return; }
-    if (this.paymentMethod() !== 'CASH' && !this.transactionReference.trim()) { this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.'); return; }
+    const phone = this.studentPhone.trim();
+    const email = this.studentEmail.trim();
+    if (!plan || !actorId || !this.selectedBranchId || (!phone && !email)) {
+      this.errorMessage.set('Chọn chi nhánh, gói tập và nhập số điện thoại hoặc email học viên.');
+      return;
+    }
+    if (this.paymentMethod() !== 'CASH' && !this.transactionReference.trim()) {
+      this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.');
+      return;
+    }
     this.isProcessing.set(true); this.errorMessage.set(null);
-    const branchId = this.selectedBranchId; const phone = this.studentPhone.trim();
+    const branchId = this.selectedBranchId;
     const method = this.paymentMethod(); const reference = this.transactionReference.trim() || undefined; const notes = this.cashierNotes;
-    this.userApi.lookupStudent(phone, branchId).subscribe({
+
+    const currentStudent = this.resolvedStudent();
+    if (currentStudent && ((phone && currentStudent.phone === phone) || (email && currentStudent.email?.toLowerCase() === email.toLowerCase()))) {
+      this.studentName = currentStudent.fullName;
+      const checkoutDraft: CheckoutDraft = { actorId, key: crypto.randomUUID(), orderRequest: { branchId, studentId: currentStudent.id, planId: plan.id, cashierId: actorId, notes }, paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: reference, notes } };
+      this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
+      return;
+    }
+
+    const lookup$ = phone
+      ? this.userApi.lookupStudent(phone, branchId)
+      : this.userApi.lookupStudent({ email, branchId });
+
+    lookup$.subscribe({
       next: student => {
         this.studentName = student.fullName;
-        const draft: CheckoutDraft = { actorId, key: crypto.randomUUID(), orderRequest: { branchId, studentId: student.id, planId: plan.id, cashierId: actorId, notes }, paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: reference, notes } };
-        this.saveDraft(draft); this.completeCheckout(draft);
-      }, error: err => this.fail(err, 'Không tìm thấy học viên đang hoạt động. Kiểm tra số điện thoại hoặc tạo tài khoản học viên trước.')
+        if (student.phone) this.studentPhone = student.phone;
+        if (student.email) this.studentEmail = student.email;
+        this.resolvedStudent.set(student);
+        this.studentLookupStatus.set('found');
+        const checkoutDraft: CheckoutDraft = { actorId, key: crypto.randomUUID(), orderRequest: { branchId, studentId: student.id, planId: plan.id, cashierId: actorId, notes }, paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: reference, notes } };
+        this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
+      }, error: err => this.fail(err, 'Không tìm thấy học viên đang hoạt động. Kiểm tra số điện thoại hoặc email học viên trước.')
     });
   }
   private completeCheckout(draft: CheckoutDraft): void {
@@ -93,5 +283,5 @@ export class PosCheckoutComponent implements OnInit {
       this.errorMessage.set('Có giao dịch chưa được xác nhận. Thử lại để đối soát cùng đơn; không thu thêm tiền.');
     } catch { this.errorMessage.set('Không đọc được giao dịch đang chờ. Liên hệ quản lý để đối soát trước khi thu tiền.'); }
   }
-  resetForm(): void { if (this.pendingCheckout() || this.isProcessing()) return; this.successReceipt.set(null); this.cashierNotes = ''; this.transactionReference = ''; this.studentPhone = ''; this.studentName = ''; }
+  resetForm(): void { if (this.pendingCheckout() || this.isProcessing()) return; this.successReceipt.set(null); this.cashierNotes = ''; this.transactionReference = ''; this.studentPhone = ''; this.studentEmail = ''; this.studentName = ''; this.searchQuery = ''; this.searchResults.set([]); this.isSearchDropdownOpen.set(false); this.isSearchingDropdown.set(false); this.resolvedStudent.set(null); this.studentLookupStatus.set('idle'); }
 }

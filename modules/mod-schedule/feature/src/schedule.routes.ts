@@ -26,7 +26,7 @@ export const SCHEDULE_ROUTES: Routes = [
   },
   {
     path: 'manage',
-    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'])],
     loadComponent: () =>
       import('./class-management/class-management.component').then(
         (m) => m.ClassManagementComponent

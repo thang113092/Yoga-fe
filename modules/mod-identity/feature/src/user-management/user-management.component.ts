@@ -67,7 +67,7 @@ export class UserManagementComponent implements OnInit {
   });
 
   readonly branchFilterOptions = computed(() => {
-    if (this.auth.isSuperAdmin()) {
+    if (this.auth.isSuperAdmin() || this.auth.isReceptionist()) {
       const list = this.branches().map(b => ({
         value: b.id,
         label: b.name,
@@ -122,7 +122,7 @@ export class UserManagementComponent implements OnInit {
 
   onRoleChange(code: string): void {
     this.newRoleCode.set(code);
-    if (code === 'SUPER_ADMIN') {
+    if (code === 'SUPER_ADMIN' || code === 'STUDENT') {
       this.newBranchId.set('');
     }
   }
@@ -169,6 +169,10 @@ export class UserManagementComponent implements OnInit {
         { code: 'INSTRUCTOR', name: 'Huấn Luyện Viên (Instructor)', desc: 'Giảng dạy và xác nhận ca học' },
         { code: 'STUDENT', name: 'Hội Viên (Student)', desc: 'Tập luyện, đặt chỗ và thẻ tập' }
       ];
+    } else if (this.auth.isReceptionist()) {
+      return [
+        { code: 'STUDENT', name: 'Hội Viên (Student)', desc: 'Tập luyện, đặt chỗ và thẻ tập' }
+      ];
     }
     return [];
   });
@@ -181,6 +185,9 @@ export class UserManagementComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.auth.isReceptionist()) {
+      this.filterRoleCode.set('STUDENT');
+    }
     this.loadBranches();
     this.loadUsers();
   }
@@ -221,13 +228,17 @@ export class UserManagementComponent implements OnInit {
     this.newEmail.set('');
     this.newGender.set('FEMALE');
     this.newDob.set('');
-    this.newRoleCode.set('');
     this.errorMessage.set(null);
 
-    if (this.auth.isBranchManager()) {
+    if (this.auth.isReceptionist()) {
+      this.newRoleCode.set('STUDENT');
+      this.newBranchId.set('');
+    } else if (this.auth.isBranchManager()) {
       // Khóa chi nhánh theo chi nhánh của Manager
+      this.newRoleCode.set('');
       this.newBranchId.set(this.auth.userHomeBranchId() ?? '');
     } else {
+      this.newRoleCode.set('');
       this.newBranchId.set('');
     }
   }
@@ -245,14 +256,16 @@ export class UserManagementComponent implements OnInit {
     const role = this.newRoleCode().trim();
     const gender = this.newGender();
     const dob = this.newDob();
-    const branch = (role === 'SUPER_ADMIN') ? '' : this.newBranchId().trim();
+    const isStudent = (role === 'STUDENT');
+    const isSuperAdmin = (role === 'SUPER_ADMIN');
+    const branch = (isSuperAdmin || isStudent) ? '' : this.newBranchId().trim();
 
     if (!name || !phone || !pass || !email || !role || !gender) {
       this.errorMessage.set('Vui lòng điền đầy đủ Họ tên, Giới tính, Số điện thoại, Email, Mật khẩu và Vai trò.');
       return;
     }
 
-    if (role !== 'SUPER_ADMIN' && !branch) {
+    if (!isSuperAdmin && !isStudent && !branch) {
       this.errorMessage.set('Vui lòng chọn Chi nhánh phụ trách cho tài khoản.');
       return;
     }
@@ -277,13 +290,18 @@ export class UserManagementComponent implements OnInit {
     }
 
     // Kiểm tra ràng buộc phân quyền phía Client trước khi gọi Backend
-    if (this.auth.isBranchManager()) {
+    if (this.auth.isReceptionist()) {
+      if (role !== 'STUDENT') {
+        this.errorMessage.set('Lễ tân chỉ được phép thêm mới tài khoản Học viên.');
+        return;
+      }
+    } else if (this.auth.isBranchManager()) {
       if (!['RECEPTIONIST', 'INSTRUCTOR', 'STUDENT'].includes(role)) {
         this.errorMessage.set('Quản lý chi nhánh chỉ được phép tạo tài khoản Lễ tân, Huấn luyện viên hoặc Học viên.');
         return;
       }
-      if (branch !== this.auth.userHomeBranchId()) {
-        this.errorMessage.set('Bạn chỉ có thể tạo tài khoản cho chi nhánh do mình trực tiếp quản lý.');
+      if (!isStudent && branch !== this.auth.userHomeBranchId()) {
+        this.errorMessage.set('Bạn chỉ có thể tạo tài khoản nhân sự cho chi nhánh do mình trực tiếp quản lý.');
         return;
       }
     }
@@ -298,14 +316,14 @@ export class UserManagementComponent implements OnInit {
       gender: gender || undefined,
       dob: dob || undefined,
       roleCode: role,
-      homeBranchId: (role === 'SUPER_ADMIN' || !branch) ? undefined : branch
+      homeBranchId: (isSuperAdmin || isStudent || !branch) ? undefined : branch
     };
 
     this.userApi.createUser(req).subscribe({
       next: (created) => {
         this.isCreating.set(false);
         this.closeCreateModal();
-        this.toast.success(`Đã tạo thành công tài khoản [${created.fullName}] với vai trò [${created.roleName}].`);
+        this.toast.success(`Đã thêm thành công tài khoản [${created.fullName}] với vai trò [${created.roleName}].`);
         this.loadUsers();
       },
       error: (err) => {

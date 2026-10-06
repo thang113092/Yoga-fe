@@ -24,9 +24,9 @@ export const appRoutes: Routes = [
   },
   {
     path: 'users',
-    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'])],
     loadComponent: () => import('@yoga/mod-identity/feature').then(m => m.UserManagementComponent),
-    title: 'Quản Lý Người Dùng & Phân Quyền - Yoga Center'
+    title: 'Quản Lý Học Viên & Người Dùng - Yoga Center'
   },
   {
     path: '**',
