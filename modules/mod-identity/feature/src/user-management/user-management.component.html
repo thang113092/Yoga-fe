@@ -1,0 +1,481 @@
+<div class="user-mgmt-container">
+  <!-- Notifications -->
+  @if (successMessage()) {
+    <div class="alert alert-success" role="alert">
+      <span>{{ successMessage() }}</span>
+      <button type="button" class="btn-close" (click)="successMessage.set(null)">✕</button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">
+      <div class="alert-content">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+      <button type="button" class="btn-close" (click)="errorMessage.set(null)">✕</button>
+    </div>
+  }
+
+  <!-- Header Banner -->
+  <div class="mgmt-header">
+    <div class="header-info">
+      <div class="pre-title">QUẢN TRỊ NHÂN SỰ & HỆ THỐNG</div>
+      <h2>Phân Quyền & Quản Lý Người Dùng</h2>
+      <p class="subtitle">Kiểm soát danh tính, phân quyền vai trò và phân công nhân sự tại các chi nhánh</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- Role Badge of Current User -->
+      @if (auth.isSuperAdmin()) {
+        <div class="current-role-badge super-admin">
+          <div class="role-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div>
+            <strong>SUPER_ADMIN (Ban Giám Đốc)</strong>
+            <small>Toàn quyền tạo mọi vai trò & chi nhánh</small>
+          </div>
+        </div>
+      } @else if (auth.isBranchManager()) {
+        <div class="current-role-badge branch-manager">
+          <div class="role-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18"/>
+              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+              <path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/>
+            </svg>
+          </div>
+          <div>
+            <strong>BRANCH_MANAGER (Quản Lý Cơ Sở)</strong>
+            <small>Được tạo Lễ tân, HLV, Học viên tại chi nhánh của mình</small>
+          </div>
+        </div>
+      }
+
+      <button type="button" class="btn-create-user" (click)="openCreateModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="8.5" cy="7" r="4"/>
+          <line x1="20" y1="8" x2="20" y2="14"/>
+          <line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+        <span>Tạo Tài Khoản Mới</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters-card">
+    <div class="filter-item filter-search">
+      <zen-search
+        placeholder="Tìm họ tên, SĐT, email..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+    </div>
+
+    <div class="filter-item">
+      <zen-select
+        id="filterBranch"
+        [options]="branchFilterOptions()"
+        [ngModel]="filterBranchId()"
+        (ngModelChange)="onFilterBranchChange($event)"
+        [disabled]="auth.isBranchManager()"
+        placeholder="Chọn cơ sở"
+      />
+    </div>
+
+    <div class="filter-item">
+      <zen-select
+        id="filterRole"
+        [options]="roleFilterOptions"
+        [ngModel]="filterRoleCode()"
+        (ngModelChange)="onFilterRoleChange($event)"
+        placeholder="Chọn vai trò"
+      />
+    </div>
+
+    <button type="button" class="btn-refresh-list" (click)="loadUsers()" [disabled]="isLoading()" title="Làm mới danh sách">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6"/>
+        <path d="M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      <span>Làm mới danh sách</span>
+    </button>
+  </div>
+
+  <!-- Users Table -->
+  <div class="table-card">
+    @if (isLoading()) {
+      <div class="loading-state">Đang tải danh sách tài khoản từ hệ thống...</div>
+    } @else if (users().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon-circle">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <p>Không có tài khoản nào phù hợp với bộ lọc hiện tại.</p>
+      </div>
+    } @else if (filteredUsers().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon-circle">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <p>Không tìm thấy tài khoản nào khớp với từ khóa "{{ searchQuery() }}".</p>
+      </div>
+    } @else {
+      <div class="table-responsive">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Họ và Tên</th>
+              <th>Giới Tính</th>
+              <th>Số Điện Thoại</th>
+              <th>Email</th>
+              <th>Vai Trò (Role)</th>
+              <th>Cơ Sở Phụ Trách</th>
+              <th>Trạng Thái</th>
+              <th>Ngày Tạo</th>
+              <th>Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of filteredUsers(); track u.id) {
+              <tr>
+                <td>
+                  <strong class="user-name">{{ u.fullName }}</strong>
+                </td>
+                <td>
+                  <span class="gender-cell">
+                    {{ formatGender(u.gender) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="phone-code">{{ u.phone }}</span>
+                </td>
+                <td>
+                  <span class="email-text">{{ u.email || '—' }}</span>
+                </td>
+                <td>
+                  <span class="role-tag" [class]="u.roleCode.toLowerCase()">
+                    @switch (u.roleCode) {
+                      @case ('SUPER_ADMIN') { Ban giám đốc }
+                      @case ('BRANCH_MANAGER') { Quản lý cơ sở }
+                      @case ('RECEPTIONIST') { Lễ tân }
+                      @case ('INSTRUCTOR') { Huấn luyện viên }
+                      @case ('STUDENT') { Học viên }
+                      @default { {{ u.roleCode }} }
+                    }
+                  </span>
+                </td>
+                <td>
+                  <span class="branch-name">{{ u.branchName || 'Toàn hệ thống' }}</span>
+                </td>
+                <td>
+                  <span class="status-dot" [class.active]="u.isActive">
+                    {{ u.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="date-text">{{ u.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </td>
+                <td class="action-cell">
+                  @if (u.id === auth.currentUserId()) {
+                    <span class="self-tag" title="Tài khoản đang đăng nhập hiện tại">Đang dùng</span>
+                  } @else if (canManageUser(u)) {
+                    @if (u.isActive) {
+                      <button
+                        type="button"
+                        class="btn-icon-action btn-lock"
+                        (click)="openConfirmModal(u)"
+                        [disabled]="updatingUserId() === u.id"
+                        data-tooltip="Khóa tài khoản"
+                        aria-label="Khóa tài khoản"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn-icon-action btn-unlock"
+                        (click)="openConfirmModal(u)"
+                        [disabled]="updatingUserId() === u.id"
+                        data-tooltip="Mở khóa tài khoản"
+                        aria-label="Mở khóa tài khoản"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                          <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                        </svg>
+                      </button>
+                    }
+                  } @else {
+                    <span class="no-perm-tag">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Create User Modal Dialog -->
+  @if (isModalOpen()) {
+    <div class="modal-backdrop" (click)="closeCreateModal()">
+      <div class="modal-card modal-create-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Tạo Tài Khoản & Phân Quyền Mới</h3>
+          <button type="button" class="btn-close" (click)="closeCreateModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="rbac-rule-notice">
+            <div class="notice-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div class="notice-text">
+              <div class="notice-title">Quy tắc phân quyền:</div>
+              @if (auth.isSuperAdmin()) {
+                <p>Bạn đang thao tác với vai trò <strong>Ban Giám Đốc (Super Admin)</strong>: Toàn quyền tạo mọi vai trò và phân bổ nhân sự trên toàn hệ thống.</p>
+              } @else if (auth.isBranchManager()) {
+                <p>Bạn đang thao tác với vai trò <strong>Quản Lý Cơ Sở (Branch Manager)</strong>: Chỉ được phép tạo tài khoản Lễ tân, Huấn luyện viên hoặc Học viên thuộc chi nhánh của mình.</p>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newFullName">Họ và Tên (*):</label>
+              <zen-input
+                id="newFullName"
+                prefixIcon="user"
+                placeholder="Trần Quốc Tuấn"
+                [ngModel]="newFullName()"
+                (ngModelChange)="newFullName.set($event)"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newGender">Giới Tính (*):</label>
+              <zen-select
+                id="newGender"
+                [options]="genderOptions"
+                [ngModel]="newGender()"
+                (ngModelChange)="newGender.set($event)"
+                placeholder="Chọn giới tính"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newPhone">Số Điện Thoại (*):</label>
+              <zen-input
+                id="newPhone"
+                type="tel"
+                prefixIcon="phone"
+                placeholder="0988776655"
+                [ngModel]="newPhone()"
+                (ngModelChange)="newPhone.set($event)"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newEmail">Email (*):</label>
+              <zen-input
+                id="newEmail"
+                type="email"
+                prefixIcon="mail"
+                placeholder="tuan.tran@an-yen.vn"
+                [ngModel]="newEmail()"
+                (ngModelChange)="newEmail.set($event)"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newPassword">Mật Khẩu Ban Đầu (*):</label>
+              <zen-input
+                id="newPassword"
+                type="password"
+                placeholder="Mật khẩu từ 8 đến 72 ký tự"
+                [ngModel]="newPassword()"
+                (ngModelChange)="newPassword.set($event)"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newDob">Ngày Sinh (Tùy chọn):</label>
+              <zen-input
+                id="newDob"
+                type="date"
+                prefixIcon="calendar"
+                placeholder="Chọn ngày sinh"
+                [ngModel]="newDob()"
+                (ngModelChange)="newDob.set($event)"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <!-- Vai trò gán (Đã lọc chuẩn xác theo quyền người tạo) -->
+            <div class="form-group">
+              <label for="newRole">Gán Vai Trò (Role) (*):</label>
+              <zen-select
+                id="newRole"
+                [options]="availableRoles()"
+                valueKey="code"
+                labelKey="name"
+                [ngModel]="newRoleCode()"
+                (ngModelChange)="onRoleChange($event)"
+                placeholder="Chọn vai trò"
+              />
+            </div>
+
+            <!-- Chi nhánh phụ trách -->
+            <div class="form-group">
+              <label for="newBranch">Chi Nhánh Phụ Trách (*):</label>
+              <zen-select
+                id="newBranch"
+                [options]="modalBranchOptions()"
+                [ngModel]="newBranchId()"
+                (ngModelChange)="newBranchId.set($event)"
+                [disabled]="auth.isBranchManager() || newRoleCode() === 'SUPER_ADMIN'"
+                placeholder="Chọn chi nhánh phụ trách"
+              />
+              @if (newRoleCode() === 'SUPER_ADMIN') {
+                <small class="locked-note">Toàn quyền toàn hệ thống (không cố định cơ sở)</small>
+              } @else if (auth.isBranchManager()) {
+                <small class="locked-note">Cố định chi nhánh do bạn quản lý</small>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" (click)="closeCreateModal()" [disabled]="isCreating()">
+            Hủy Bỏ
+          </button>
+          <button
+            type="button"
+            class="btn-modal-submit"
+            (click)="submitCreateUser()"
+            [disabled]="isCreating() || !newFullName().trim() || !newPhone().trim() || !newPassword().trim() || !newEmail().trim() || !newRoleCode() || (newRoleCode() !== 'SUPER_ADMIN' && !newBranchId())"
+          >
+            @if (isCreating()) {
+              <span>Đang khởi tạo...</span>
+            } @else {
+              <span>Xác Nhận Tạo Tài Khoản</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Confirm Lock / Unlock Modal Dialog -->
+  @if (confirmTargetUser(); as target) {
+    <div class="modal-backdrop" (click)="closeConfirmModal()">
+      <div class="modal-card modal-confirm-card" (click)="$event.stopPropagation()">
+        <div class="confirm-modal-header" [class.danger]="target.isActive">
+          <div class="confirm-icon-circle" [class.danger]="target.isActive">
+            @if (target.isActive) {
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            } @else {
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+            }
+          </div>
+          <div class="confirm-header-text">
+            <h3>{{ target.isActive ? 'Khóa Tài Khoản Người Dùng' : 'Mở Khóa Tài Khoản Người Dùng' }}</h3>
+            <span class="confirm-target-sub">{{ target.fullName }} ({{ target.phone }})</span>
+          </div>
+          <button type="button" class="btn-close" (click)="closeConfirmModal()" [disabled]="updatingUserId() !== null">✕</button>
+        </div>
+
+        <div class="confirm-modal-body">
+          @if (target.isActive) {
+            <p class="confirm-desc">
+              Bạn có chắc chắn muốn khóa tài khoản của <strong>{{ target.fullName }}</strong>?
+            </p>
+            <div class="confirm-notice-box danger">
+              <div class="notice-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <p>Sau khi khóa, tài khoản này sẽ ngay lập tức bị vô hiệu hóa và không thể đăng nhập vào hệ thống An Yên.</p>
+            </div>
+          } @else {
+            <p class="confirm-desc">
+              Bạn có chắc chắn muốn mở khóa tài khoản của <strong>{{ target.fullName }}</strong>?
+            </p>
+            <div class="confirm-notice-box success">
+              <div class="notice-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <p>Sau khi mở khóa, người dùng có thể đăng nhập bình thường và tiếp tục sử dụng hệ thống.</p>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" (click)="closeConfirmModal()" [disabled]="updatingUserId() !== null">
+            Hủy Bỏ
+          </button>
+          <button
+            type="button"
+            [class]="target.isActive ? 'btn-confirm-danger' : 'btn-modal-submit'"
+            (click)="executeConfirmToggleStatus()"
+            [disabled]="updatingUserId() !== null"
+          >
+            @if (updatingUserId() !== null) {
+              <span>Đang xử lý...</span>
+            } @else if (target.isActive) {
+              <span>Xác Nhận Khóa</span>
+            } @else {
+              <span>Xác Nhận Mở Khóa</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,151 @@
+@use '../../../platform/tokens/src/tokens.scss' as *;
+@use './management-ui';
+@use './toast-zen';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text-main);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  padding: 8px 38px 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 70, 52, 0.18);
+  color: #144634;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover:not(:disabled) {
+    border-color: #0f766e;
+    background-color: #fafcfb;
+    box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+  }
+
+  &:disabled {
+    background-color: #f1f4f3;
+    color: #8da499;
+    border-color: rgba(20, 70, 52, 0.08);
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  option {
+    padding: 10px 14px;
+    background-color: #ffffff;
+    color: #144634;
+    font-size: 14px;
+  }
+}
+
+/* Global Input & Textarea Styling - Zen Luxury Standard */
+input:not([type='checkbox']):not([type='radio']):not(.zen-native-input):not(.zen-search-input),
+textarea {
+  min-height: 42px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 70, 52, 0.18);
+  background-color: #ffffff;
+  color: #144634;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &::placeholder {
+    color: #8da499;
+    font-weight: 400;
+  }
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: #0f766e;
+    background-color: #fafcfb;
+    box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none !important;
+    border-color: #0f766e !important;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14) !important;
+  }
+
+  &:disabled {
+    background-color: #f1f4f3;
+    color: #8da499;
+    border-color: rgba(20, 70, 52, 0.08);
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+}
+
+/* Hard reset for native inputs embedded inside Zen components */
+.zen-native-input,
+.zen-search-input,
+zen-input input,
+zen-search input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  min-height: unset !important;
+
+  &:focus,
+  &:focus-visible,
+  &:hover {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}
+
+/* Đảm bảo chữ trong button không bị ẩn */
+button span,
+button {
+  color: inherit;
+}
+
+
+/* Shared project identity; reserve dimensions to prevent layout shifts. */
+.project-logo { display: block; width: 88px; height: 88px; object-fit: contain; flex-shrink: 0; }
+.footer-brand .project-logo { width: 140px; height: 140px; }
+.brand-micro .project-logo { width: 48px; height: 48px; background: #faf8f2; border-radius: 6px; }
+.brand-badge .project-logo { width: 108px; height: 108px; }
+

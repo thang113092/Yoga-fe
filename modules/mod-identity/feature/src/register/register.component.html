@@ -1,0 +1,35 @@
+<main class="auth-page register-page">
+  <aside class="auth-story" aria-label="An Yên Yoga">
+    <a routerLink="/" class="brand"><img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="project-logo" width="100" height="100" /></a>
+    <div class="story-content"><span class="eyebrow">BẮT ĐẦU TỪ MỘT NHỊP THỞ</span><h2>Dành một chút<br>an yên cho mình.</h2><p>Tạo tài khoản để theo dõi thẻ tập, khám phá lịch học và đặt chỗ khi có thẻ tập phù hợp.</p><div class="zen-art" aria-hidden="true"><i></i><i></i><i></i><b></b></div></div>
+    <span class="story-footer">Một khởi đầu nhỏ. Một thay đổi đẹp.</span>
+  </aside>
+  <section class="auth-panel" aria-labelledby="register-title">
+    <a routerLink="/" class="back-link">← Về trang chủ</a>
+    <div class="form-content">
+      @if (successMessage()) {
+        <div class="success-view" role="status"><span class="success-symbol" aria-hidden="true">✓</span><span class="eyebrow">CHỈ CÒN MỘT BƯỚC</span><h1 id="register-title">Kiểm tra hộp thư</h1><p>Hướng dẫn xác nhận tài khoản đã được gửi đến <strong>{{ email() }}</strong>.</p><p class="subtitle">Mở liên kết trong email để hoàn tất đăng ký. Nếu chưa thấy, hãy kiểm tra thư mục spam.</p><a class="primary-button" routerLink="/auth/login">Đến trang đăng nhập <span aria-hidden="true">→</span></a></div>
+      } @else {
+        <span class="eyebrow">CHÀO BẠN, HỘI VIÊN MỚI</span><h1 id="register-title">Tạo tài khoản</h1><p class="subtitle">Bắt đầu hành trình chăm sóc bản thân tại An Yên.</p>
+        @if (errorMessage()) { <div class="alert alert-danger" role="alert"><span>{{ errorMessage() }}</span><button type="button" class="btn-close" aria-label="Đóng thông báo lỗi" (click)="errorMessage.set(null)">×</button></div> }
+        <form (ngSubmit)="onSubmit()" [attr.aria-busy]="isLoading()">
+          <div class="form-row">
+            <div class="form-group"><label for="nameInput">Họ và tên</label><input id="nameInput" name="nameInput" class="form-control" type="text" autocomplete="name" placeholder="Nguyễn Mai Lan" required [ngModel]="fullName()" (ngModelChange)="fullName.set($event)" /></div>
+            <div class="form-group"><label for="phoneInput">Số điện thoại</label><input id="phoneInput" name="phoneInput" class="form-control" type="tel" autocomplete="tel" placeholder="0912 345 678" required [ngModel]="phone()" (ngModelChange)="phone.set($event)" /></div>
+          </div>
+          <div class="form-group"><label for="emailInput">Email</label><input id="emailInput" name="emailInput" class="form-control" type="email" autocomplete="email" placeholder="ban@example.com" required [ngModel]="email()" (ngModelChange)="email.set($event)" /><p class="field-hint">Dùng để đăng nhập và nhận email xác nhận tài khoản.</p></div>
+          <div class="form-row">
+            <div class="form-group"><label for="passInput">Mật khẩu</label><div class="password-field"><input id="passInput" name="passInput" class="form-control" [type]="showPassword() ? 'text' : 'password'" autocomplete="new-password" placeholder="Từ 8 đến 72 ký tự" required minlength="8" maxlength="72" aria-describedby="password-hint" [ngModel]="password()" (ngModelChange)="password.set($event)" /><button type="button" class="password-toggle" aria-controls="passInput" [attr.aria-pressed]="showPassword()" (click)="showPassword.set(!showPassword())">{{ showPassword() ? 'Ẩn' : 'Hiện' }}</button></div></div>
+            <div class="form-group"><label for="cPassInput">Xác nhận mật khẩu</label><div class="password-field"><input id="cPassInput" name="cPassInput" class="form-control" [type]="showConfirmation() ? 'text' : 'password'" autocomplete="new-password" placeholder="Nhập lại mật khẩu" required [ngModel]="confirmPassword()" (ngModelChange)="confirmPassword.set($event)" /><button type="button" class="password-toggle" aria-controls="cPassInput" [attr.aria-pressed]="showConfirmation()" (click)="showConfirmation.set(!showConfirmation())">{{ showConfirmation() ? 'Ẩn' : 'Hiện' }}</button></div></div>
+          </div>
+          <p id="password-hint" class="field-hint password-hint">Mật khẩu cần có từ 8 đến 72 ký tự.</p>
+          <details class="optional-fields"><summary>Thông tin bổ sung <span>Không bắt buộc</span></summary><div class="form-row"><div class="form-group"><label for="genderSelect">Giới tính</label><zen-select id="genderSelect" name="genderSelect" [options]="genderOptions" [ngModel]="gender()" (ngModelChange)="gender.set($event)" placeholder="Chọn giới tính" /></div><div class="form-group"><label for="dobInput">Ngày sinh</label><input id="dobInput" name="dobInput" class="form-control" type="date" autocomplete="bday" [ngModel]="dob()" (ngModelChange)="dob.set($event)" /></div></div></details>
+          <button type="submit" class="primary-button" [disabled]="isLoading()">@if (isLoading()) { <span class="spinner" aria-hidden="true"></span> Đang tạo tài khoản… } @else { Tạo tài khoản <span aria-hidden="true">→</span> }</button>
+        </form>
+        <p class="account-prompt">Đã có tài khoản? <a routerLink="/auth/login">Đăng nhập</a></p>
+      }
+    </div>
+    <p class="panel-footer">Chậm lại một chút, để đi xa hơn.</p>
+  </section>
+</main>
+

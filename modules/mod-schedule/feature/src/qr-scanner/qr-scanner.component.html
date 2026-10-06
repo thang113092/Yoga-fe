@@ -1,0 +1,165 @@
+<div class="qr-scanner-container">
+  <div class="kiosk-header">
+    <div class="header-text">
+      <div class="header-pre">TIẾP TÂN & ĐIỂM DANH</div>
+      <h1 class="header-title">Điểm Danh 1 Chạm An Yên</h1>
+      <p class="subtitle">Quét mã QR của ca đã đặt hoặc nhập mã Booking để điểm danh vào lớp học</p>
+    </div>
+    <div class="kiosk-status">
+      <span class="pulse-dot"></span>
+      <span>{{ selectedBranchName() }}</span>
+    </div>
+  </div>
+
+  @if (errorMessage()) { <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div> }
+  <div class="branch-select-row">
+    <label for="kioskBranch">Cơ sở điểm danh:</label>
+    <div class="branch-select-wrapper">
+      <zen-select
+        id="kioskBranch"
+        [options]="branches()"
+        valueKey="id"
+        labelKey="name"
+        [ngModel]="branchId()"
+        (ngModelChange)="branchId.set($event)"
+        [disabled]="isProcessing() || isCameraActive()"
+        placeholder="Chọn cơ sở điểm danh"
+      />
+    </div>
+  </div>
+
+  <div class="kiosk-layout">
+    <!-- Left Column: Scanner & Quick Actions -->
+    <div class="scanner-panel">
+      <div class="scanner-box">
+        <video #camera autoplay playsinline muted aria-label="Camera quét mã QR" [hidden]="!isCameraActive()" style="width:100%;max-height:320px"></video>
+        <button type="button" class="btn-camera" (click)="startCamera()" [disabled]="isProcessing() || isCameraActive() || !branchId()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Mở camera quét QR</span>
+        </button>
+        @if (isCameraActive()) {
+          <button type="button" class="btn-stop-camera" (click)="stopCamera()">Tắt camera</button>
+        }
+        <form class="scan-input-form" (ngSubmit)="submitCheckIn()">
+          <label for="qrInput">Hoặc nhập mã Booking / Dữ liệu QR:</label>
+          <div class="input-with-button">
+            <input
+              id="qrInput" name="qrInput"
+              type="text"
+              class="form-control"
+              placeholder="VD: BK-1790665001..."
+              [ngModel]="qrInput()"
+              (ngModelChange)="qrInput.set($event)"
+              [disabled]="isProcessing()"
+            />
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="isProcessing() || !qrInput().trim()"
+            >
+              @if (isProcessing()) {
+                Đang kiểm tra...
+              } @else {
+                Điểm Danh
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right Column: Result Card & Recent Session History -->
+    <div class="result-panel">
+      @if (checkInResult(); as res) {
+        <div class="result-card" [class.already]="res.alreadyCheckedIn">
+          <div class="result-badge">
+            @if (res.alreadyCheckedIn) {
+              <div class="icon-circle warning">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <h3>ĐÃ ĐIỂM DANH TRƯỚC ĐÓ</h3>
+              <p>Học viên đã hoàn tất check-in cho ca này. Không trừ thêm lượt.</p>
+            } @else {
+              <div class="icon-circle success">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <h3>ĐIỂM DANH THÀNH CÔNG</h3>
+              <p>Chào mừng học viên đã đến lớp học.</p>
+            }
+          </div>
+
+          <div class="student-info-card">
+            <div class="info-row">
+              <span class="label">Học viên:</span>
+              <strong class="value highlight">{{ res.studentName }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="label">Mã Booking:</span>
+              <strong class="value">{{ res.bookingCode }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="label">Lớp học:</span>
+              <span class="value">{{ res.className }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Vị trí thảm:</span>
+              <span class="mat-badge">Thảm số {{ res.matNumber ?? 'Chưa chỉ định' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Thời gian:</span>
+              <span class="value">{{ res.checkedInAt | date:'HH:mm:ss dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline-clear" (click)="clearResult()">
+            Sẵn Sàng Cho Học Viên Tiếp Theo
+          </button>
+        </div>
+      } @else {
+        <div class="waiting-card">
+          <div class="waiting-icon-circle">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="7" y1="8" x2="17" y2="8"/>
+              <line x1="7" y1="12" x2="17" y2="12"/>
+              <line x1="7" y1="16" x2="13" y2="16"/>
+            </svg>
+          </div>
+          <h3>Kiosk Sẵn Sàng Nhận Mã Điểm Danh</h3>
+          <p>Học viên chỉ cần đưa mã QR trên điện thoại vào trước mắt đọc</p>
+        </div>
+      }
+
+      <!-- Recent Session History -->
+      <div class="recent-history">
+        <h4>Lịch Sử Điểm Danh Ca Này</h4>
+        <div class="history-list">
+          @for (item of recentCheckIns(); track item.bookingCode + item.time) {
+            <div class="history-item">
+              <div class="history-left">
+                <strong>{{ item.studentName }}</strong>
+                <span>{{ item.className }} • Thảm #{{ item.matNumber }}</span>
+              </div>
+              <div class="history-right">
+                <span class="time-tag">{{ item.time }}</span>
+                <span class="status-tag" [class.warning]="item.status === 'ALREADY_CHECKED_IN'">
+                  {{ item.status === 'ALREADY_CHECKED_IN' ? 'Đã quét trước' : 'Hợp lệ' }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

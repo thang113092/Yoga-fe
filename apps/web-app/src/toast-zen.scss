@@ -1,0 +1,143 @@
+/* An Yên Yoga & Wellness - Zen Luxury Toast Notifications Theme */
+@use 'ngx-toastr/toastr.css';
+
+/* Top Right Fixed Position */
+.toast-top-right {
+  top: 24px !important;
+  right: 24px !important;
+  z-index: 99999 !important;
+}
+
+#toast-container {
+  pointer-events: auto;
+
+  > div {
+    margin: 0 0 12px 0 !important;
+    padding: 14px 18px 14px 48px !important;
+    width: 360px !important;
+    max-width: 90vw !important;
+    border-radius: 14px !important;
+    background-color: #ffffff !important;
+    border: 1px solid rgba(20, 70, 52, 0.12) !important;
+    box-shadow: 0 16px 32px -8px rgba(10, 25, 19, 0.16),
+                0 4px 12px rgba(0, 0, 0, 0.04) !important;
+    opacity: 1 !important;
+    font-family: var(--font-sans);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+
+    &:hover {
+      box-shadow: 0 20px 40px -8px rgba(10, 25, 19, 0.22),
+                  0 6px 16px rgba(0, 0, 0, 0.06) !important;
+      transform: translateY(-2px);
+    }
+  }
+
+  .toast-title {
+    font-weight: 700 !important;
+    font-size: 0.925rem !important;
+    line-height: 1.35 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .toast-message {
+    font-size: 0.84rem !important;
+    line-height: 1.45 !important;
+    color: #435b50 !important;
+    word-break: break-word;
+  }
+
+  .toast-close-button {
+    position: absolute !important;
+    right: 12px !important;
+    top: 10px !important;
+    color: #71887e !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+    text-shadow: none !important;
+    opacity: 0.6 !important;
+    cursor: pointer;
+    transition: opacity 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      opacity: 1 !important;
+      color: #144634 !important;
+    }
+  }
+
+  .toast-progress {
+    height: 3px !important;
+    opacity: 0.7 !important;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    border-radius: 0 0 14px 14px;
+  }
+
+  /* Thành công - Success (Forest Green / Deep Jade) */
+  .toast-success {
+    border-left: 5px solid #144634 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23144634' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 14px 14px !important;
+    background-size: 22px !important;
+
+    .toast-title {
+      color: #144634 !important;
+    }
+
+    .toast-progress {
+      background-color: #0f766e !important;
+    }
+  }
+
+  /* Lỗi - Error (Crimson / Soft Rose) */
+  .toast-error {
+    border-left: 5px solid #b91c1c !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23b91c1c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='15' y1='9' x2='9' y2='15'%3E%3C/line%3E%3Cline x1='9' y1='9' x2='15' y2='15'%3E%3C/line%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 14px 14px !important;
+    background-size: 22px !important;
+
+    .toast-title {
+      color: #991b1b !important;
+    }
+
+    .toast-progress {
+      background-color: #dc2626 !important;
+    }
+  }
+
+  /* Cảnh báo - Warning (Warm Amber) */
+  .toast-warning {
+    border-left: 5px solid #d97706 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'%3E%3C/path%3E%3Cline x1='12' y1='9' x2='12' y2='13'%3E%3C/line%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'%3E%3C/line%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 14px 14px !important;
+    background-size: 22px !important;
+
+    .toast-title {
+      color: #92400e !important;
+    }
+
+    .toast-progress {
+      background-color: #f59e0b !important;
+    }
+  }
+
+  /* Thông tin - Info (Teal / Forest) */
+  .toast-info {
+    border-left: 5px solid #0f766e !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 14px 14px !important;
+    background-size: 22px !important;
+
+    .toast-title {
+      color: #0f766e !important;
+    }
+
+    .toast-progress {
+      background-color: #0d9488 !important;
+    }
+  }
+}

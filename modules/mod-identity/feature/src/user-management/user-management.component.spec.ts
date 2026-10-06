@@ -1,0 +1,170 @@
+import { provideExperimentalZonelessChangeDetection, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
+import { BranchApi } from '@yoga/mod-branch/data-access';
+import { ZenToastService } from '@yoga/platform/ui';
+import { of } from 'rxjs';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { UserManagementComponent } from './user-management.component';
+
+describe('UserManagementComponent', () => {
+  const mockUsers: UserResponse[] = [
+    {
+      id: 'user-1',
+      phone: '0988776655',
+      email: 'quynhanh@gmail.com',
+      fullName: 'Đinh Thị Quỳnh Anh',
+      gender: 'FEMALE',
+      dob: null as any,
+      roleId: 'role-1',
+      roleCode: 'INSTRUCTOR',
+      roleName: 'Huấn luyện viên',
+      homeBranchId: 'branch-1',
+      branchName: 'Cơ sở Cầu Giấy',
+      isActive: true,
+      createdAt: '2026-10-05T15:42:00Z'
+    },
+    {
+      id: 'user-2',
+      phone: '0909333444',
+      email: 'binh@gmail.com',
+      fullName: 'Đoàn Thanh Bình',
+      gender: 'MALE',
+      dob: null as any,
+      roleId: 'role-2',
+      roleCode: 'STUDENT',
+      roleName: 'Học viên',
+      homeBranchId: 'branch-1',
+      branchName: 'Cơ sở Cầu Giấy',
+      isActive: false,
+      createdAt: '2026-09-29T09:31:00Z'
+    }
+  ];
+
+  let mockUserApi: any;
+  let mockBranchApi: any;
+  let mockAuth: any;
+  let mockToast: any;
+
+  beforeEach(() => {
+    mockUserApi = {
+      getUsers: vi.fn(() => of(mockUsers)),
+      updateUserStatus: vi.fn((userId: string, isActive: boolean) =>
+        of({ ...mockUsers.find(u => u.id === userId)!, isActive })
+      ),
+      createUser: vi.fn()
+    };
+
+    mockBranchApi = {
+      getAll: vi.fn(() => of([]))
+    };
+
+    mockAuth = {
+      isSuperAdmin: signal(true),
+      isBranchManager: signal(false),
+      currentUserId: signal('admin-id'),
+      userHomeBranchId: signal('branch-1')
+    };
+
+    mockToast = {
+      success: vi.fn(),
+      error: vi.fn()
+    };
+  });
+
+  function setupComponent() {
+    TestBed.configureTestingModule({
+      imports: [UserManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        { provide: UserApi, useValue: mockUserApi },
+        { provide: BranchApi, useValue: mockBranchApi },
+        { provide: AuthService, useValue: mockAuth },
+        { provide: ZenToastService, useValue: mockToast }
+      ]
+    });
+    const fixture = TestBed.createComponent(UserManagementComponent);
+    fixture.detectChanges();
+    return { fixture, comp: fixture.componentInstance };
+  }
+
+  it('renders gender column and formats gender correctly', async () => {
+    const { fixture, comp } = setupComponent();
+    await fixture.whenStable();
+
+    expect(comp.formatGender('FEMALE')).toBe('Nữ');
+    expect(comp.formatGender('MALE')).toBe('Nam');
+    expect(comp.formatGender(undefined)).toBe('—');
+
+    const headers = fixture.nativeElement.querySelectorAll('thead th');
+    const headerTexts = Array.from(headers).map((h: any) => h.textContent.trim());
+    expect(headerTexts).toContain('Giới Tính');
+    expect(headerTexts).toContain('Thao Tác');
+
+    const genderCells = fixture.nativeElement.querySelectorAll('.gender-cell');
+    expect(genderCells.length).toBe(2);
+    expect(genderCells[0].textContent.trim()).toBe('Nữ');
+    expect(genderCells[1].textContent.trim()).toBe('Nam');
+  });
+
+  it('filters users by global search query', async () => {
+    const { comp } = setupComponent();
+
+    // No search -> all users
+    expect(comp.filteredUsers().length).toBe(2);
+
+    // Search by name
+    comp.searchQuery.set('Quỳnh Anh');
+    expect(comp.filteredUsers().length).toBe(1);
+    expect(comp.filteredUsers()[0].fullName).toBe('Đinh Thị Quỳnh Anh');
+
+    // Search by phone
+    comp.searchQuery.set('0909');
+    expect(comp.filteredUsers().length).toBe(1);
+    expect(comp.filteredUsers()[0].phone).toBe('0909333444');
+
+    // Search by email
+    comp.searchQuery.set('binh@');
+    expect(comp.filteredUsers().length).toBe(1);
+    expect(comp.filteredUsers()[0].email).toBe('binh@gmail.com');
+
+    // Search not found
+    comp.searchQuery.set('khong-ton-tai');
+    expect(comp.filteredUsers().length).toBe(0);
+  });
+
+  it('opens confirm popup and toggles lock/unlock user status', async () => {
+    const { fixture, comp } = setupComponent();
+    await fixture.whenStable();
+
+    const activeUser = mockUsers[0];
+    
+    // Clicking lock button opens popup
+    comp.openConfirmModal(activeUser);
+    fixture.detectChanges();
+
+    expect(comp.confirmTargetUser()).toEqual(activeUser);
+    const confirmCard = fixture.nativeElement.querySelector('.modal-confirm-card');
+    expect(confirmCard).toBeTruthy();
+    expect(confirmCard.textContent).toContain('Khóa Tài Khoản Người Dùng');
+
+    // Confirm action
+    comp.executeConfirmToggleStatus();
+    fixture.detectChanges();
+
+    expect(mockUserApi.updateUserStatus).toHaveBeenCalledWith('user-1', false);
+    expect(mockToast.success).toHaveBeenCalled();
+    expect(comp.confirmTargetUser()).toBeNull();
+
+    // Check user is updated in signal
+    const updated = comp.users().find(u => u.id === 'user-1');
+    expect(updated?.isActive).toBe(false);
+
+    // Cancel modal flow
+    const inactiveUser = comp.users().find(u => u.id === 'user-2')!;
+    comp.openConfirmModal(inactiveUser);
+    expect(comp.confirmTargetUser()).toEqual(inactiveUser);
+    comp.closeConfirmModal();
+    expect(comp.confirmTargetUser()).toBeNull();
+  });
+});

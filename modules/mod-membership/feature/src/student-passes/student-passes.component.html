@@ -1,0 +1,477 @@
+<div class="passes-container">
+  @if (successMessage()) {
+    <div class="alert alert-success" role="status">
+      <span>{{ successMessage() }}</span>
+      <button type="button" class="btn-close" (click)="successMessage.set(null)" aria-label="Đóng thông báo">✕</button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn-close" (click)="errorMessage.set(null)" aria-label="Đóng thông báo">✕</button>
+    </div>
+  }
+
+  <!-- STUDENT PROFILE HEADER (ZEN WELLNESS AESTHETIC) -->
+  <div class="passes-header">
+    <div class="header-content">
+      <div class="avatar-circle">
+        <span>{{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'H' }}</span>
+      </div>
+      <div class="student-meta">
+        <div class="welcome-label">Cổng thông tin hội viên</div>
+        <div class="name-row">
+          <h1 class="passes-title">{{ auth.userFullName() || 'Học viên An Yên' }}</h1>
+          <span class="vip-badge">Hội viên chính thức</span>
+        </div>
+        <p class="passes-subtitle">
+          <span class="meta-item">{{ auth.profile()?.phone || 'Chưa cập nhật SĐT' }}</span>
+          <span class="meta-sep">·</span>
+          <span class="meta-item">{{ auth.profile()?.email || 'Chưa cập nhật email' }}</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn-refresh"
+        (click)="refreshAllData()"
+        [disabled]="isLoading()"
+        title="Đồng bộ dữ liệu mới nhất"
+      >
+        <svg class="refresh-icon" [class.spinning]="isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        <span>{{ isLoading() ? 'Đang tải...' : 'Làm mới' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- UPCOMING BOOKING HERO CARD -->
+  @if (nextBooking(); as next) {
+    <div class="hero-live-qr-card">
+      <div class="card-glow"></div>
+      <div class="hero-left">
+        <div class="live-pill">
+          <span class="live-dot"></span>
+          <span>Ca học tiếp theo</span>
+        </div>
+        <h2 class="class-title">{{ next.className }}</h2>
+
+        <div class="class-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Thời gian</span>
+            <strong>{{ next.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Địa điểm & Phòng</span>
+            <strong>{{ next.branchName }} · {{ next.roomName }}</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Vị trí thảm</span>
+            <strong class="mat-badge">Thảm số {{ next.matNumber ?? 'Tự do' }}</strong>
+          </div>
+        </div>
+
+        <div class="hero-buttons">
+          <button type="button" class="btn-open-qr" (click)="openBookingQrModal(next)">
+            <span>Mã QR điểm danh</span>
+          </button>
+          @if (next.canCancel) {
+            <button type="button" class="btn-hero-cancel" (click)="cancelBooking(next)" [disabled]="isLoading()">
+              Hủy ca học
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="qr-ticket-card" (click)="openBookingQrModal(next)" title="Mở mã QR">
+          <div class="ticket-header">
+            <span>Vé điểm danh</span>
+            <strong>{{ next.bookingCode }}</strong>
+          </div>
+          <div class="qr-matrix-box">
+            <yoga-qr-code [value]="next.bookingCode" />
+          </div>
+          <span class="click-to-scan">Chạm để phóng to</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TABS NAVIGATION BAR (CLEAN TYPOGRAPHY) -->
+  <div class="tabs-nav-bar" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      class="tab-link"
+      [class.active]="activeTab() === 'passes'"
+      [attr.aria-selected]="activeTab() === 'passes'"
+      (click)="activeTab.set('passes')"
+    >
+      <span>Thẻ tập</span>
+      <span class="count-pill">{{ passes().length }}</span>
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="tab-link"
+      [class.active]="activeTab() === 'bookings'"
+      [attr.aria-selected]="activeTab() === 'bookings'"
+      (click)="activeTab.set('bookings')"
+    >
+      <span>Lịch đã đặt</span>
+      <span class="count-pill">{{ bookings().length }}</span>
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="tab-link"
+      [class.active]="activeTab() === 'waitlist'"
+      [attr.aria-selected]="activeTab() === 'waitlist'"
+      (click)="activeTab.set('waitlist')"
+    >
+      <span>Hàng chờ</span>
+      <span class="count-pill" [class.alert-pill]="activeWaitlistCount() > 0">{{ activeWaitlistCount() }}</span>
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state" role="status">
+      <span>Đang đồng bộ dữ liệu...</span>
+    </div>
+  }
+
+  <!-- TAB 1: PASSES -->
+  @if (activeTab() === 'passes') {
+    <div class="passes-grid">
+      @for (pass of passes(); track pass.id) {
+        <div class="digital-pass-card" [class.vip]="pass.isAllBranches">
+          <div class="pass-head">
+            <div class="brand-micro">
+              <span>AN YÊN DIGITAL PASS</span>
+            </div>
+            <span class="status-badge" [class.active]="pass.status === 'ACTIVE'">
+              {{ pass.status === 'ACTIVE' ? 'Đang hoạt động' : pass.status }}
+            </span>
+          </div>
+
+          <div class="pass-body">
+            <div class="pass-meta-top">
+              <span class="scope-tag">
+                {{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}
+              </span>
+              <h3 class="pass-code">{{ pass.membershipCode }}</h3>
+            </div>
+
+            <div class="pass-stats-row">
+              <div class="stat-box">
+                <span class="stat-label">Buổi khả dụng</span>
+                <span class="stat-val highlight">
+                  {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}
+                </span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Hạn sử dụng</span>
+                <span class="stat-val">
+                  {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
+                </span>
+              </div>
+            </div>
+
+            <p class="pass-note">
+              {{ pass.isAllBranches ? 'Tập luyện tại tất cả chi nhánh trong hệ thống An Yên.' : 'Áp dụng tại chi nhánh đã đăng ký.' }}
+            </p>
+          </div>
+
+          <div class="pass-footer">
+            <button type="button" class="btn-show-qr" (click)="openPassQrModal(pass)">
+              <span>Thông tin thẻ</span>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        @if (!isLoading() && !errorMessage()) {
+          <div class="empty-state">
+            <div class="empty-icon-circle">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="3"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+                <circle cx="6" cy="15" r="1.5"/>
+              </svg>
+            </div>
+            <h3 class="empty-title">Chưa có thẻ tập hoạt động</h3>
+            <p class="empty-desc">
+              Tài khoản hiện chưa được kích hoạt thẻ tập. Hãy khám phá các gói thẻ All-Access hoặc liên hệ tiếp tân tại cơ sở để bắt đầu hành trình An Yên.
+            </p>
+
+            <div class="empty-actions">
+              <a routerLink="/schedule/calendar" class="btn-primary-action">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Xem lịch lớp học</span>
+              </a>
+              <a routerLink="/" class="btn-secondary-action">
+                <span>Bảng giá gói thẻ</span>
+              </a>
+              <a routerLink="/branches" class="btn-outline-action">
+                <span>Hệ thống chi nhánh</span>
+              </a>
+            </div>
+
+            <div class="empty-perks">
+              <div class="perk-item">
+                <div class="perk-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 14 14"/>
+                  </svg>
+                </div>
+                <div class="perk-text">
+                  <strong>Khung giờ linh hoạt</strong>
+                  <span>Hơn 50+ ca học mỗi tuần từ sáng sớm đến tối</span>
+                </div>
+              </div>
+
+              <div class="perk-item">
+                <div class="perk-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                </div>
+                <div class="perk-text">
+                  <strong>Giáo viên chuẩn quốc tế</strong>
+                  <span>Đội ngũ chứng chỉ Yoga Alliance tâm huyết</span>
+                </div>
+              </div>
+
+              <div class="perk-item">
+                <div class="perk-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                </div>
+                <div class="perk-text">
+                  <strong>Điểm danh 1 chạm</strong>
+                  <span>Quét QR nhanh chóng tại quầy đón tiếp cơ sở</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- TAB 2: BOOKINGS -->
+  @if (activeTab() === 'bookings') {
+    <div class="bookings-wrapper">
+      <div class="bookings-top-bar">
+        <span class="bookings-count">Tổng số: <strong>{{ bookings().length }}</strong> ca học</span>
+        <a routerLink="/schedule/calendar" class="btn-book-more">
+          <span>Đặt lịch lớp mới</span>
+        </a>
+      </div>
+
+      <div class="bookings-stream">
+        @for (b of bookings(); track b.id) {
+          <div
+            class="booking-item-card"
+            [class.attended]="b.status === 'ATTENDED'"
+            [class.cancelled]="b.status === 'CANCELLED'"
+          >
+            <div class="item-left">
+              <div class="item-head">
+                <span class="booking-code-text">#{{ b.bookingCode }}</span>
+                <span class="class-badge">{{ b.className }}</span>
+                <span class="status-tag" [ngClass]="b.status.toLowerCase()">
+                  {{ b.status === 'CONFIRMED' ? 'Đã xác nhận' : (b.status === 'ATTENDED' ? 'Đã tham dự' : (b.status === 'CANCELLED' ? 'Đã hủy' : b.status)) }}
+                </span>
+              </div>
+              <div class="item-details">
+                <span>{{ b.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</span>
+                <span>·</span>
+                <span>{{ b.branchName }}</span>
+                <span>·</span>
+                <span>Thảm: {{ b.matNumber ?? 'Tự do' }}</span>
+              </div>
+            </div>
+
+            <div class="item-right">
+              @if (b.status === 'CONFIRMED') {
+                <button type="button" class="btn-qr-icon" (click)="openBookingQrModal(b)" title="Mở mã QR">
+                  <span>Mã QR</span>
+                </button>
+                @if (b.canCancel) {
+                  <button type="button" class="btn-cancel-action" (click)="cancelBooking(b)" [disabled]="isLoading()" title="Hủy ca học">
+                    Hủy ca
+                  </button>
+                }
+              } @else if (b.status === 'ATTENDED') {
+                <span class="tag-done">Đã hoàn thành</span>
+              } @else if (b.status === 'CANCELLED') {
+                <span class="cant-cancel-note">Đã hủy</span>
+              }
+            </div>
+          </div>
+        } @empty {
+          @if (!isLoading() && !errorMessage()) {
+            <div class="empty-state">
+              <div class="empty-icon-circle">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+              <h3 class="empty-title">Chưa có lịch đặt chỗ</h3>
+              <p class="empty-desc">
+                Bạn chưa đăng ký tham gia ca học nào. Hãy xem lịch biểu để chọn khung giờ và giáo viên phù hợp.
+              </p>
+              <div class="empty-actions">
+                <a routerLink="/schedule/calendar" class="btn-primary-action">
+                  <span>Xem lịch và đặt chỗ</span>
+                </a>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  <!-- TAB 3: WAITLIST -->
+  @if (activeTab() === 'waitlist') {
+    <div class="bookings-stream">
+      @for (w of waitlists(); track w.id) {
+        <div class="booking-item-card waitlist-card" [class.converted]="w.status === 'CONVERTED'">
+          <div class="item-left">
+            <div class="item-head">
+              <span class="class-badge">{{ w.className }}</span>
+              <span class="rank-pill">Thứ tự hàng chờ: #{{ w.queuePosition }}</span>
+              <span class="status-tag" [ngClass]="w.status.toLowerCase()">
+                {{ w.status === 'WAITING' ? 'Đang đợi slot' : (w.status === 'CONVERTED' ? 'Đã có chỗ' : w.status) }}
+              </span>
+            </div>
+            <div class="item-details">
+              <span>{{ w.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</span>
+              <span>·</span>
+              <span>{{ w.branchName }}</span>
+            </div>
+          </div>
+
+          <div class="item-right">
+            @if (w.status === 'WAITING') {
+              <button type="button" class="btn-leave-waitlist" (click)="cancelWaitlist(w)" [disabled]="isLoading()">
+                Rút khỏi hàng chờ
+              </button>
+            } @else if (w.status === 'CONVERTED') {
+              <span class="tag-done">Đã chuyển thành đặt chỗ</span>
+            }
+          </div>
+        </div>
+      } @empty {
+        @if (!isLoading() && !errorMessage()) {
+          <div class="empty-state">
+            <div class="empty-icon-circle">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <h3 class="empty-title">Hàng chờ đang trống</h3>
+            <p class="empty-desc">
+              Khi một ca học đã kín chỗ, bạn có thể tham gia hàng chờ để tự động nhận chỗ khi có người hủy sớm.
+            </p>
+            <div class="empty-actions">
+              <a routerLink="/schedule/calendar" class="btn-primary-action">
+                <span>Xem lịch lớp học</span>
+              </a>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- QR MODAL FOR BOOKING -->
+  @if (selectedBookingForQr(); as booking) {
+    <div class="modal-backdrop" (click)="closeQrModal()">
+      <div
+        class="qr-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mã QR điểm danh"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="closeQrModal()"
+      >
+        <button type="button" class="btn-close" aria-label="Đóng" (click)="closeQrModal()">✕</button>
+        <div class="qr-head">
+          <h3>{{ booking.className }}</h3>
+          <p class="subtitle">{{ booking.branchName }} · {{ booking.startTime | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+
+        <div class="class-callout">
+          <strong>Mã đặt chỗ: {{ booking.bookingCode }}</strong>
+          <span>Thảm: {{ booking.matNumber ? ('Thảm ' + booking.matNumber) : 'Tự do chọn thảm' }}</span>
+        </div>
+
+        <div class="qr-code-display">
+          <div class="qr-frame">
+            <yoga-qr-code [value]="booking.bookingCode" />
+            <div class="code-and-copy">
+              <span class="qr-code-txt">{{ booking.bookingCode }}</span>
+              <button type="button" class="btn-copy-sm" (click)="copyToClipboard(booking.bookingCode)">Sao chép</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="anti-duplicate-note">
+          Quét mã này tại quầy tiếp tân trước giờ học để xác nhận điểm danh.
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- QR MODAL FOR MEMBERSHIP PASS -->
+  @if (selectedPassForQr(); as pass) {
+    <div class="modal-backdrop" (click)="closeQrModal()">
+      <div
+        class="qr-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Thông tin thẻ tập"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="closeQrModal()"
+      >
+        <button type="button" class="btn-close" aria-label="Đóng" (click)="closeQrModal()">✕</button>
+        <div class="qr-head">
+          <h3>{{ pass.membershipCode }}</h3>
+          <p class="subtitle">{{ pass.isAllBranches ? 'Toàn chuỗi đa chi nhánh' : 'Cơ sở đăng ký' }}</p>
+        </div>
+
+        <div class="class-callout">
+          <strong>Trạng thái: {{ pass.status === 'ACTIVE' ? 'Đang hoạt động' : pass.status }}</strong>
+          <span>Số buổi khả dụng: {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}</span>
+        </div>
+
+        <p class="anti-duplicate-note">
+          Đặt ca học tại mục Lịch & Đặt Chỗ để hệ thống cấp mã QR cho từng ca điểm danh.
+        </p>
+      </div>
+    </div>
+  }
+</div>

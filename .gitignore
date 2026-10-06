@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Angular build output and cache
+/dist/
+/out-tsc/
+/.angular/
+*.tsbuildinfo
+
+# Test output
+/coverage/
+/test-results/
+/playwright-report/
+
+# Logs and private local configuration
+*.log
+.env
+.env.*
+!.env.example
+
+# IDE and OS files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

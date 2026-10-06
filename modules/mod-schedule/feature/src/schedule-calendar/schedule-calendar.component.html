@@ -1,0 +1,532 @@
+<div class="schedule-calendar-container">
+  <!-- Notifications -->
+  @if (successMessage()) {
+    <div class="alert alert-success" role="alert">
+      <span>{{ successMessage() }}</span>
+      <button type="button" class="btn-close" (click)="successMessage.set(null)">✕</button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn-close" (click)="errorMessage.set(null)">✕</button>
+    </div>
+  }
+
+  <!-- Header Banner -->
+  <div class="calendar-header">
+    <div class="header-info">
+      <div class="header-pre">LỊCH TẬP & ĐẶT CHỖ</div>
+      <h1 class="header-title">Thời Khóa Biểu Lớp Học An Yên</h1>
+      <p class="subtitle">Đảm bảo vị trí thảm tập ưng ý, kiểm soát sĩ số an toàn theo tiêu chuẩn Zen Yoga</p>
+    </div>
+
+    <!-- Tab navigation -->
+    <div class="tabs-nav">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab() === 'calendar'"
+        (click)="activeTab.set('calendar')"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Thời Khóa Biểu Lớp</span>
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab() === 'my-bookings'"
+        (click)="activeTab.set('my-bookings')"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span>Lịch Đã Đặt Của Tôi</span>
+        @if (upcomingBookingCount() > 0) {
+          <span class="count-badge">{{ upcomingBookingCount() }}</span>
+        }
+      </button>
+
+      @if (auth.canManageClasses()) {
+        <a routerLink="/schedule/manage" class="tab-btn btn-admin-shortcut" style="text-decoration: none; color: #0f766e; font-weight: 600;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Quản Lý & Mở Lớp</span>
+        </a>
+      }
+    </div>
+  </div>
+
+  @if (activeTab() === 'calendar') {
+    @if (!auth.isStudent()) {
+      <div class="login-notice-bar">
+        <span>Vui lòng <a routerLink="/auth/login" class="link-bold">đăng nhập tài khoản học viên</a> để đặt chỗ và xem lịch cá nhân.</span>
+      </div>
+    }
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label for="branchSelect">Cơ sở tập luyện:</label>
+        <div class="select-field-box">
+          <zen-select
+            id="branchSelect"
+            [options]="branches()"
+            valueKey="id"
+            labelKey="name"
+            sublabelKey="code"
+            [ngModel]="selectedBranch()"
+            (ngModelChange)="onBranchChange($event)"
+            placeholder="Chọn cơ sở"
+          />
+        </div>
+      </div>
+
+      <div class="category-pills">
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedCategory() === 'ALL'"
+          (click)="selectedCategory.set('ALL')"
+        >
+          Tất cả bộ môn
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedCategory() === 'Hatha'"
+          (click)="selectedCategory.set('Hatha')"
+        >
+          Hatha Yoga
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedCategory() === 'Vinyasa'"
+          (click)="selectedCategory.set('Vinyasa')"
+        >
+          Vinyasa Flow
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedCategory() === 'Yin'"
+          (click)="selectedCategory.set('Yin')"
+        >
+          Yin & Chuông
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedCategory() === 'Ashtanga'"
+          (click)="selectedCategory.set('Ashtanga')"
+        >
+          Ashtanga
+        </button>
+      </div>
+    </div>
+
+    <!-- Schedules Grid -->
+    <div class="schedules-grid">
+      @for (schedule of filteredSchedules(); track schedule.id) {
+        <div class="schedule-card" [class.is-full]="schedule.availableSlots === 0">
+          <div class="card-top">
+            <div class="time-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <strong>{{ schedule.startTime | date:'dd/MM/yyyy HH:mm' }} - {{ schedule.endTime | date:'HH:mm' }}</strong>
+            </div>
+            <span class="room-tag">{{ schedule.roomName }}</span>
+          </div>
+
+          <h3 class="class-title">{{ schedule.className }}</h3>
+
+          <div class="instructor-row">
+            <svg class="instructor-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span class="instructor-name">{{ schedule.instructorName }}</span>
+          </div>
+
+          <!-- Capacity Bar -->
+          <div class="capacity-section">
+            <div class="capacity-labels">
+              <span>Sĩ số lớp:</span>
+              <strong [class.full-text]="schedule.availableSlots === 0">
+                {{ schedule.bookedCount }}/{{ schedule.maxCapacity }} học viên
+              </strong>
+            </div>
+            <div class="progress-track">
+              <div
+                class="progress-fill"
+                [class.full]="schedule.availableSlots === 0"
+                [class.warning]="schedule.availableSlots <= 4 && schedule.availableSlots > 0"
+                [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
+              ></div>
+            </div>
+            <div class="slot-status">
+              @if (schedule.availableSlots > 0) {
+                <span class="status-available">Còn {{ schedule.availableSlots }} chỗ trống</span>
+              } @else {
+                <span class="status-full">Đã kín chỗ (Có thể đăng ký hàng chờ)</span>
+              }
+            </div>
+          </div>
+
+          <div class="card-footer">
+            @if (isBooked(schedule.id)) {
+              <button type="button" class="btn btn-booked" disabled>
+                ✓ Bạn đã đặt chỗ ca này
+              </button>
+            } @else if (getWaitingItem(schedule.id)) {
+              <button type="button" class="btn btn-waiting" disabled>
+                Đang ở hàng chờ (#{{ getWaitingItem(schedule.id)?.queuePosition }})
+              </button>
+            } @else if (schedule.availableSlots > 0) {
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="openBookingModal(schedule)"
+              >
+                Đặt Chỗ Ngay
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-waitlist"
+                (click)="openWaitlistModal(schedule)"
+              >
+                Đăng Ký Hàng Chờ
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- My Bookings & Waitlist Tab -->
+    <div class="my-bookings-container">
+      <div class="bookings-header">
+        <h3>Lịch Học & Hàng Chờ Của Bạn</h3>
+        <p>Kiểm tra thời gian, vị trí thảm, trạng thái điểm danh và thứ hạng hàng đợi lớp học</p>
+      </div>
+
+      <!-- Section 1: Ca Đã Đặt Chỗ -->
+      <div class="section-block">
+        <h4 class="section-title">
+          <span>Ca Học Đã Giữ Chỗ ({{ myBookings().length }})</span>
+        </h4>
+
+        @if (myBookings().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon-circle">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <p>Bạn chưa có lịch đặt chỗ nào. Hãy chọn ca học phù hợp từ Thời khóa biểu!</p>
+            <button type="button" class="btn btn-primary" (click)="activeTab.set('calendar')">
+              Xem Thời Khóa Biểu
+            </button>
+          </div>
+        } @else {
+          <div class="bookings-list">
+            @for (b of myBookings(); track b.id) {
+              <div class="booking-row" [class.cancelled]="b.status === 'CANCELLED'" [class.attended]="b.status === 'ATTENDED'">
+                <div class="booking-main-info">
+                  <div class="code-and-status">
+                    <strong class="booking-code">{{ b.bookingCode }}</strong>
+                    <span class="class-name-tag">{{ b.className }}</span>
+                    <span class="status-badge" [class]="b.status.toLowerCase()">
+                      @switch (b.status) {
+                        @case ('CONFIRMED') { Đã giữ chỗ (Sẵn sàng) }
+                        @case ('ATTENDED') { Đã điểm danh }
+                        @case ('CANCELLED') { Đã hủy (Đã hoàn lượt) }
+                        @default { {{ b.status }} }
+                      }
+                    </span>
+                  </div>
+                  <div class="booking-meta">
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {{ b.startTime | date:'EEEE, dd/MM HH:mm' }} - {{ b.endTime | date:'HH:mm' }}
+                    </span>
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      {{ b.roomName }} • {{ b.branchName }}
+                    </span>
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      HLV: <strong>{{ b.instructorName }}</strong>
+                    </span>
+                    <span class="meta-item">
+                      Thảm số: <strong>{{ b.matNumber || 1 }}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="booking-actions">
+                  @if (b.status === 'CONFIRMED' && b.canCancel) {
+                    <button
+                      type="button"
+                      class="btn btn-danger-outline"
+                      (click)="cancelBooking(b)"
+                      title="Hủy ca để nhận lại 1 lượt tập vào thẻ"
+                    >
+                      Hủy Ca (Hoàn Lượt)
+                    </button>
+                  } @else if (b.status === 'CONFIRMED' && !b.canCancel) {
+                    <span class="text-muted-notice">Đã qua giờ cho phép hủy</span>
+                  } @else if (b.status === 'ATTENDED') {
+                    <span class="attended-tag">Đã tham gia ca học</span>
+                  } @else if (b.status === 'CANCELLED') {
+                    <span class="refund-tag">Đã hoàn 1 lượt tập</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Section 2: Hàng Chờ Lớp Học (Waitlist) -->
+      @if (myWaitlists().length > 0) {
+        <div class="section-block waitlist-block">
+          <h4 class="section-title waitlist-title">
+            <span>Danh Sách Đang Trong Hàng Chờ ({{ myWaitlists().length }})</span>
+          </h4>
+
+          <div class="bookings-list">
+            @for (w of myWaitlists(); track w.id) {
+              <div class="booking-row waitlist-row" [class.converted]="w.status === 'CONVERTED'" [class.cancelled]="w.status === 'CANCELLED'">
+                <div class="booking-main-info">
+                  <div class="code-and-status">
+                    <span class="queue-rank-badge">Hàng đợi: #{{ w.queuePosition }}</span>
+                    <strong class="booking-code">{{ w.className }}</strong>
+                    <span class="status-badge" [class]="w.status.toLowerCase()">
+                      @switch (w.status) {
+                        @case ('WAITING') { Đang xếp hàng chờ }
+                        @case ('CONVERTED') { Đã tự động giữ chỗ }
+                        @case ('CANCELLED') { Đã rút khỏi hàng chờ }
+                        @default { {{ w.status }} }
+                      }
+                    </span>
+                  </div>
+                  <div class="booking-meta">
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {{ w.startTime | date:'EEEE, dd/MM HH:mm' }} - {{ w.endTime | date:'HH:mm' }}
+                    </span>
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      {{ w.roomName }} • {{ w.branchName }}
+                    </span>
+                    <span class="meta-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      HLV: <strong>{{ w.instructorName }}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="booking-actions">
+                  @if (w.status === 'WAITING') {
+                    <button
+                      type="button"
+                      class="btn btn-warning-outline"
+                      (click)="cancelWaitlist(w)"
+                    >
+                      Rút Khỏi Hàng Chờ
+                    </button>
+                  } @else if (w.status === 'CONVERTED') {
+                    <span class="attended-tag">Đã chuyển sang Lịch đặt chỗ</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Booking Modal Dialog -->
+  @if (bookingModalSchedule()) {
+    <div class="modal-backdrop" (click)="closeBookingModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Xác Nhận Đặt Chỗ Ca Học</h3>
+          <button type="button" class="btn-close" (click)="closeBookingModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="class-summary">
+            <h4>{{ bookingModalSchedule()?.className }}</h4>
+            <div class="summary-details">
+              <span>{{ bookingModalSchedule()?.startTime | date:'HH:mm' }} - {{ bookingModalSchedule()?.endTime | date:'HH:mm' }}</span>
+              <span>·</span>
+              <span>{{ bookingModalSchedule()?.roomName }}</span>
+              <span>·</span>
+              <span>HLV: {{ bookingModalSchedule()?.instructorName }}</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="passSelect">Chọn thẻ tập áp dụng:</label>
+            @if (eligiblePasses(bookingModalSchedule()).length > 0) {
+              <zen-select
+                id="passSelect"
+                [options]="bookingPassOptions()"
+                [ngModel]="selectedPassId()"
+                (ngModelChange)="selectedPassId.set($event)"
+                placeholder="Chọn thẻ tập áp dụng"
+              />
+            } @else {
+              <div class="alert alert-danger" style="margin-top: 6px; padding: 10px; font-size: 0.8125rem;">
+                Học viên chưa có thẻ tập đang hoạt động. Vui lòng liên hệ tiếp tân hoặc mua thẻ trước khi đặt chỗ.
+              </div>
+            }
+          </div>
+
+          <p class="mat-alloc-note">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</p>
+
+          <div class="policy-callout">
+            <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <div>
+              <strong>Chính sách giữ & hoàn lượt:</strong>
+              <p>Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" (click)="closeBookingModal()" [disabled]="isSubmittingBooking()">
+            Hủy Bỏ
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="submitBooking()"
+            [disabled]="isSubmittingBooking() || !selectedPassId()"
+          >
+            @if (isSubmittingBooking()) {
+              Đang xác nhận...
+            } @else {
+              Xác Nhận Giữ Chỗ
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Waitlist Modal Dialog -->
+  @if (waitlistModalSchedule()) {
+    <div class="modal-backdrop" (click)="closeWaitlistModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header waitlist-modal-header">
+          <h3>Đăng Ký Vào Hàng Chờ Ca Học</h3>
+          <button type="button" class="btn-close" (click)="closeWaitlistModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="class-summary waitlist-summary">
+            <h4>{{ waitlistModalSchedule()?.className }}</h4>
+            <div class="summary-details">
+              <span>{{ waitlistModalSchedule()?.startTime | date:'HH:mm' }} - {{ waitlistModalSchedule()?.endTime | date:'HH:mm' }}</span>
+              <span>·</span>
+              <span>{{ waitlistModalSchedule()?.roomName }}</span>
+              <span>·</span>
+              <span>HLV: {{ waitlistModalSchedule()?.instructorName }}</span>
+            </div>
+            <div class="full-notice">
+              Ca học này hiện đã kín {{ waitlistModalSchedule()?.maxCapacity }}/{{ waitlistModalSchedule()?.maxCapacity }} học viên.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="waitlistPassSelect">Chọn thẻ tập liên kết:</label>
+            @if (studentPasses().length > 0) {
+              <zen-select
+                id="waitlistPassSelect"
+                [options]="waitlistPassOptions()"
+                [ngModel]="selectedPassId()"
+                (ngModelChange)="selectedPassId.set($event)"
+                placeholder="Chọn thẻ tập liên kết"
+              />
+            } @else {
+              <div class="alert alert-danger" style="margin-top: 6px; padding: 10px; font-size: 0.8125rem;">
+                Học viên chưa có thẻ tập đang hoạt động.
+              </div>
+            }
+          </div>
+
+          <div class="policy-callout waitlist-callout">
+            <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <div>
+              <strong>Cơ chế hàng đợi tự động (Auto-Promotion):</strong>
+              <p>Hệ thống không trừ lượt tập khi bạn đang trong hàng chờ. Ngay khi có bất kỳ học viên nào hủy chỗ, vị trí số 1 sẽ được tự động đôn lên thành ca giữ chỗ chính thức.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" (click)="closeWaitlistModal()" [disabled]="isSubmittingWaitlist()">
+            Đóng
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning"
+            (click)="submitWaitlist()"
+            [disabled]="isSubmittingWaitlist() || !selectedPassId()"
+          >
+            @if (isSubmittingWaitlist()) {
+              Đang xếp hàng...
+            } @else {
+              Xác Nhận Vào Hàng Chờ
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

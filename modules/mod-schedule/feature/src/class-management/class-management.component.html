@@ -1,0 +1,724 @@
+<div class="zen-container">
+  <!-- Header Section -->
+  <!-- Compact Unified Control Header -->
+  <header class="page-header">
+    <div class="header-main-row">
+      <div class="header-titles">
+        <div class="pre-title">Phân hệ Quản trị Lớp học</div>
+        <h1 class="main-title">Quản Lý Lớp & Ca Học</h1>
+      </div>
+
+      <!-- Navigation Tabs & Actions Group -->
+      <div class="header-controls">
+        <div class="zen-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="zen-tab-btn"
+            [class.active]="activeTab() === 'schedules'"
+            (click)="activeTab.set('schedules')"
+          >
+            <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="tab-text">Lịch & Ca Học</span>
+            <span class="tab-badge">{{ schedules().length }}</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            class="zen-tab-btn"
+            [class.active]="activeTab() === 'class-types'"
+            (click)="activeTab.set('class-types')"
+          >
+            <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span class="tab-text">Bộ Môn</span>
+            <span class="tab-badge">{{ classTypes().length }}</span>
+          </button>
+        </div>
+
+        <div class="header-actions">
+          @if (activeTab() === 'schedules') {
+            <button type="button" class="btn-primary" (click)="openCreateScheduleModal()">
+              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Mở Ca Học Mới</span>
+            </button>
+          } @else {
+            <button type="button" class="btn-primary" (click)="openCreateClassTypeModal()">
+              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Thêm Bộ Môn Mới</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Messages Feedback -->
+  @if (successMessage()) {
+    <div class="zen-alert alert-success">
+      <div class="alert-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <span>{{ successMessage() }}</span>
+      </div>
+      <button type="button" class="alert-close-btn" (click)="successMessage.set(null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="zen-alert alert-error">
+      <div class="alert-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <span>{{ errorMessage() }}</span>
+      </div>
+      <button type="button" class="alert-close-btn" (click)="errorMessage.set(null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- TAB 1: SCHEDULES MANAGEMENT -->
+  @if (activeTab() === 'schedules') {
+    <!-- Compact Filters Toolbar -->
+    <div class="filter-card">
+      <div class="filter-group search-box">
+        <div class="input-search-wrapper">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            class="filter-input"
+            placeholder="Tìm theo tên lớp, HLV, phòng..."
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+          />
+        </div>
+      </div>
+
+      <div class="filter-group date-box">
+        <div class="input-date-wrapper">
+          <svg class="date-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <input
+            type="date"
+            class="filter-date-input"
+            title="Lọc ca học theo ngày diễn ra"
+            [ngModel]="dateFilter()"
+            (ngModelChange)="dateFilter.set($event)"
+          />
+          @if (dateFilter()) {
+            <button
+              type="button"
+              class="btn-clear btn-date-clear"
+              (click)="dateFilter.set('')"
+              title="Xem tất cả các ngày"
+              aria-label="Xóa bộ lọc ngày"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="filter-group branch-selector">
+        <zen-select
+          [options]="branchSelectOptions()"
+          [ngModel]="selectedBranchId()"
+          (ngModelChange)="onBranchFilterChange($event)"
+          placeholder="Chọn cơ sở yoga..."
+        />
+      </div>
+
+      <div class="filter-group instructor-selector">
+        <zen-select
+          [options]="instructorFilterOptions()"
+          [ngModel]="selectedInstructorId()"
+          (ngModelChange)="selectedInstructorId.set($event)"
+          placeholder="Lọc theo huấn luyện viên..."
+        />
+      </div>
+
+      <div class="filter-group status-selector">
+        <zen-select
+          [options]="statusFilterOptions"
+          [ngModel]="statusFilter()"
+          (ngModelChange)="statusFilter.set($event)"
+          placeholder="Trạng thái ca học..."
+        />
+      </div>
+
+      <div class="filter-action">
+        <button type="button" class="btn-refresh" (click)="loadSchedules()" [disabled]="isLoading()" title="Đồng bộ danh sách">
+          <svg class="refresh-icon" [class.spinning]="isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>Làm Mới</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Schedules Table Card -->
+    <div class="table-container-card">
+      @if (isLoading()) {
+        <div class="loading-state">
+          <div class="zen-spinner"></div>
+          <p>Đang đồng bộ dữ liệu ca học từ hệ thống...</p>
+        </div>
+      } @else if (filteredSchedules().length === 0) {
+        @if (hasActiveFilters()) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <h3>Không tìm thấy ca học nào</h3>
+            <p>Không có ca học nào phù hợp với bộ lọc hiện tại (ngày, cơ sở, HLV, trạng thái hoặc từ khóa).</p>
+            <button type="button" class="btn-clear-filters" (click)="resetFilters()">
+              Xóa Tất Cả Bộ Lọc
+            </button>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <h3>Chưa có ca học nào được điều phối</h3>
+            <p>Nhấp nút "Mở Ca Học Mới" ở góc phải để xếp lịch lớp cho học viên đăng ký.</p>
+            <button type="button" class="btn-secondary" (click)="openCreateScheduleModal()">
+              Mở Ca Học Mới
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="table-responsive">
+          <table class="zen-table">
+            <thead>
+              <tr>
+                <th>Khung Giờ & Ngày</th>
+                <th>Tên Bộ Môn / Lớp</th>
+                <th>Cơ Sở</th>
+                <th>Phòng Tập</th>
+                <th>Huấn Luyện Viên</th>
+                <th>Sĩ Số Lớp</th>
+                <th>Trạng Thái</th>
+                <th class="text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (schedule of filteredSchedules(); track schedule.id) {
+                <tr [class.row-cancelled]="schedule.status === 'CANCELLED'">
+                  <td class="cell-time">
+                    <div class="time-primary">{{ formatTime(schedule.startTime) }} - {{ formatTime(schedule.endTime) }}</div>
+                    <div class="date-secondary">{{ formatDate(schedule.startTime) }}</div>
+                  </td>
+
+                  <td class="cell-class">
+                    <span class="class-title">{{ schedule.className }}</span>
+                  </td>
+
+                  <td class="cell-branch">
+                    <div class="branch-badge">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      <span>{{ getBranchName(schedule) }}</span>
+                    </div>
+                  </td>
+
+                  <td class="cell-room">
+                    <div class="room-name">{{ schedule.roomName }}</div>
+                  </td>
+
+                  <td class="cell-instructor">
+                    <div class="instructor-badge">
+                      <span class="avatar-dot"></span>
+                      <span>{{ schedule.instructorName }}</span>
+                    </div>
+                  </td>
+
+                  <td class="cell-capacity">
+                    <div class="capacity-stats">
+                      <span class="count-booked">{{ schedule.bookedCount }}</span>
+                      <span class="count-divider">/</span>
+                      <span class="count-max">{{ schedule.maxCapacity }} chỗ</span>
+                    </div>
+                    <div class="progress-track">
+                      <div
+                        class="progress-fill"
+                        [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
+                        [class.fill-full]="schedule.bookedCount >= schedule.maxCapacity"
+                      ></div>
+                    </div>
+                  </td>
+
+                  <td class="cell-status">
+                    <span class="status-pill" [ngClass]="getStatusBadgeClass(schedule.status)">
+                      {{ getStatusLabel(schedule.status) }}
+                    </span>
+                  </td>
+
+                  <td class="cell-actions text-right">
+                    <button
+                      type="button"
+                      class="btn-row-action"
+                      (click)="openAttendeesModal(schedule)"
+                      title="Xem danh sách học viên đăng ký"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                      <span>Học viên ({{ schedule.bookedCount }})</span>
+                    </button>
+
+                    @if (schedule.status === 'SCHEDULED') {
+                      <button
+                        type="button"
+                        class="btn-row-action btn-action-danger"
+                        (click)="cancelSchedule(schedule)"
+                        title="Hủy ca học này"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="15" y1="9" x2="9" y2="15"></line>
+                          <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        <span>Hủy ca</span>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- TAB 2: CLASS TYPES (BỘ MÔN) -->
+  @if (activeTab() === 'class-types') {
+    <div class="class-types-grid">
+      @for (ct of classTypes(); track ct.id) {
+        <div class="class-type-card">
+          <div class="card-header-line">
+            <div class="card-badges">
+              <span class="type-code-badge">{{ ct.code }}</span>
+              <span class="intensity-tag">{{ getIntensityLabel(ct.intensityLevel) }}</span>
+            </div>
+            <button
+              type="button"
+              class="btn-delete-type"
+              (click)="deleteClassType(ct)"
+              title="Xóa hoặc tạm dừng bộ môn này"
+              aria-label="Xóa bộ môn"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <span>Xóa</span>
+            </button>
+          </div>
+
+          <h3 class="type-name">{{ ct.name }}</h3>
+
+          <p class="type-desc">{{ ct.description || 'Chưa có thông tin mô tả chi tiết cho bộ môn này.' }}</p>
+
+          <div class="type-footer">
+            <div class="duration-meta">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span>Thời lượng tiêu chuẩn: <strong>{{ ct.defaultDurationMinutes }} phút</strong></span>
+            </div>
+            <span class="active-indicator" [class.inactive]="!ct.isActive">
+              {{ ct.isActive ? 'Đang áp dụng' : 'Tạm dừng' }}
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: MỞ CA HỌC MỚI                                                       -->
+<!-- ========================================================================= -->
+@if (isCreateScheduleOpen()) {
+  <div class="modal-backdrop" (click)="closeCreateScheduleModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="pre-title">Xếp Lịch Giảng Dạy</div>
+          <h2 class="modal-title">Mở Ca Học Mới</h2>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeCreateScheduleModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <!-- Cơ Sở Chi Nhánh -->
+          <div class="form-field full-width">
+            <label class="form-label">Cơ Sở Trực Thuộc <span class="req">*</span></label>
+            <zen-select
+              [options]="branchSelectOptions()"
+              [ngModel]="scheduleForm().branchId"
+              (ngModelChange)="onScheduleFormBranchChange($event)"
+              placeholder="Chọn cơ sở mở lớp..."
+            />
+          </div>
+
+          <!-- Bộ Môn / Loại Lớp -->
+          <div class="form-field full-width">
+            <label class="form-label">Bộ Môn / Loại Lớp Học <span class="req">*</span></label>
+            <zen-select
+              [options]="classTypeSelectOptions()"
+              [ngModel]="scheduleForm().classTypeId"
+              (ngModelChange)="onScheduleFormClassTypeChange($event)"
+              placeholder="Chọn bộ môn yoga..."
+            />
+          </div>
+
+          <!-- Phòng Tập -->
+          <div class="form-field">
+            <label class="form-label">Phòng Tập (Studio) <span class="req">*</span></label>
+            <zen-select
+              [options]="roomSelectOptions()"
+              [ngModel]="scheduleForm().roomId"
+              (ngModelChange)="onScheduleFormRoomChange($event)"
+              placeholder="Chọn phòng tập..."
+            />
+          </div>
+
+          <!-- Huấn Luyện Viên -->
+          <div class="form-field">
+            <label class="form-label">Huấn Luyện Viên Giảng Dạy <span class="req">*</span></label>
+            <zen-select
+              [options]="instructorSelectOptions()"
+              [ngModel]="scheduleForm().instructorId"
+              (ngModelChange)="onScheduleFormInstructorChange($event)"
+              placeholder="Chọn huấn luyện viên..."
+            />
+          </div>
+
+          <!-- Ngày Tập -->
+          <div class="form-field">
+            <label class="form-label">Ngày Diễn Ra <span class="req">*</span></label>
+            <input
+              type="date"
+              class="form-input"
+              [ngModel]="scheduleForm().date"
+              (ngModelChange)="scheduleForm().date = $event"
+            />
+          </div>
+
+          <!-- Giờ Bắt Đầu -->
+          <div class="form-field">
+            <label class="form-label">Giờ Bắt Đầu <span class="req">*</span></label>
+            <input
+              type="time"
+              class="form-input"
+              [ngModel]="scheduleForm().startTimeStr"
+              (ngModelChange)="scheduleForm().startTimeStr = $event"
+            />
+          </div>
+
+          <!-- Thời Lượng Dự Kiến -->
+          <div class="form-field">
+            <label class="form-label">Thời Lượng (Phút) <span class="req">*</span></label>
+            <input
+              type="number"
+              class="form-input"
+              min="30"
+              max="180"
+              step="15"
+              [ngModel]="scheduleForm().durationMinutes"
+              (ngModelChange)="scheduleForm().durationMinutes = $event"
+            />
+          </div>
+
+          <!-- Sĩ Số Tối Đa -->
+          <div class="form-field">
+            <label class="form-label">Sĩ Số Tối Đa (Số Thảm) <span class="req">*</span></label>
+            <input
+              type="number"
+              class="form-input"
+              min="1"
+              max="50"
+              [ngModel]="scheduleForm().maxCapacity"
+              (ngModelChange)="scheduleForm().maxCapacity = $event"
+            />
+          </div>
+        </div>
+
+        <div class="note-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Sau khi tạo, ca học sẽ lập tức hiển thị trên ứng dụng để hội viên có thẻ tập hợp lệ tiến hành đặt chỗ.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeCreateScheduleModal()" [disabled]="isSubmittingSchedule()">
+          Hủy Bỏ
+        </button>
+        <button type="button" class="btn-primary" (click)="submitCreateSchedule()" [disabled]="isSubmittingSchedule()">
+          @if (isSubmittingSchedule()) {
+            <span>Đang lưu ca học...</span>
+          } @else {
+            <span>Xác Nhận Mở Lớp</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL: DANH SÁCH HỌC VIÊN ĐÃ ĐĂNG KÝ                                       -->
+<!-- ========================================================================= -->
+@if (isAttendeesOpen()) {
+  <div class="modal-backdrop" (click)="closeAttendeesModal()">
+    <div class="modal-dialog modal-large" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="pre-title">Danh Sách Học Viên Đăng Ký</div>
+          <h2 class="modal-title">{{ selectedScheduleForAttendees()?.className }}</h2>
+          <div class="modal-sub-meta">
+            {{ formatTime(selectedScheduleForAttendees()?.startTime ?? '') }} • {{ formatDate(selectedScheduleForAttendees()?.startTime ?? '') }} • {{ selectedScheduleForAttendees()?.roomName }}
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAttendeesModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (isLoadingAttendees()) {
+          <div class="loading-state">
+            <div class="zen-spinner"></div>
+            <p>Đang tải danh sách học viên...</p>
+          </div>
+        } @else if (attendeesList().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h3>Chưa có học viên nào đặt chỗ cho ca học này</h3>
+            <p>Ca học hiện vẫn còn {{ selectedScheduleForAttendees()?.availableSlots }} chỗ trống.</p>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="zen-table">
+              <thead>
+                <tr>
+                  <th>Vị Trí Thảm</th>
+                  <th>Mã Booking</th>
+                  <th>Họ Tên Học Viên</th>
+                  <th>Số Điện Thoại</th>
+                  <th>Thời Điểm Đặt</th>
+                  <th>Trạng Thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of attendeesList(); track item.id) {
+                  <tr>
+                    <td class="cell-mat">
+                      <span class="mat-badge">Thảm #{{ item.matNumber || 'Tự do' }}</span>
+                    </td>
+                    <td class="cell-code">
+                      <code>{{ item.bookingCode }}</code>
+                    </td>
+                    <td class="cell-name">
+                      <strong>{{ item.studentName }}</strong>
+                    </td>
+                    <td class="cell-phone">{{ item.studentPhone }}</td>
+                    <td class="cell-time">{{ formatTime(item.bookingTime) }} {{ formatDate(item.bookingTime) }}</td>
+                    <td class="cell-status">
+                      <span class="status-pill status-confirmed">Đã Giữ Chỗ</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeAttendeesModal()">
+          Đóng Cửa Sổ
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL: THÊM BỘ MÔN MỚI                                                    -->
+<!-- ========================================================================= -->
+@if (isCreateClassTypeOpen()) {
+  <div class="modal-backdrop" (click)="closeCreateClassTypeModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="pre-title">Danh Mục Đào Tạo</div>
+          <h2 class="modal-title">Thêm Bộ Môn Yoga Mới</h2>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeCreateClassTypeModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">Mã Bộ Môn (Code) <span class="req">*</span></label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="VD: KUNDALINI_YOGA"
+              [ngModel]="classTypeForm().code"
+              (ngModelChange)="classTypeForm().code = $event"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Tên Bộ Môn <span class="req">*</span></label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="VD: Kundalini Yoga Khai Mở Năng Lượng"
+              [ngModel]="classTypeForm().name"
+              (ngModelChange)="classTypeForm().name = $event"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Thời Lượng Tiêu Chuẩn (Phút) <span class="req">*</span></label>
+            <input
+              type="number"
+              class="form-input"
+              min="30"
+              max="180"
+              step="15"
+              [ngModel]="classTypeForm().defaultDurationMinutes"
+              (ngModelChange)="classTypeForm().defaultDurationMinutes = $event"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Cấp Độ Cường Độ <span class="req">*</span></label>
+            <select
+              class="form-input form-select"
+              [ngModel]="classTypeForm().intensityLevel"
+              (ngModelChange)="classTypeForm().intensityLevel = $event"
+            >
+              <option value="ALL_LEVELS">Mọi cấp độ (All Levels)</option>
+              <option value="BEGINNER">Cơ bản (Beginner)</option>
+              <option value="INTERMEDIATE">Trung cấp (Intermediate)</option>
+              <option value="ADVANCED">Nâng cao (Advanced)</option>
+            </select>
+          </div>
+
+          <div class="form-field full-width">
+            <label class="form-label">Mô Tả Bộ Môn</label>
+            <textarea
+              class="form-input form-textarea"
+              rows="3"
+              placeholder="Mô tả trường phái yoga, kỹ thuật hít thở, lợi ích thể trạng..."
+              [ngModel]="classTypeForm().description"
+              (ngModelChange)="classTypeForm().description = $event"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeCreateClassTypeModal()" [disabled]="isSubmittingClassType()">
+          Hủy Bỏ
+        </button>
+        <button type="button" class="btn-primary" (click)="submitCreateClassType()" [disabled]="isSubmittingClassType()">
+          @if (isSubmittingClassType()) {
+            <span>Đang lưu...</span>
+          } @else {
+            <span>Lưu Bộ Môn Mới</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

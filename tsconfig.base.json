@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": false,
+    "module": "ES2022",
+    "lib": ["ES2022", "dom"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "importHelpers": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "@yoga/platform/api": ["platform/api/src/index.ts"],
+      "@yoga/platform/ui": ["platform/ui/src/index.ts"],
+      "@yoga/platform/auth": ["platform/auth/src/index.ts"],
+      "@yoga/platform/tokens": ["platform/tokens/src/index.ts"],
+      "@yoga/platform/supabase": ["platform/supabase/src/index.ts"],
+      "@yoga/mod-branch/data-access": ["modules/mod-branch/data-access/src/index.ts"],
+      "@yoga/mod-branch/feature": ["modules/mod-branch/feature/src/index.ts"],
+      "@yoga/mod-landing/data-access": ["modules/mod-landing/data-access/src/index.ts"],
+      "@yoga/mod-landing/feature": ["modules/mod-landing/feature/src/index.ts"],
+      "@yoga/mod-membership/data-access": ["modules/mod-membership/data-access/src/index.ts"],
+      "@yoga/mod-membership/feature": ["modules/mod-membership/feature/src/index.ts"],
+      "@yoga/mod-schedule/data-access": ["modules/mod-schedule/data-access/src/index.ts"],
+      "@yoga/mod-schedule/feature": ["modules/mod-schedule/feature/src/index.ts"],
+      "@yoga/mod-identity/feature": ["modules/mod-identity/feature/src/index.ts"]
+    }
+  },
+  "exclude": ["**/*.spec.ts", "**/__tests__/**"]
+}

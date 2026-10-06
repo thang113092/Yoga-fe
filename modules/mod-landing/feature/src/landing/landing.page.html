@@ -1,0 +1,683 @@
+<div class="landing-wrapper">
+  <!-- TOAST NOTIFICATION -->
+  @if (userToastMessage()) {
+    <div class="toast-notification" role="status" aria-live="polite">
+      <div class="toast-indicator"></div>
+      <span class="toast-icon">✨</span>
+      <span class="toast-text">{{ userToastMessage() }}</span>
+      <button type="button" class="toast-close" (click)="userToastMessage.set(null)" aria-label="Đóng thông báo">✕</button>
+    </div>
+  }
+
+  <!-- STICKY NAVBAR -->
+  <header class="navbar" role="banner">
+    <div class="nav-container">
+      <a href="#" class="brand-link" (click)="$event.preventDefault(); scrollToSection('hero')" aria-label="Về đầu trang An Yên Yoga">
+        <img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="brand-logo" width="48" height="48" />
+        <div class="brand-meta">
+          <span class="brand-title">AN YÊN</span>
+          <span class="brand-tagline">Yoga & Wellness Sanctuary</span>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation Links -->
+      <nav class="nav-menu" aria-label="Điều hướng chính">
+        <a href="#features" class="nav-link" (click)="$event.preventDefault(); scrollToSection('features')">Tính Năng</a>
+        <a href="#classes" class="nav-link" (click)="$event.preventDefault(); scrollToSection('classes')">Lớp Học</a>
+        <a href="#pricing" class="nav-link" (click)="$event.preventDefault(); scrollToSection('pricing')">Gói Thẻ</a>
+        <a href="#branches" class="nav-link" (click)="$event.preventDefault(); scrollToSection('branches')">Cơ Sở</a>
+        <a href="#testimonials" class="nav-link" (click)="$event.preventDefault(); scrollToSection('testimonials')">Cảm Nhận</a>
+        <a href="#faq" class="nav-link" (click)="$event.preventDefault(); scrollToSection('faq')">Hỏi Đáp</a>
+      </nav>
+
+      <!-- Auth Actions -->
+      <div class="nav-actions">
+        @if (isAuthenticated()) {
+          <div class="user-pill" title="{{ userFullName() }}">
+            <span class="user-avatar-badge">🧘</span>
+            <span class="user-name">{{ userFullName() }}</span>
+          </div>
+          <button type="button" class="btn-dashboard" (click)="navigateToDashboard()">
+            Vào Hệ Thống ➔
+          </button>
+          <button type="button" class="btn-ghost-sm" (click)="handleSignOut()">
+            Đăng Xuất
+          </button>
+        } @else {
+          <button type="button" class="btn-ghost" (click)="openAuthModal('login')">
+            Đăng Nhập
+          </button>
+          <button type="button" class="btn-primary-nav" (click)="openAuthModal('register')">
+            Đăng Ký
+          </button>
+        }
+
+        <!-- Mobile Menu Toggle Button -->
+        <button
+          type="button"
+          class="btn-hamburger"
+          (click)="toggleMobileMenu()"
+          [attr.aria-expanded]="isMobileMenuOpen()"
+          aria-controls="intro-mobile-menu"
+          aria-label="Bật hoặc tắt menu điều hướng"
+        >
+          <span class="bar" [class.open-1]="isMobileMenuOpen()"></span>
+          <span class="bar" [class.open-2]="isMobileMenuOpen()"></span>
+          <span class="bar" [class.open-3]="isMobileMenuOpen()"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer -->
+    @if (isMobileMenuOpen()) {
+      <div class="mobile-drawer" id="intro-mobile-menu">
+        <div class="mobile-links-group">
+          <a href="#features" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('features')">
+            <span>🌿</span> Tính Năng Nền Tảng
+          </a>
+          <a href="#classes" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('classes')">
+            <span>🧘</span> Lớp Học Tiêu Biểu
+          </a>
+          <a href="#pricing" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('pricing')">
+            <span>💳</span> Bảng Giá Gói Thẻ
+          </a>
+          <a href="#branches" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('branches')">
+            <span>🏛️</span> Hệ Thống Cơ Sở
+          </a>
+          <a href="#testimonials" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('testimonials')">
+            <span>💬</span> Học Viên Chia Sẻ
+          </a>
+          <a href="#faq" class="mobile-link" (click)="$event.preventDefault(); scrollToSection('faq')">
+            <span>❓</span> Câu Hỏi Thường Gặp
+          </a>
+        </div>
+
+        <div class="mobile-divider"></div>
+
+        @if (isAuthenticated()) {
+          <div class="mobile-user-info">
+            <div class="mobile-user-header">
+              <span class="mobile-user-avatar">👤</span>
+              <div>
+                <span class="mobile-user-role">Đang đăng nhập:</span>
+                <strong class="mobile-user-name">{{ userFullName() }}</strong>
+              </div>
+            </div>
+            <button type="button" class="btn-primary full-width" (click)="navigateToDashboard()">
+              Vào Bảng Quản Trị ➔
+            </button>
+            <button type="button" class="btn-outline full-width" (click)="handleSignOut()">
+              Đăng Xuất
+            </button>
+          </div>
+        } @else {
+          <div class="mobile-auth-btns">
+            <button type="button" class="btn-primary full-width" (click)="openAuthModal('register')">
+              Đăng Ký Miễn Phí
+            </button>
+            <button type="button" class="btn-outline full-width" (click)="openAuthModal('login')">
+              Đăng Nhập Tài Khoản
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </header>
+
+  <!-- HERO SECTION -->
+  <section id="hero" class="hero-section">
+    <div class="hero-aurora-bg">
+      <div class="aurora-orb orb-1"></div>
+      <div class="aurora-orb orb-2"></div>
+    </div>
+
+    <div class="container hero-container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          <span>NỀN TẢNG QUẢN LÝ YOGA CHUỖI THÔNG MINH 4.0</span>
+        </div>
+
+        <h1 class="hero-title">
+          Chạm Đến Bình An <br>
+          <span class="hero-title-highlight">Nuôi Dưỡng Thân - Tâm - Trí</span>
+        </h1>
+
+        <p class="hero-lead">
+          Trải nghiệm hệ thống phòng tập chuẩn Zen đẳng cấp quốc tế. Một thẻ tập kết nối toàn chuỗi cơ sở, 
+          đặt chỗ tức thì chống overbooking, điểm danh QR 1 chạm 2 giây và đồng hành cùng đội ngũ 
+          Master HLV chứng chỉ vàng Yoga Alliance.
+        </p>
+
+        <div class="hero-cta-group">
+          @if (!isAuthenticated()) {
+            <button type="button" class="btn-hero-primary" (click)="openAuthModal('register')">
+              <span>Đăng Ký Trải Nghiệm Ngay</span>
+              <span class="arrow-icon">→</span>
+            </button>
+            <button type="button" class="btn-hero-secondary" (click)="scrollToSection('pricing')">
+              <span>Khám Phá Gói Thẻ</span>
+            </button>
+          } @else {
+            <button type="button" class="btn-hero-primary" (click)="navigateToDashboard()">
+              <span>Vào Bảng Điều Khiển</span>
+              <span class="arrow-icon">→</span>
+            </button>
+            <button type="button" class="btn-hero-secondary" (click)="navigateToBranches()">
+              <span>Khám Phá Chi Nhánh</span>
+            </button>
+          }
+        </div>
+
+        <!-- Social proof stats -->
+        <div class="hero-trust">
+          <div class="avatar-group">
+            <span class="avatar-circle">👩‍💼</span>
+            <span class="avatar-circle">👨‍⚕️</span>
+            <span class="avatar-circle">🧘‍♀️</span>
+            <span class="avatar-circle">🧕</span>
+          </div>
+          <div class="trust-content">
+            <div class="trust-stars">★★★★★ <span class="trust-score">4.9/5</span></div>
+            <div class="trust-text">Hơn <strong>12.000+</strong> học viên tin chọn và luyện tập mỗi ngày</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERO VISUAL: ZEN SANCTUARY VISUAL -->
+      <div class="hero-visual">
+        <div class="zen-frame-wrapper">
+          <img
+            src="/branding/yoga-hero-zen.jpg"
+            alt="Thiền định và luyện tập Yoga tại không gian chuẩn Zen An Yên"
+            class="zen-hero-img"
+            width="640"
+            height="480"
+          />
+          <div class="zen-img-overlay"></div>
+
+          <!-- Top Floating Badge -->
+          <div class="zen-float-badge">
+            <span class="float-icon">🌿</span>
+            <div class="float-text">
+              <strong>100% Không Gian Chuẩn Zen</strong>
+              <span>Hương thảo mộc & tĩnh lặng tự nhiên</span>
+            </div>
+          </div>
+
+          <!-- Bottom Live Card -->
+          <div class="zen-live-card">
+            <div class="live-card-top">
+              <div class="live-status">
+                <span class="live-pulse-dot"></span>
+                <span class="live-status-text">Lớp Học Đang Diễn Ra</span>
+              </div>
+              <span class="live-time-chip">08:30 - 09:45</span>
+            </div>
+
+            <div class="live-card-main">
+              <div class="live-avatar-box">🧘‍♀️</div>
+              <div class="live-details">
+                <h4 class="live-class-title">Hatha Khởi Tâm & Trị Liệu</h4>
+                <p class="live-trainer">Master HLV: <strong>Tuệ An (Yoga Alliance 500h)</strong></p>
+              </div>
+            </div>
+
+            <div class="live-card-bottom">
+              <span class="live-pill">⚡ Điểm danh QR 2s</span>
+              <span class="live-pill">✨ Cơ sở Flagship Thảo Điền</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <section id="stats" class="stats-section">
+    <div class="container stats-grid">
+      @for (stat of stats; track stat.label) {
+        <div class="stat-card">
+          <div class="stat-value">
+            <span>{{ stat.value }}</span>
+            @if (stat.percent) {
+              <span class="percent-sign">%</span>
+            }
+          </div>
+          <div class="stat-label">{{ stat.label }}</div>
+          <p class="stat-desc">{{ stat.description }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- CORE FEATURES -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">CÔNG NGHỆ & ĐẲNG CẤP DỊCH VỤ</span>
+        <h2 class="section-title">Nền Tảng Tối Ưu Cho Mọi Trải Nghiệm</h2>
+        <p class="section-subtitle">
+          Xóa bỏ mọi phiền toái thường gặp khi tập luyện: không cần mang thẻ vật lý, 
+          không lo quá tải ca học, tự do tập tại mọi cơ sở trong toàn chuỗi hệ thống.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        @for (feature of features; track feature.id) {
+          <div class="feature-card">
+            <div class="feature-top">
+              <div class="feature-icon-wrapper">
+                <span class="feature-icon">{{ feature.icon }}</span>
+              </div>
+              @if (feature.badge) {
+                <span class="feature-badge">{{ feature.badge }}</span>
+              }
+            </div>
+            <h3 class="feature-title">{{ feature.title }}</h3>
+            <p class="feature-desc">{{ feature.description }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- CLASS PROGRAMS -->
+  <section id="classes" class="classes-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">CHƯƠNG TRÌNH ĐÀO TẠO</span>
+        <h2 class="section-title">Lớp Học Đa Dạng Theo Mục Tiêu Thể Chất</h2>
+        <p class="section-subtitle">
+          Từ người mới bắt đầu đến người rèn luyện chuyên sâu, các ca học được thiết kế khoa học 
+          và hướng dẫn trực tiếp bởi đội ngũ Master HLV giàu kinh nghiệm.
+        </p>
+      </div>
+
+      <div class="classes-grid">
+        <!-- Class 1: Hatha -->
+        <div class="class-card">
+          <div class="class-header">
+            <span class="class-tag">Căn Bản & Phục Hồi</span>
+            <div class="class-icon-box">🌱</div>
+          </div>
+          <h3 class="class-name">Hatha Yoga Truyền Thống</h3>
+          <p class="class-desc">
+            Tập trung vào hơi thở căn bản, chỉnh sửa giải phẫu cột sống và giải tỏa áp lực cơ xương khớp sau ngày dài làm việc.
+          </p>
+          <ul class="class-perks">
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Phù hợp 100% người mới bắt đầu</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Tăng độ dẻo dai & điều hòa hơi thở Prāṇa</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Thời lượng tiêu chuẩn 60 phút / buổi</span>
+            </li>
+          </ul>
+          <button type="button" class="btn-class-action" (click)="navigateToSchedule()">
+            Xem Lịch Lớp Này →
+          </button>
+        </div>
+
+        <!-- Class 2: Vinyasa (Highlight) -->
+        <div class="class-card highlight">
+          <div class="class-header">
+            <span class="class-tag best">Được Yêu Thích Nhất</span>
+            <div class="class-icon-box highlight-icon">🌊</div>
+          </div>
+          <h3 class="class-name">Vinyasa Flow Chuyển Động</h3>
+          <p class="class-desc">
+            Sự kết hợp nhịp nhàng giữa hơi thở và chuỗi asana liên hoàn, kích hoạt hệ tim mạch, đốt mỡ thừa và làm săn chắc toàn thân.
+          </p>
+          <ul class="class-perks">
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Tăng sức bền tim mạch & săn chắc cơ bắp</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Tiêu hao 450+ kcal mỗi buổi học</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Thời lượng năng động 75 phút / buổi</span>
+            </li>
+          </ul>
+          <button type="button" class="btn-class-action btn-class-highlight" (click)="navigateToSchedule()">
+            Xem Lịch Lớp Này →
+          </button>
+        </div>
+
+        <!-- Class 3: Yin & Sound Healing -->
+        <div class="class-card">
+          <div class="class-header">
+            <span class="class-tag">Trị Liệu Chuyên Sâu</span>
+            <div class="class-icon-box">🔔</div>
+          </div>
+          <h3 class="class-name">Yin Yoga & Chuông Xoay Tây Tạng</h3>
+          <p class="class-desc">
+            Thư giãn sâu các mô liên kết và khớp qua các tư thế giữ tĩnh, kết hợp sóng âm chuông xoay thanh lọc tâm trí và hồi phục năng lượng.
+          </p>
+          <ul class="class-perks">
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Hỗ trợ sâu cho chứng mất ngủ và căng thẳng</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Tái tạo nguồn năng lượng tích cực nội sinh</span>
+            </li>
+            <li>
+              <span class="perk-check">✓</span>
+              <span>Thời lượng trị liệu 75 phút / buổi</span>
+            </li>
+          </ul>
+          <button type="button" class="btn-class-action" (click)="navigateToSchedule()">
+            Xem Lịch Lớp Này →
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING PACKAGES -->
+  <section id="pricing" class="pricing-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">BẢNG GIÁ MINH BẠCH</span>
+        <h2 class="section-title">Lựa Chọn Thẻ Tập Phù Hợp Lộ Trình Của Bạn</h2>
+        <p class="section-subtitle">
+          Minh bạch 100%, không phát sinh phụ phí ẩn. Tích hợp đầy đủ quyền lợi đặt lịch trực tuyến 
+          và chính sách bảo lưu linh hoạt.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        @for (pkg of packages(); track pkg.id) {
+          <div class="pricing-card" [class.popular]="pkg.isPopular">
+            @if (pkg.isPopular) {
+              <div class="popular-ribbon">
+                <span>✦ ĐƯỢC CHỌN NHIỀU NHẤT ✦</span>
+              </div>
+            }
+
+            <div class="pkg-header">
+              <span class="pkg-scope-badge" [class.scope-all]="pkg.scope === 'ALL_BRANCH'">
+                {{ pkg.scope === 'ALL_BRANCH' ? 'Toàn Chuỗi Đa Chi Nhánh' : 'Đơn Cơ Sở Tiết Kiệm' }}
+              </span>
+              <h3 class="pkg-name">{{ pkg.name }}</h3>
+              <p class="pkg-subtitle">{{ pkg.subtitle }}</p>
+            </div>
+
+            <div class="pkg-price-box">
+              <div class="price-row">
+                <span class="price-val">{{ pkg.price | number:'1.0-0' }}</span>
+                <span class="price-currency">VNĐ</span>
+              </div>
+              @if (pkg.originalPrice) {
+                <div class="original-price">
+                  Giá gốc: <s>{{ pkg.originalPrice | number:'1.0-0' }} VNĐ</s>
+                </div>
+              }
+            </div>
+
+            <ul class="pkg-highlights">
+              @for (item of pkg.highlights; track item) {
+                <li>
+                  <span class="check-icon">✓</span>
+                  <span>{{ item }}</span>
+                </li>
+              }
+            </ul>
+
+            <button
+              type="button"
+              class="btn-pricing"
+              [class.btn-pricing-popular]="pkg.isPopular"
+              (click)="handlePackageSelect(pkg)"
+            >
+              {{ pkg.ctaText }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- MULTI-BRANCH SHOWCASE -->
+  <section id="branches" class="branches-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">HỆ THỐNG CƠ SỞ CHUẨN ZEN</span>
+        <h2 class="section-title">Không Gian Tĩnh Tại Giữa Lòng Đô Thị</h2>
+        <p class="section-subtitle">
+          Các cơ sở của An Yên được chọn lọc vị trí đắc địa, thiết kế theo ngôn ngữ kiến trúc mộc tự nhiên, 
+          hòa quyện cùng cây xanh và ánh sáng tự nhiên.
+        </p>
+      </div>
+
+      <div class="branches-grid">
+        @for (b of branches(); track b.id) {
+          <div class="branch-card">
+            <div class="branch-top">
+              <span class="branch-tag">{{ b.tag }}</span>
+              <span class="branch-code">{{ b.code }}</span>
+            </div>
+            <h3 class="branch-name">{{ b.name }}</h3>
+            <p class="branch-address">
+              <svg class="meta-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>{{ b.address }}</span>
+            </p>
+            <div class="branch-meta">
+              <span class="meta-item">
+                <svg class="meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span>{{ b.phone }}</span>
+              </span>
+              <span class="meta-divider">•</span>
+              <span class="meta-item">
+                <svg class="meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>{{ b.openHours }}</span>
+              </span>
+            </div>
+
+            <div class="branch-features">
+              @for (feat of b.features; track feat) {
+                <span class="branch-chip">{{ feat }}</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="branches-action text-center">
+        <button type="button" class="btn-primary-large" (click)="navigateToBranches()">
+          <span>Khám Phá Toàn Bộ Danh Sách Chi Nhánh</span>
+          <span class="arrow-icon">→</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section id="testimonials" class="testimonials-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">HỌC VIÊN CHIA SẺ</span>
+        <h2 class="section-title">Câu Chuyện Chuyển Hóa Từ Thân - Tâm</h2>
+        <p class="section-subtitle">
+          Lắng nghe những cảm nhận chân thực từ cộng đồng hơn 12.000 học viên đã đồng hành cùng An Yên.
+        </p>
+      </div>
+
+      <div class="testimonials-grid">
+        @for (item of testimonials; track item.id) {
+          <div class="testimonial-card">
+            <div class="testimonial-card-top">
+              <div class="rating-stars">★★★★★</div>
+              <span class="quote-mark">“</span>
+            </div>
+            <p class="quote">{{ item.quote }}</p>
+            <div class="author-row">
+              <div class="author-avatar-wrapper">
+                <span class="author-avatar">{{ item.avatar }}</span>
+              </div>
+              <div class="author-info">
+                <div class="author-name-row">
+                  <h4 class="author-name">{{ item.authorName }}</h4>
+                  <span class="verified-icon" title="Học viên đã xác thực">✓</span>
+                </div>
+                <span class="author-role">{{ item.role }}</span>
+                <span class="membership-badge">{{ item.membershipType }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ SECTION -->
+  <section id="faq" class="faq-section">
+    <div class="container faq-container">
+      <div class="section-header text-center">
+        <span class="section-tag">GIẢI ĐÁP THẮC MẮC</span>
+        <h2 class="section-title">Câu Hỏi Thường Gặp</h2>
+        <p class="section-subtitle">
+          Những giải đáp chi tiết nhất giúp bạn an tâm bắt đầu hành trình luyện tập tại An Yên.
+        </p>
+      </div>
+
+      <div class="faq-list">
+        @for (faq of faqs; track faq.id) {
+          <div
+            class="faq-item"
+            [class.open]="activeFaqId() === faq.id"
+            role="button"
+            tabindex="0"
+            [attr.aria-expanded]="activeFaqId() === faq.id"
+            (keydown.enter)="toggleFaq(faq.id)"
+            (keydown.space)="$event.preventDefault(); toggleFaq(faq.id)"
+            (click)="toggleFaq(faq.id)"
+          >
+            <div class="faq-question">
+              <span class="q-title">{{ faq.question }}</span>
+              <span class="q-toggle-icon" [class.rotated]="activeFaqId() === faq.id">
+                {{ activeFaqId() === faq.id ? '−' : '+' }}
+              </span>
+            </div>
+            @if (activeFaqId() === faq.id) {
+              <div class="faq-answer">
+                <p>{{ faq.answer }}</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA BANNER -->
+  <section class="final-cta">
+    <div class="cta-backdrop-glow"></div>
+    <div class="container cta-container">
+      <div class="cta-inner">
+        <span class="cta-badge">AN YÊN YOGA & WELLNESS</span>
+        <h2 class="cta-title">Khởi Đầu Hành Trình Cân Bằng Thân - Tâm - Trí</h2>
+        <p class="cta-sub">
+          Đăng ký tài khoản miễn phí ngay hôm nay để nhận 01 buổi trải nghiệm & đo InBody định hướng cơ thể cùng Chuyên gia Yoga.
+        </p>
+        <div class="cta-buttons">
+          @if (!isAuthenticated()) {
+            <button type="button" class="btn-cta-gold" (click)="openAuthModal('register')">
+              <span>Đăng Ký Thành Viên Ngay</span>
+              <span class="arrow-icon">→</span>
+            </button>
+            <button type="button" class="btn-cta-outline" (click)="openAuthModal('login')">
+              <span>Đăng Nhập Tài Khoản</span>
+            </button>
+          } @else {
+            <button type="button" class="btn-cta-gold" (click)="navigateToDashboard()">
+              <span>Vào Bảng Điều Khiển Chi Nhánh</span>
+              <span class="arrow-icon">→</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer-grid">
+      <div class="footer-col brand-col">
+        <div class="footer-brand">
+          <img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="footer-logo" width="64" height="64" />
+          <div class="footer-brand-text">
+            <span class="footer-brand-title">AN YÊN</span>
+            <span class="footer-brand-sub">Yoga & Wellness Sanctuary</span>
+          </div>
+        </div>
+        <p class="footer-desc">
+          Chuỗi phòng tập & trung tâm trị liệu Thân - Tâm - Trí hàng đầu Việt Nam. Áp dụng công nghệ đặt lịch 
+          và quản trị đa chi nhánh thông minh trên nền tảng Supabase & Spring Boot.
+        </p>
+        <div class="social-links">
+          <span class="social-icon" title="Facebook">📘</span>
+          <span class="social-icon" title="Instagram">📸</span>
+          <span class="social-icon" title="Youtube">▶️</span>
+          <span class="social-icon" title="Zalo Official">💬</span>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="col-title">Về An Yên</h4>
+        <ul class="col-links">
+          <li><a href="#features" (click)="$event.preventDefault(); scrollToSection('features')">Tính năng nền tảng</a></li>
+          <li><a href="#classes" (click)="$event.preventDefault(); scrollToSection('classes')">Lớp học Yoga & Thiền</a></li>
+          <li><a href="#pricing" (click)="$event.preventDefault(); scrollToSection('pricing')">Bảng giá gói thẻ</a></li>
+          <li><a href="#branches" (click)="$event.preventDefault(); scrollToSection('branches')">Hệ thống cơ sở</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="col-title">Chính Sách & Quy Định</h4>
+        <ul class="col-links">
+          <li><a href="#faq" (click)="$event.preventDefault(); scrollToSection('faq')">Quy chế điểm danh QR</a></li>
+          <li><a href="#faq" (click)="$event.preventDefault(); scrollToSection('faq')">Chính sách bảo lưu & chuyển nhượng</a></li>
+          <li><a href="#faq" (click)="$event.preventDefault(); scrollToSection('faq')">Bảo mật thông tin hội viên</a></li>
+          <li><a href="#faq" (click)="$event.preventDefault(); scrollToSection('faq')">Nội quy phòng tập chuẩn Zen</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="col-title">Tổng Đài Chăm Sóc</h4>
+        <p class="contact-line">📞 Hotline: <strong>1900 6868</strong></p>
+        <p class="contact-line">✉️ Email: <strong>contact&#64;anyen-yoga.vn</strong></p>
+        <p class="contact-line">⏰ Giờ phục vụ: 05:30 - 21:30 hàng ngày</p>
+        <div class="branch-summary-pill">
+          <span>Hệ thống 5+ chi nhánh tại TP.HCM, Hà Nội & Đà Nẵng</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container bottom-row">
+        <span>© 2026 An Yên Yoga Platform. Bản quyền thuộc về Chuỗi Trung Tâm Yoga & Trị Liệu Thân - Tâm - Trí.</span>
+        <span class="footer-peace-motto">Sống Trong Tỉnh Thức • Thở Cùng Thiên Nhiên</span>
+      </div>
+    </div>
+  </footer>
+</div>

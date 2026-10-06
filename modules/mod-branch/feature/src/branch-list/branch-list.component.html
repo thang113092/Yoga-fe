@@ -1,0 +1,580 @@
+<div class="branch-container">
+  <div class="branch-header">
+    <div class="header-info">
+      <div class="header-pre">HỆ THỐNG PHÒNG TẬP</div>
+      <div class="title-with-badge">
+        <h1 class="header-title">Hệ Thống Chi Nhánh An Yên</h1>
+        <span class="count-pill">
+          <span>{{ filteredBranches().length }} cơ sở</span>
+        </span>
+      </div>
+      <p class="header-subtitle">
+        Không gian luyện tập yoga và thiền định đạt chuẩn trên toàn hệ thống.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <div class="search-wrapper">
+        <zen-search
+          placeholder="Tìm theo tên, mã hoặc địa chỉ..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+      </div>
+
+      @if (auth.isSuperAdmin()) {
+        <button type="button" class="btn-primary-action" (click)="openCreateBranchModal()">
+          <span class="btn-icon-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </span>
+          <span>Thêm Chi Nhánh</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="zen-spinner"></div>
+      <span>Đang đồng bộ dữ liệu chi nhánh...</span>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="error-banner" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn-retry" (click)="loadBranches()">Thử lại</button>
+    </div>
+  } @else {
+    <div class="branches-grid">
+      @for (branch of filteredBranches(); track branch.id) {
+        <div class="branch-card">
+          <div class="card-head">
+            <div class="head-tags">
+              <span class="branch-code-badge">{{ formatBranchCode(branch.code) }}</span>
+              <span class="room-count-badge" title="Số lượng phòng học">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18"/>
+                  <path d="M19 21v-4"/>
+                  <path d="M19 13v-2a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v10"/>
+                  <path d="M10 9V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/>
+                </svg>
+                <span>{{ branch.roomCount ?? 0 }} phòng</span>
+              </span>
+            </div>
+            <span class="status-pill" [class.active]="branch.isActive">
+              <span class="status-dot"></span>
+              <span>{{ branch.isActive ? 'Đang hoạt động' : 'Tạm dừng' }}</span>
+            </span>
+          </div>
+
+          <div class="card-body">
+            <h3 class="branch-name">{{ formatBranchName(branch.name) }}</h3>
+
+            <div class="info-list">
+              <div class="info-row">
+                <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span class="info-text">{{ branch.address }}</span>
+              </div>
+
+              <div class="info-row">
+                <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span class="info-text phone-text">{{ branch.phone }}</span>
+              </div>
+
+              @if (branch.email) {
+                <div class="info-row">
+                  <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <span class="info-text">{{ branch.email }}</span>
+                </div>
+              }
+            </div>
+
+            @if (branch.bankAccountNumber) {
+              <div class="bank-section">
+                <div class="bank-header">
+                  <svg class="bank-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                  </svg>
+                  <span>Tài khoản tiếp nhận học phí</span>
+                </div>
+                <div class="bank-details">
+                  <div class="bank-acc-info">
+                    <span class="bank-label">{{ branch.bankName || 'Ngân hàng' }}</span>
+                    <strong class="bank-number">{{ branch.bankAccountNumber }}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-copy"
+                    (click)="copyAccount(branch.bankAccountNumber)"
+                    [class.copied]="copiedCode() === branch.bankAccountNumber"
+                    [title]="copiedCode() === branch.bankAccountNumber ? 'Đã sao chép' : 'Sao chép STK'"
+                  >
+                    <span>{{ copiedCode() === branch.bankAccountNumber ? 'Đã chép' : 'Sao chép' }}</span>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="card-footer">
+            <button
+              type="button"
+              class="btn-view-rooms"
+              (click)="openRoomsModal(branch)"
+              title="Xem danh sách các phòng học của cơ sở này"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M9 3v18"/>
+              </svg>
+              <span>Xem danh sách phòng học</span>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+
+            @if (auth.isSuperAdmin()) {
+              <div class="admin-card-actions">
+                <button
+                  type="button"
+                  class="btn-admin-edit"
+                  (click)="openEditBranchModal(branch)"
+                  title="Chỉnh sửa thông tin chi nhánh"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  <span>Sửa chi nhánh</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn-admin-delete"
+                  (click)="confirmDeleteBranch(branch)"
+                  title="Xóa chi nhánh"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                  <span>Xóa chi nhánh</span>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          <p>Không tìm thấy chi nhánh nào phù hợp với điều kiện tìm kiếm.</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- MODAL 1: VIEW ROOMS LIST OF SELECTED BRANCH -->
+  @if (isRoomsModalOpen() && selectedBranchForRooms()) {
+    <div class="modal-backdrop" (click)="closeRoomsModal()">
+      <div class="modal-card modal-rooms-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="pre-title">CHI NHÁNH {{ formatBranchCode(selectedBranchForRooms()!.code) }}</span>
+            <h3>Danh Sách Phòng Học – {{ formatBranchName(selectedBranchForRooms()!.name) }}</h3>
+            <p class="modal-subtitle">{{ selectedBranchForRooms()!.address }}</p>
+          </div>
+          <button type="button" class="btn-modal-close btn-icon" (click)="closeRoomsModal()" aria-label="Đóng cửa sổ" title="Đóng cửa sổ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          @if (isLoadingRooms()) {
+            <div class="loading-state">
+              <div class="zen-spinner"></div>
+              <span>Đang tải danh sách phòng học...</span>
+            </div>
+          } @else {
+            <div class="rooms-list-container">
+              @for (room of branchRooms(); track room.id) {
+                <div class="room-row-card">
+                  <div class="room-main-info">
+                    <div class="room-icon-badge">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 3v18"/>
+                      </svg>
+                    </div>
+                    <div class="room-texts">
+                      <h4 class="room-name">{{ room.name }}</h4>
+                      <div class="room-meta">
+                        <span class="meta-tag">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                          </svg>
+                          <span>{{ room.floor || 'Chưa định vị tầng' }}</span>
+                        </span>
+                        <span class="meta-tag capacity-tag">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          </svg>
+                          <span>Sức chứa: <strong>{{ room.maxCapacity }}</strong> thảm tập</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="room-row-side">
+                    <span class="status-pill" [class.active]="room.isActive">
+                      <span class="status-dot"></span>
+                      <span>{{ room.isActive ? 'Hoạt động' : 'Tạm dừng' }}</span>
+                    </span>
+
+                    @if (auth.isSuperAdmin()) {
+                      <div class="room-actions">
+                        <button
+                          type="button"
+                          class="btn-icon-action"
+                          (click)="openEditRoomModal(room)"
+                          title="Chỉnh sửa phòng học"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          <span>Sửa</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-icon-action btn-danger-action"
+                          (click)="confirmDeleteRoom(room)"
+                          title="Xóa phòng học"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          </svg>
+                          <span>Xóa</span>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <div class="empty-state rooms-empty">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 3v18"/>
+                  </svg>
+                  <p>Cơ sở này hiện chưa thiết lập phòng học nào.</p>
+                  @if (auth.isSuperAdmin()) {
+                    <button type="button" class="btn-add-room" (click)="openCreateRoomModal()">
+                      <span class="btn-icon-wrap">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                      </span>
+                      <span>Thêm phòng học đầu tiên</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeRoomsModal()">Đóng cửa sổ</button>
+          @if (auth.isSuperAdmin()) {
+            <button type="button" class="btn-primary" (click)="openCreateRoomModal()">
+              <span class="btn-icon-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </span>
+              <span>Thêm Phòng Học</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL 2: CREATE / EDIT BRANCH (SUPER ADMIN) -->
+  @if (isBranchModalOpen() && auth.isSuperAdmin()) {
+    <div class="modal-backdrop" (click)="closeBranchModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="pre-title">QUẢN TRỊ CƠ SỞ AN YÊN</span>
+            <h3>{{ isEditingBranch() ? 'Chỉnh Sửa Chi Nhánh' : 'Thêm Chi Nhánh Mới' }}</h3>
+          </div>
+          <button type="button" class="btn-modal-close btn-icon" (click)="closeBranchModal()" aria-label="Đóng cửa sổ" title="Đóng cửa sổ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <form class="modal-body" (ngSubmit)="submitBranch()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="bCode">Mã Chi Nhánh (*):</label>
+              <zen-input
+                id="bCode"
+                placeholder="VD: CN_HOANKIEM hoặc CS01"
+                [ngModel]="bFormCode()"
+                (ngModelChange)="bFormCode.set($event)"
+                [disabled]="isSubmittingBranch()"
+                required
+              />
+              <small class="field-hint">Mã viết liền không dấu, in hoa.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="bName">Tên Chi Nhánh (*):</label>
+              <zen-input
+                id="bName"
+                placeholder="VD: An Yên – Hoàn Kiếm"
+                [ngModel]="bFormName()"
+                (ngModelChange)="bFormName.set($event)"
+                [disabled]="isSubmittingBranch()"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="bAddress">Địa Chỉ Chi Nhánh (*):</label>
+            <zen-input
+              id="bAddress"
+              placeholder="VD: 12 Hàng Bông, Phường Hàng Gai, Hoàn Kiếm, Hà Nội"
+              [ngModel]="bFormAddress()"
+              (ngModelChange)="bFormAddress.set($event)"
+              [disabled]="isSubmittingBranch()"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="bPhone">Số Điện Thoại (*):</label>
+              <zen-input
+                id="bPhone"
+                type="tel"
+                placeholder="VD: 024 3828 9999"
+                [ngModel]="bFormPhone()"
+                (ngModelChange)="bFormPhone.set($event)"
+                [disabled]="isSubmittingBranch()"
+                prefixIcon="phone"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="bEmail">Email Liên Hệ:</label>
+              <zen-input
+                id="bEmail"
+                type="email"
+                placeholder="VD: hoankiem@anyen.vn"
+                [ngModel]="bFormEmail()"
+                (ngModelChange)="bFormEmail.set($event)"
+                [disabled]="isSubmittingBranch()"
+                prefixIcon="mail"
+              />
+            </div>
+          </div>
+
+          <div class="form-divider">
+            <span>Thông Tin Tiếp Nhận Học Phí (Tùy chọn)</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="bBankName">Ngân Hàng:</label>
+              <zen-input
+                id="bBankName"
+                placeholder="VD: Vietcombank"
+                [ngModel]="bFormBankName()"
+                (ngModelChange)="bFormBankName.set($event)"
+                [disabled]="isSubmittingBranch()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="bBankNumber">Số Tài Khoản:</label>
+              <zen-input
+                id="bBankNumber"
+                placeholder="VD: 9988776655"
+                [ngModel]="bFormBankAccountNumber()"
+                (ngModelChange)="bFormBankAccountNumber.set($event)"
+                [disabled]="isSubmittingBranch()"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="bBankHolder">Tên Chủ Tài Khoản:</label>
+            <zen-input
+              id="bBankHolder"
+              placeholder="VD: CONG TY AN YEN YOGA"
+              [ngModel]="bFormBankAccountHolder()"
+              (ngModelChange)="bFormBankAccountHolder.set($event)"
+              [disabled]="isSubmittingBranch()"
+            />
+          </div>
+
+          @if (isEditingBranch()) {
+            <div class="form-group-checkbox">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  [checked]="bFormIsActive()"
+                  (change)="bFormIsActive.set($any($event.target).checked)"
+                  [disabled]="isSubmittingBranch()"
+                />
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">Chi nhánh đang hoạt động bình thường</span>
+              </label>
+            </div>
+          }
+
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn-secondary"
+              (click)="closeBranchModal()"
+              [disabled]="isSubmittingBranch()"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="submit"
+              class="btn-primary"
+              [disabled]="isSubmittingBranch()"
+            >
+              @if (isSubmittingBranch()) {
+                <span class="zen-spinner-sm"></span>
+                <span>Đang xử lý...</span>
+              } @else {
+                <span>{{ isEditingBranch() ? 'Cập Nhật Chi Nhánh' : 'Lưu Chi Nhánh Mới' }}</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL 3: CREATE / EDIT ROOM (SUPER ADMIN) -->
+  @if (isRoomModalOpen() && auth.isSuperAdmin()) {
+    <div class="modal-backdrop modal-room-backdrop" (click)="closeRoomModal()">
+      <div class="modal-card modal-room-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="pre-title">CƠ SỞ: {{ selectedBranchForRooms()?.name }}</span>
+            <h3>{{ isEditingRoom() ? 'Chỉnh Sửa Phòng Học' : 'Thêm Phòng Học Mới' }}</h3>
+          </div>
+          <button type="button" class="btn-modal-close btn-icon" (click)="closeRoomModal()" aria-label="Đóng cửa sổ" title="Đóng cửa sổ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <form class="modal-body" (ngSubmit)="submitRoom()">
+          <div class="form-group">
+            <label for="rName">Tên Phòng Học (*):</label>
+            <zen-input
+              id="rName"
+              placeholder="VD: Phòng Sen Hồng, Phòng Bồ Đề"
+              [ngModel]="rFormName()"
+              (ngModelChange)="rFormName.set($event)"
+              [disabled]="isSubmittingRoom()"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="rFloor">Vị Trí / Tầng:</label>
+              <zen-input
+                id="rFloor"
+                placeholder="VD: Tầng 2, Khu Thiền Định"
+                [ngModel]="rFormFloor()"
+                (ngModelChange)="rFormFloor.set($event)"
+                [disabled]="isSubmittingRoom()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="rCapacity">Sức Chứa Tối Đa (Số Thảm Tập) (*):</label>
+              <zen-input
+                id="rCapacity"
+                type="number"
+                placeholder="VD: 20"
+                [ngModel]="rFormMaxCapacity()"
+                (ngModelChange)="rFormMaxCapacity.set(+$event)"
+                [disabled]="isSubmittingRoom()"
+                required
+              />
+              <small class="field-hint">Số thảm tập quy định tối đa cho 1 ca học.</small>
+            </div>
+          </div>
+
+          <div class="form-group-checkbox">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [checked]="rFormIsActive()"
+                (change)="rFormIsActive.set($any($event.target).checked)"
+                [disabled]="isSubmittingRoom()"
+              />
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Phòng học đang sẵn sàng hoạt động</span>
+            </label>
+          </div>
+
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn-secondary"
+              (click)="closeRoomModal()"
+              [disabled]="isSubmittingRoom()"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="submit"
+              class="btn-primary"
+              [disabled]="isSubmittingRoom()"
+            >
+              @if (isSubmittingRoom()) {
+                <span class="zen-spinner-sm"></span>
+                <span>Đang lưu...</span>
+              } @else {
+                <span>{{ isEditingRoom() ? 'Cập Nhật Phòng' : 'Tạo Phòng Mới' }}</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
