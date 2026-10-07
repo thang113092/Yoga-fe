@@ -149,3 +149,18 @@ button {
 .brand-micro .project-logo { width: 48px; height: 48px; background: #faf8f2; border-radius: 6px; }
 .brand-badge .project-logo { width: 108px; height: 108px; }
 
+/* Global Navbar Link Protection: never wrap words in navigation */
+.nav-link,
+a.nav-link,
+.nav-menu .nav-link,
+.navbar .nav-link {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  word-break: keep-all !important;
+}
+
+.nav-menu {
+  flex-shrink: 0 !important;
+}
+
+

@@ -81,4 +81,19 @@ describe('ZenSelectComponent', () => {
     const dropdown = fixture.nativeElement.querySelector('.zen-select-dropdown');
     expect(dropdown).toBeNull();
   });
+
+  it('renders option with empty string value when selected', () => {
+    const fixture = TestBed.createComponent(ZenSelectComponent);
+    const options: ZenSelectOption[] = [
+      { value: '', label: 'Tất cả cơ sở' },
+      { value: 'b1', label: 'Cơ sở 1' }
+    ];
+    fixture.componentInstance.options = options;
+    fixture.componentInstance.writeValue('');
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const mainLabel = el.querySelector('.main-label');
+    expect(mainLabel?.textContent?.trim()).toBe('Tất cả cơ sở');
+  });
 });

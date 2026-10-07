@@ -67,6 +67,8 @@ export class LoginComponent {
           this.router.navigate(['/membership/pos']);
         } else if (role === 'SUPER_ADMIN' || role === 'BRANCH_MANAGER') {
           this.router.navigate(['/users']);
+        } else if (role === 'INSTRUCTOR') {
+          this.router.navigate(['/schedule/manage']);
         } else {
           this.router.navigate(['/schedule/calendar']);
         }

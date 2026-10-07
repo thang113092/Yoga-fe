@@ -10,4 +10,8 @@ export class CheckInApi {
   processCheckIn(req: CheckInReq): Observable<CheckInResp> {
     return this.api.post<CheckInResp>('/check-in', req);
   }
+
+  revertCheckIn(bookingId: string): Observable<void> {
+    return this.api.post<void>(`/check-in/revert/${bookingId}`, {});
+  }
 }

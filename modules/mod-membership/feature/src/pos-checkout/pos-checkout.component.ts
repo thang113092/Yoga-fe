@@ -1,15 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { MembershipApi, MembershipPlan, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
+import { catchError, forkJoin, of } from 'rxjs';
+import { CheckoutQuote, MembershipResp, MembershipApi, MembershipPlan, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
 import { ZenSelectComponent, ZenInputComponent } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
 interface CheckoutDraft { actorId: string; key: string; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
 @Component({ selector: 'yoga-pos-checkout', standalone: true, imports: [CommonModule, FormsModule, RouterModule, ZenSelectComponent, ZenInputComponent], templateUrl: './pos-checkout.component.html', styleUrl: './pos-checkout.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
-export class PosCheckoutComponent implements OnInit {
+export class PosCheckoutComponent implements OnInit, OnDestroy {
   private readonly membershipApi = inject(MembershipApi);
   private readonly posApi = inject(PosApi);
   private readonly userApi = inject(UserApi);
@@ -20,12 +20,14 @@ export class PosCheckoutComponent implements OnInit {
   protected readonly selectedBranch = computed(() => this.branches().find(b => b.id === this.branchId()) ?? null);
   private readonly branchId = signal('');
   protected get selectedBranchId(): string { return this.branchId(); }
-  protected set selectedBranchId(value: string) { this.branchId.set(value); }
+  protected set selectedBranchId(value: string) { if (this.pendingCheckout() || this.isProcessing()) return; this.branchId.set(value); this.clearSelectedStudent(); }
   protected readonly isLoadingPlans = signal(false);
   protected readonly isProcessing = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly successReceipt = signal<{ order: OrderResp; payment: PaymentResp } | null>(null);
   protected readonly pendingCheckout = signal<CheckoutDraft | null>(null);
+  protected readonly copiedCode = signal(false);
+  private copyTimeout: ReturnType<typeof setTimeout> | null = null;
 
   protected searchQuery = '';
   protected readonly searchResults = signal<UserResponse[]>([]);
@@ -36,7 +38,6 @@ export class PosCheckoutComponent implements OnInit {
   protected studentPhone = '';
   protected studentEmail = '';
   protected studentName = '';
-  protected readonly isLookingUpStudent = signal(false);
   protected readonly studentLookupStatus = signal<'idle' | 'found' | 'not_found'>('idle');
   protected readonly resolvedStudent = signal<UserResponse | null>(null);
   protected selectedPlanId = signal<string | null>(null);
@@ -44,7 +45,95 @@ export class PosCheckoutComponent implements OnInit {
   protected cashierNotes = '';
   protected transactionReference = '';
   protected readonly selectedPlan = computed(() => this.plans().find(p => p.id === this.selectedPlanId()) ?? null);
-  private lookupDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  protected readonly quote = signal<CheckoutQuote | null>(null);
+  protected readonly isLoadingQuote = signal(false);
+  protected readonly studentMemberships = signal<MembershipResp[]>([]);
+  protected readonly pendingMembership = computed(() => this.studentMemberships().find(m => m.status === 'PENDING_PAYMENT') ?? null);
+  protected readonly currentMembership = computed(() => this.quote()?.currentMembership ?? this.studentMemberships().find(m => ['ACTIVE', 'FROZEN', 'EXPIRED'].includes(m.status)) ?? null);
+  protected readonly useCreditAdjustment = signal(false);
+  protected readonly adjustedCredit = signal<number | null>(null);
+  protected adjustmentReason = '';
+  protected readonly effectiveCredit = computed(() => this.useCreditAdjustment() ? (this.adjustedCredit() ?? 0) : (this.quote()?.credit ?? 0));
+  protected readonly adjustmentInvalid = computed(() => this.useCreditAdjustment() && (!this.currentMembership() || this.adjustedCredit() == null || !Number.isInteger(this.adjustedCredit()) || this.adjustedCredit()! < 0 || this.adjustedCredit()! > Math.min(this.selectedPlan()?.price ?? 0, this.quote()?.contractValue ?? this.currentMembership()?.purchasedPrice ?? 0)));
+  protected readonly amountDue = computed(() => this.pendingCheckout()?.order?.totalAmount ?? this.pendingCheckout()?.orderRequest.expectedTotal ?? (this.quote() ? (this.selectedPlan()?.price ?? 0) - this.effectiveCredit() : 0));
+  private quoteVersion = 0;
+  private searchVersion = 0;
+
+  refreshQuote(): void {
+    const student = this.resolvedStudent(); const plan = this.selectedPlan(); const branch = this.selectedBranchId;
+    const version = ++this.quoteVersion;
+    this.quote.set(null); this.useCreditAdjustment.set(false); this.adjustedCredit.set(null); this.adjustmentReason = '';
+    if (!student || !plan || !branch || this.pendingCheckout()) { this.isLoadingQuote.set(false); return; }
+    this.isLoadingQuote.set(true); this.errorMessage.set(null);
+    const quote$ = this.posApi.getCheckoutQuote(student.id, plan.id, branch).pipe(catchError(err => {
+      if (version === this.quoteVersion) this.errorMessage.set(err?.error?.message || 'Không tải được báo giá. Vui lòng thử lại trước khi thanh toán.');
+      return of(null);
+    }));
+    forkJoin([quote$, this.membershipApi.getStudentMemberships(student.id)]).subscribe({
+      next: ([quote, memberships]) => {
+        if (version !== this.quoteVersion) return;
+        this.quote.set(quote); this.studentMemberships.set(memberships); this.isLoadingQuote.set(false);
+      },
+      error: err => { if (version !== this.quoteVersion) return; this.isLoadingQuote.set(false); this.fail(err, 'Không tải được thông tin thẻ. Vui lòng thử lại trước khi thanh toán.'); }
+    });
+  }
+
+  protected readonly currentPlanName = computed(() => this.quote()?.currentPlanName ?? this.plans().find(p => p.id === this.currentMembership()?.planId)?.name ?? 'Gói ngừng bán');
+
+  membershipStatusLabel(status: string): string {
+    return ({ ACTIVE: 'Đang sử dụng', FROZEN: 'Đang bảo lưu', EXPIRED: 'Hết hạn', PENDING_PAYMENT: 'Chờ thanh toán', REPLACED: 'Đã thay thế', CANCELLED: 'Đã hủy', TRANSFERRED: 'Đã chuyển nhượng' } as Record<string, string>)[status] ?? status;
+  }
+
+  paymentMethodLabel(method?: string): string {
+    switch (method) {
+      case 'CASH': return 'Tiền mặt';
+      case 'POS_CARD': return 'Quẹt thẻ máy POS';
+      case 'BANK_TRANSFER_QR': return 'Chuyển khoản QR ngân hàng';
+      default: return method || '—';
+    }
+  }
+
+  copyPassCode(code?: string): void {
+    if (!code) return;
+    navigator.clipboard?.writeText(code).then(() => {
+      this.copiedCode.set(true);
+      if (this.copyTimeout) clearTimeout(this.copyTimeout);
+      this.copyTimeout = setTimeout(() => this.copiedCode.set(false), 2000);
+    }).catch(() => { /* fallback */ });
+  }
+
+  printReceipt(): void {
+    window.print();
+  }
+
+  clearSelectedStudent(): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    ++this.quoteVersion; ++this.searchVersion;
+    if (this.searchDebounceTimer) { clearTimeout(this.searchDebounceTimer); this.searchDebounceTimer = null; }
+    this.quote.set(null); this.studentMemberships.set([]); this.isLoadingQuote.set(false);
+    this.resolvedStudent.set(null); this.studentLookupStatus.set('idle');
+    this.studentName = ''; this.studentPhone = ''; this.studentEmail = ''; this.clearSearchBox();
+  }
+
+  cancelPendingCheckout(): void {
+    if (this.isProcessing()) return;
+    const draft = this.pendingCheckout(); const membership = this.pendingMembership();
+    if (!draft && !membership) return;
+    this.isProcessing.set(true);
+    const cancel = (orderId: string) => this.posApi.cancelPendingOrder(orderId).subscribe({
+      next: () => { this.pendingCheckout.set(null); try { localStorage.removeItem(this.storageKey()); } catch {} this.isProcessing.set(false); this.refreshQuote(); },
+      error: err => this.fail(err, 'Chưa hủy được đơn. Cần đối soát trước khi tạo giao dịch khác.')
+    });
+    if (draft?.order) { cancel(draft.order.orderId); return; }
+    if (draft) {
+      this.posApi.createOrder(draft.orderRequest, draft.key).subscribe({ next: order => { this.saveDraft({ ...draft, order }); cancel(order.orderId); }, error: err => this.fail(err, 'Chưa xác định được kết quả tạo đơn. Vui lòng đối soát.') });
+      return;
+    }
+    this.posApi.getStudentOrders(this.resolvedStudent()!.id).subscribe({
+      next: orders => { const order = orders.find(o => o.status === 'PENDING' && o.items.some(i => i.membershipCode === membership!.membershipCode)); if (order) cancel(order.orderId); else this.fail(null, 'Không tìm thấy đơn chờ. Vui lòng tải lại thông tin.'); },
+      error: err => this.fail(err, 'Không tải được đơn đang chờ.')
+    });
+  }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
@@ -55,6 +144,11 @@ export class PosCheckoutComponent implements OnInit {
   }
 
   ngOnInit(): void { this.loadPlans(); }
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    if (this.copyTimeout) clearTimeout(this.copyTimeout);
+    ++this.quoteVersion; ++this.searchVersion;
+  }
   loadPlans(): void {
     this.isLoadingPlans.set(true); this.errorMessage.set(null);
     forkJoin([this.membershipApi.getActivePlans(), this.branchApi.getAll()]).subscribe({
@@ -67,10 +161,12 @@ export class PosCheckoutComponent implements OnInit {
       }, error: err => { this.errorMessage.set(err?.error?.message || 'Không tải được gói tập và chi nhánh.'); this.isLoadingPlans.set(false); }
     });
   }
-  selectPlan(id: string): void { if (!this.pendingCheckout() && !this.isProcessing()) this.selectedPlanId.set(id); }
+  selectPlan(id: string): void { if (!this.pendingCheckout() && !this.isProcessing()) { this.selectedPlanId.set(id); this.refreshQuote(); } }
   setPaymentMethod(method: PaymentMethod): void { if (!this.pendingCheckout() && !this.isProcessing()) this.paymentMethod.set(method); }
 
   onSearchQueryChange(val: string): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    this.clearSelectedStudent();
     this.searchQuery = val;
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
@@ -91,6 +187,7 @@ export class PosCheckoutComponent implements OnInit {
   }
 
   executeStudentSearch(query: string): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
     const trimmed = query.trim();
     const branchId = this.selectedBranchId;
     if (!trimmed || !branchId) {
@@ -100,13 +197,16 @@ export class PosCheckoutComponent implements OnInit {
     }
     this.isSearchingDropdown.set(true);
     this.isSearchDropdownOpen.set(true);
+    const version = ++this.searchVersion;
     this.userApi.searchStudents(trimmed, branchId, 10).subscribe({
       next: list => {
+        if (version !== this.searchVersion) return;
         this.searchResults.set(list);
         this.isSearchingDropdown.set(false);
         this.isSearchDropdownOpen.set(true);
       },
       error: () => {
+        if (version !== this.searchVersion) return;
         this.searchResults.set([]);
         this.isSearchingDropdown.set(false);
       }
@@ -114,14 +214,20 @@ export class PosCheckoutComponent implements OnInit {
   }
 
   selectStudentFromSearch(student: UserResponse): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    ++this.searchVersion;
+    this.studentMemberships.set([]);
     this.resolvedStudent.set(student);
     this.studentName = student.fullName;
     this.studentPhone = student.phone || '';
     this.studentEmail = student.email || '';
     this.studentLookupStatus.set('found');
-    this.searchQuery = `${student.fullName} (${student.phone})`;
+    this.searchQuery = student.fullName;
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    this.isSearchingDropdown.set(false);
     this.isSearchDropdownOpen.set(false);
     this.searchResults.set([]);
+    this.refreshQuote();
   }
 
   clearSearchBox(): void {
@@ -131,135 +237,41 @@ export class PosCheckoutComponent implements OnInit {
     this.isSearchingDropdown.set(false);
   }
 
-  onPhoneChange(val: string): void {
-    this.studentPhone = val;
-    this.onStudentFieldChange('phone');
-  }
-
-  onEmailChange(val: string): void {
-    this.studentEmail = val;
-    this.onStudentFieldChange('email');
-  }
-
-  private onStudentFieldChange(source: 'phone' | 'email'): void {
-    if (this.lookupDebounceTimer) {
-      clearTimeout(this.lookupDebounceTimer);
-      this.lookupDebounceTimer = null;
-    }
-    const phone = this.studentPhone.trim();
-    const email = this.studentEmail.trim();
-
-    if (!phone && !email) {
-      this.studentName = '';
-      this.resolvedStudent.set(null);
-      this.studentLookupStatus.set('idle');
-      return;
-    }
-
-    this.lookupDebounceTimer = setTimeout(() => {
-      this.triggerLookup(source);
-    }, 400);
-  }
-
-  triggerLookup(source?: 'phone' | 'email'): void {
-    const branchId = this.selectedBranchId;
-    if (!branchId) return;
-
-    const phone = this.studentPhone.trim();
-    const email = this.studentEmail.trim();
-
-    if (source === 'phone' && phone.length < 8 && !email) return;
-    if (source === 'email' && (!email.includes('@') || email.length < 5) && !phone) return;
-    if (!phone && !email) {
-      this.studentName = '';
-      this.resolvedStudent.set(null);
-      this.studentLookupStatus.set('idle');
-      return;
-    }
-
-    const current = this.resolvedStudent();
-    if (current) {
-      const matchPhone = phone && current.phone === phone;
-      const matchEmail = email && current.email?.toLowerCase() === email.toLowerCase();
-      if ((phone && matchPhone) || (email && matchEmail)) return;
-    }
-
-    this.isLookingUpStudent.set(true);
-    const lookup$ = source === 'email' && email
-      ? this.userApi.lookupStudent({ email, branchId })
-      : phone
-        ? this.userApi.lookupStudent(phone, branchId)
-        : this.userApi.lookupStudent({ email, branchId });
-
-    lookup$.subscribe({
-      next: student => {
-        this.isLookingUpStudent.set(false);
-        this.resolvedStudent.set(student);
-        this.studentLookupStatus.set('found');
-        this.studentName = student.fullName;
-        if (student.phone && (!this.studentPhone || source === 'email')) {
-          this.studentPhone = student.phone;
-        }
-        if (student.email && (!this.studentEmail || source === 'phone')) {
-          this.studentEmail = student.email;
-        }
-      },
-      error: () => {
-        this.isLookingUpStudent.set(false);
-        this.resolvedStudent.set(null);
-        this.studentLookupStatus.set('not_found');
-        this.studentName = '';
-      }
-    });
-  }
-
   handleCheckout(): void {
     if (this.isProcessing()) return;
     const draft = this.pendingCheckout();
     if (draft) { this.isProcessing.set(true); this.errorMessage.set(null); this.completeCheckout(draft); return; }
-    const plan = this.selectedPlan(); const actorId = this.auth.currentUserId();
-    const phone = this.studentPhone.trim();
-    const email = this.studentEmail.trim();
-    if (!plan || !actorId || !this.selectedBranchId || (!phone && !email)) {
-      this.errorMessage.set('Chọn chi nhánh, gói tập và nhập số điện thoại hoặc email học viên.');
-      return;
+    const plan = this.selectedPlan(); const student = this.resolvedStudent();
+    const quote = this.quote(); const actorId = this.auth.currentUserId();
+    if (!plan || !student || !actorId || !this.selectedBranchId || !quote || this.isLoadingQuote() || quote.issue) {
+      this.errorMessage.set(quote?.issue || 'Chọn học viên, gói thẻ và tải báo giá trước khi thanh toán.'); return;
     }
-    if (this.paymentMethod() !== 'CASH' && !this.transactionReference.trim()) {
-      this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.');
-      return;
+    if (this.adjustmentInvalid() || this.useCreditAdjustment() && !this.adjustmentReason.trim()) {
+      this.errorMessage.set('Nhập giá trị điều chỉnh hợp lệ và lý do phê duyệt.'); return;
+    }
+    if (this.amountDue() > 0 && this.paymentMethod() !== 'CASH' && !this.transactionReference.trim()) {
+      this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.'); return;
     }
     this.isProcessing.set(true); this.errorMessage.set(null);
-    const branchId = this.selectedBranchId;
-    const method = this.paymentMethod(); const reference = this.transactionReference.trim() || undefined; const notes = this.cashierNotes;
-
-    const currentStudent = this.resolvedStudent();
-    if (currentStudent && ((phone && currentStudent.phone === phone) || (email && currentStudent.email?.toLowerCase() === email.toLowerCase()))) {
-      this.studentName = currentStudent.fullName;
-      const checkoutDraft: CheckoutDraft = { actorId, key: crypto.randomUUID(), orderRequest: { branchId, studentId: currentStudent.id, planId: plan.id, cashierId: actorId, notes }, paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: reference, notes } };
-      this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
-      return;
-    }
-
-    const lookup$ = phone
-      ? this.userApi.lookupStudent(phone, branchId)
-      : this.userApi.lookupStudent({ email, branchId });
-
-    lookup$.subscribe({
-      next: student => {
-        this.studentName = student.fullName;
-        if (student.phone) this.studentPhone = student.phone;
-        if (student.email) this.studentEmail = student.email;
-        this.resolvedStudent.set(student);
-        this.studentLookupStatus.set('found');
-        const checkoutDraft: CheckoutDraft = { actorId, key: crypto.randomUUID(), orderRequest: { branchId, studentId: student.id, planId: plan.id, cashierId: actorId, notes }, paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: reference, notes } };
-        this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
-      }, error: err => this.fail(err, 'Không tìm thấy học viên đang hoạt động. Kiểm tra số điện thoại hoặc email học viên trước.')
-    });
+    const notes = this.cashierNotes;
+    const checkoutDraft: CheckoutDraft = {
+      actorId, key: crypto.randomUUID(),
+      orderRequest: { branchId: this.selectedBranchId, studentId: student.id, planId: plan.id, cashierId: actorId, notes,
+        replacesMembershipId: quote.currentMembership?.id, expectedCredit: quote.credit, expectedTotal: this.amountDue(), adjustedCredit: this.useCreditAdjustment() ? Math.trunc(this.adjustedCredit()!) : undefined, adjustmentReason: this.useCreditAdjustment() ? this.adjustmentReason.trim() : undefined },
+      paymentRequest: { paymentMethod: this.amountDue() === 0 ? 'CASH' : this.paymentMethod(), idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: this.transactionReference.trim() || undefined, notes }
+    };
+    this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
   }
   private completeCheckout(draft: CheckoutDraft): void {
     if (draft.actorId !== this.auth.currentUserId()) { this.fail(null, 'Phiên thu ngân đã thay đổi. Đăng nhập lại đúng tài khoản để đối soát giao dịch.'); return; }
     if (draft.order) { this.pay(draft); return; }
-    this.posApi.createOrder(draft.orderRequest, draft.key).subscribe({ next: order => { const updated = { ...draft, order }; this.saveDraft(updated); this.pay(updated); }, error: err => this.fail(err, 'Chưa xác nhận được kết quả tạo đơn. Thử lại cùng giao dịch để tránh tạo trùng.') });
+    this.posApi.createOrder(draft.orderRequest, draft.key).subscribe({ next: order => { const updated = { ...draft, order }; this.saveDraft(updated); this.pay(updated); }, error: err => {
+      if ([400, 403, 404, 409].includes(err?.status)) {
+        this.pendingCheckout.set(null); try { localStorage.removeItem(this.storageKey()); } catch {}
+        this.isProcessing.set(false); this.refreshQuote();
+      }
+      this.fail(err, 'Chưa xác nhận được kết quả tạo đơn. Thử lại cùng giao dịch để tránh tạo trùng.');
+    } });
   }
   private pay(draft: CheckoutDraft): void {
     const order = draft.order!;
@@ -283,5 +295,31 @@ export class PosCheckoutComponent implements OnInit {
       this.errorMessage.set('Có giao dịch chưa được xác nhận. Thử lại để đối soát cùng đơn; không thu thêm tiền.');
     } catch { this.errorMessage.set('Không đọc được giao dịch đang chờ. Liên hệ quản lý để đối soát trước khi thu tiền.'); }
   }
-  resetForm(): void { if (this.pendingCheckout() || this.isProcessing()) return; this.successReceipt.set(null); this.cashierNotes = ''; this.transactionReference = ''; this.studentPhone = ''; this.studentEmail = ''; this.studentName = ''; this.searchQuery = ''; this.searchResults.set([]); this.isSearchDropdownOpen.set(false); this.isSearchingDropdown.set(false); this.resolvedStudent.set(null); this.studentLookupStatus.set('idle'); }
+  resetForm(): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    this.successReceipt.set(null);
+    this.copiedCode.set(false);
+    if (this.copyTimeout) {
+      clearTimeout(this.copyTimeout);
+      this.copyTimeout = null;
+    }
+    this.cashierNotes = '';
+    this.transactionReference = '';
+    this.studentPhone = '';
+    this.studentEmail = '';
+    this.studentName = '';
+    this.searchQuery = '';
+    this.searchResults.set([]);
+    this.isSearchDropdownOpen.set(false);
+    this.isSearchingDropdown.set(false);
+    this.resolvedStudent.set(null);
+    this.studentLookupStatus.set('idle');
+    ++this.quoteVersion;
+    this.quote.set(null);
+    this.studentMemberships.set([]);
+    this.isLoadingQuote.set(false);
+    this.useCreditAdjustment.set(false);
+    this.adjustedCredit.set(null);
+    this.adjustmentReason = '';
+  }
 }

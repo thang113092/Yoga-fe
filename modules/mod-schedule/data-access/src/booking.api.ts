@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@yoga/platform/api';
 import { Observable } from 'rxjs';
-import { Booking, CreateBookingReq, StudentBookingDetail } from './schedule.models';
+import { Booking, CreateBookingReq, StudentBookingDetail, WorkoutHistoryItem } from './schedule.models';
 
 @Injectable({ providedIn: 'root' })
 export class BookingApi {
@@ -21,5 +21,9 @@ export class BookingApi {
 
   getStudentBookingDetails(studentId: string): Observable<StudentBookingDetail[]> {
     return this.api.get<StudentBookingDetail[]>(`/bookings/student/${studentId}/details`);
+  }
+
+  getStudentWorkoutHistory(studentId: string): Observable<WorkoutHistoryItem[]> {
+    return this.api.get<WorkoutHistoryItem[]>(`/bookings/student/${studentId}/history`);
   }
 }

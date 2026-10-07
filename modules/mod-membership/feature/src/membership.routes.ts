@@ -28,7 +28,13 @@ export const MEMBERSHIP_ROUTES: Routes = [
     path: 'my-passes',
     canActivate: [roleGuard(['STUDENT'])],
     loadComponent: () => import('./student-passes/student-passes.component').then(m => m.StudentPassesComponent),
-    title: 'Thẻ Hội Viên Của Tôi - Yoga Center'
+    title: 'Thẻ Hội Viên & Lịch Sử Tập - An Yên Yoga'
+  },
+  {
+    path: 'history',
+    canActivate: [roleGuard(['STUDENT'])],
+    loadComponent: () => import('./workout-history/workout-history.component').then(m => m.WorkoutHistoryComponent),
+    title: 'Lịch Sử Tập Luyện - An Yên Yoga'
   },
   {
     path: 'revenue',

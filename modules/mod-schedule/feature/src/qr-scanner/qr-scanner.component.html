@@ -1,165 +1,571 @@
-<div class="qr-scanner-container">
-  <div class="kiosk-header">
-    <div class="header-text">
-      <div class="header-pre">TIẾP TÂN & ĐIỂM DANH</div>
-      <h1 class="header-title">Điểm Danh 1 Chạm An Yên</h1>
-      <p class="subtitle">Quét mã QR của ca đã đặt hoặc nhập mã Booking để điểm danh vào lớp học</p>
+<div class="attendance-container">
+  <!-- Toast notification -->
+  @if (toastMessage()) {
+    <div class="toast-banner" role="status">
+      <div class="toast-content">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>{{ toastMessage() }}</span>
+      </div>
+      <button type="button" class="btn-close-toast" (click)="toastMessage.set(null)" aria-label="Đóng">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
     </div>
-    <div class="kiosk-status">
-      <span class="pulse-dot"></span>
-      <span>{{ selectedBranchName() }}</span>
-    </div>
-  </div>
+  }
 
-  @if (errorMessage()) { <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div> }
-  <div class="branch-select-row">
-    <label for="kioskBranch">Cơ sở điểm danh:</label>
-    <div class="branch-select-wrapper">
-      <zen-select
-        id="kioskBranch"
-        [options]="branches()"
-        valueKey="id"
-        labelKey="name"
-        [ngModel]="branchId()"
-        (ngModelChange)="branchId.set($event)"
-        [disabled]="isProcessing() || isCameraActive()"
-        placeholder="Chọn cơ sở điểm danh"
-      />
+  <!-- Header -->
+  <header class="attendance-header">
+    <div class="header-main">
+      <div class="header-pre">HỆ THỐNG HUẤN LUYỆN VIÊN</div>
+      <h1 class="header-title">Điểm Danh Lớp Học</h1>
     </div>
-  </div>
-
-  <div class="kiosk-layout">
-    <!-- Left Column: Scanner & Quick Actions -->
-    <div class="scanner-panel">
-      <div class="scanner-box">
-        <video #camera autoplay playsinline muted aria-label="Camera quét mã QR" [hidden]="!isCameraActive()" style="width:100%;max-height:320px"></video>
-        <button type="button" class="btn-camera" (click)="startCamera()" [disabled]="isProcessing() || isCameraActive() || !branchId()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
+    <div class="header-meta">
+      <div class="instructor-badge">
+        <span class="instructor-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
           </svg>
-          <span>Mở camera quét QR</span>
-        </button>
-        @if (isCameraActive()) {
-          <button type="button" class="btn-stop-camera" (click)="stopCamera()">Tắt camera</button>
+        </span>
+        <span class="instructor-label">HLV: <strong>{{ auth.userFullName() }}</strong></span>
+      </div>
+      <div class="clock-badge">
+        <span class="pulse-dot"></span>
+        <span class="clock-text">{{ currentTime() | date:'HH:mm:ss' }}</span>
+      </div>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="alert-close-btn" (click)="errorMessage.set(null)" aria-label="Đóng cảnh báo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Schedule Selector Bar: Sleek & Compact -->
+  <section class="schedule-selector-bar" aria-label="Lựa chọn ca học giảng dạy">
+    <div class="selector-meta-row">
+      <div class="meta-label-group">
+        <span class="meta-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </span>
+        <span class="meta-title">Ca Dạy Trong Ngày</span>
+        <span class="meta-count-pill">{{ schedules().length }} ca</span>
+      </div>
+
+      <div class="meta-date-group">
+        @if (!isToday()) {
+          <button
+            type="button"
+            class="btn-today-pill"
+            (click)="selectToday()"
+            title="Quay về ngày hôm nay"
+          >
+            Hôm Nay
+          </button>
         }
-        <form class="scan-input-form" (ngSubmit)="submitCheckIn()">
-          <label for="qrInput">Hoặc nhập mã Booking / Dữ liệu QR:</label>
-          <div class="input-with-button">
+
+        <!-- Custom Luxury Date Navigator -->
+        <div class="date-navigator">
+          <button
+            type="button"
+            class="btn-date-nav prev"
+            (click)="changeDateByDays(-1)"
+            title="Ngày hôm trước"
+            aria-label="Ngày hôm trước"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+
+          <!-- Clickable Date Badge with calendar picker trigger -->
+          <button
+            type="button"
+            class="date-display-trigger"
+            (click)="openDatePicker()"
+            title="Nhấp để mở lịch chọn ngày"
+          >
+            <svg class="date-cal-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span class="date-label-text">{{ selectedDate() | date:'dd/MM/yyyy' }}</span>
+            @if (isToday()) {
+              <span class="today-indicator">Hôm nay</span>
+            }
             <input
-              id="qrInput" name="qrInput"
-              type="text"
-              class="form-control"
-              placeholder="VD: BK-1790665001..."
-              [ngModel]="qrInput()"
-              (ngModelChange)="qrInput.set($event)"
-              [disabled]="isProcessing()"
+              #datePickerInput
+              type="date"
+              class="hidden-native-date-input"
+              [ngModel]="selectedDate()"
+              (ngModelChange)="onDateChange($event)"
+              aria-label="Chọn ngày điểm danh"
             />
-            <button
-              type="submit"
-              class="btn btn-primary"
-              [disabled]="isProcessing() || !qrInput().trim()"
-            >
-              @if (isProcessing()) {
-                Đang kiểm tra...
-              } @else {
-                Điểm Danh
-              }
-            </button>
-          </div>
-        </form>
+          </button>
+
+          <button
+            type="button"
+            class="btn-date-nav next"
+            (click)="changeDateByDays(1)"
+            title="Ngày tiếp theo"
+            aria-label="Ngày tiếp theo"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Right Column: Result Card & Recent Session History -->
-    <div class="result-panel">
-      @if (checkInResult(); as res) {
-        <div class="result-card" [class.already]="res.alreadyCheckedIn">
-          <div class="result-badge">
-            @if (res.alreadyCheckedIn) {
-              <div class="icon-circle warning">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-              </div>
-              <h3>ĐÃ ĐIỂM DANH TRƯỚC ĐÓ</h3>
-              <p>Học viên đã hoàn tất check-in cho ca này. Không trừ thêm lượt.</p>
-            } @else {
-              <div class="icon-circle success">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <h3>ĐIỂM DANH THÀNH CÔNG</h3>
-              <p>Chào mừng học viên đã đến lớp học.</p>
+    @if (isLoadingSchedules()) {
+      <div class="schedules-loading">
+        <span>Đang kiểm tra lịch dạy...</span>
+      </div>
+    } @else if (schedules().length === 0) {
+      <div class="empty-schedule-bar">
+        <span>Không có ca dạy nào trong ngày {{ selectedDate() | date:'dd/MM/yyyy' }}.</span>
+        <button type="button" class="btn-text-link" (click)="selectToday()">Về Hôm Nay</button>
+      </div>
+    } @else {
+      <!-- Sleek Horizontal Pill Tabs -->
+      <div class="session-pills-row" role="tablist">
+        @for (item of schedules(); track item.id) {
+          <div
+            role="button"
+            tabindex="0"
+            class="session-pill-btn"
+            [class.is-selected]="item.id === selectedScheduleId()"
+            [class.is-active-now]="isScheduleActive(item)"
+            (click)="selectSchedule(item.id)"
+            (keydown.enter)="selectSchedule(item.id)"
+            (keydown.space)="selectSchedule(item.id)"
+            [attr.aria-selected]="item.id === selectedScheduleId()"
+          >
+            <!-- Time -->
+            <div class="pill-time">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>{{ formatTime(item.startTime) }} - {{ formatTime(item.endTime) }}</span>
+            </div>
+
+            <span class="pill-divider" aria-hidden="true"></span>
+
+            <!-- Class & Room Name -->
+            <div class="pill-info">
+              <strong class="pill-class-name">{{ item.className }}</strong>
+              <span class="pill-room-name">{{ getShortRoom(item.roomName, item.branchName) }}</span>
+            </div>
+
+            <!-- Occupancy -->
+            <span class="pill-occupancy">
+              {{ item.bookedCount }}/{{ item.maxCapacity }} HV
+            </span>
+
+            <!-- Status indicator -->
+            @if (isScheduleActive(item)) {
+              <span class="pill-active-badge">
+                <span class="pulse-dot-sm"></span>
+                Đang dạy
+              </span>
+            } @else if (item.status === 'COMPLETED') {
+              <span class="pill-status-muted">Đã xong</span>
             }
           </div>
+        }
+      </div>
+    }
+  </section>
 
-          <div class="student-info-card">
-            <div class="info-row">
-              <span class="label">Học viên:</span>
-              <strong class="value highlight">{{ res.studentName }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="label">Mã Booking:</span>
-              <strong class="value">{{ res.bookingCode }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="label">Lớp học:</span>
-              <span class="value">{{ res.className }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Vị trí thảm:</span>
-              <span class="mat-badge">Thảm số {{ res.matNumber ?? 'Chưa chỉ định' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Thời gian:</span>
-              <span class="value">{{ res.checkedInAt | date:'HH:mm:ss dd/MM/yyyy' }}</span>
-            </div>
+  @if (selectedSchedule(); as sched) {
+    <!-- Unified Attendance Session Panel: 1 khối duy nhất, gọn gàng và tinh tế -->
+    <section class="attendance-session-panel" aria-label="Bảng điều khiển ca học và điểm danh">
+      <!-- Dòng 1: Thông tin ca học + Thống kê sĩ số gọn nhẹ -->
+      <div class="session-top-row">
+        <div class="session-info">
+          <div class="session-title-wrap">
+            <span class="active-tag">CA HIỆN TẠI</span>
+            <h2 class="session-name">{{ sched.className }}</h2>
           </div>
+          <div class="session-meta">
+            <span class="meta-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {{ formatTime(sched.startTime) }} - {{ formatTime(sched.endTime) }} ({{ formatDate(sched.startTime) }})
+            </span>
+            <span class="meta-sep">•</span>
+            <span class="meta-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ sched.roomName }} ({{ sched.branchName }})
+            </span>
+          </div>
+        </div>
 
-          <button type="button" class="btn btn-outline-clear" (click)="clearResult()">
-            Sẵn Sàng Cho Học Viên Tiếp Theo
+        <!-- Thống kê sĩ số mini inline: Tinh gọn, không thô -->
+        <div class="session-stats-inline">
+          <div class="stat-badge stat-total" title="Tổng số học viên đã đăng ký">
+            <span class="stat-num">{{ totalBooked() }}</span>
+            <span class="stat-text">Đã ĐK</span>
+          </div>
+          <div class="stat-badge stat-attended" title="Số học viên đã điểm danh có mặt">
+            <span class="stat-num">{{ attendedCount() }}</span>
+            <span class="stat-text">Có mặt</span>
+          </div>
+          <div class="stat-badge stat-unattended" title="Số học viên chưa điểm danh">
+            <span class="stat-num">{{ unattendedCount() }}</span>
+            <span class="stat-text">Chưa ĐD</span>
+          </div>
+          <div class="stat-progress-pill" title="Tỉ lệ có mặt: {{ attendancePercentage() }}%">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" [style.width.%]="attendancePercentage()"></div>
+            </div>
+            <span class="progress-pct">{{ attendancePercentage() }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dòng 2: Phân cách nhẹ & Công cụ tìm kiếm / Bộ lọc / Thao tác -->
+      <div class="session-bottom-bar">
+        <!-- Tìm kiếm học viên -->
+        <div class="panel-search">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            class="panel-search-input"
+            placeholder="Tìm theo tên học viên, SĐT, số thảm..."
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+          />
+          @if (searchQuery()) {
+            <button type="button" class="btn-clear-search" (click)="searchQuery.set('')" title="Xóa tìm kiếm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <!-- Bộ lọc nhanh danh sách -->
+        <div class="panel-filter-tabs" role="tablist">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="filterStatus() === 'ALL'"
+            (click)="filterStatus.set('ALL')"
+          >
+            Tất cả ({{ totalBooked() }})
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="filterStatus() === 'UNATTENDED'"
+            (click)="filterStatus.set('UNATTENDED')"
+          >
+            Chưa điểm danh ({{ unattendedCount() }})
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="filterStatus() === 'ATTENDED'"
+            (click)="filterStatus.set('ATTENDED')"
+          >
+            Đã có mặt ({{ attendedCount() }})
           </button>
         </div>
-      } @else {
-        <div class="waiting-card">
-          <div class="waiting-icon-circle">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <line x1="7" y1="8" x2="17" y2="8"/>
-              <line x1="7" y1="12" x2="17" y2="12"/>
-              <line x1="7" y1="16" x2="13" y2="16"/>
-            </svg>
-          </div>
-          <h3>Kiosk Sẵn Sàng Nhận Mã Điểm Danh</h3>
-          <p>Học viên chỉ cần đưa mã QR trên điện thoại vào trước mắt đọc</p>
-        </div>
-      }
 
-      <!-- Recent Session History -->
-      <div class="recent-history">
-        <h4>Lịch Sử Điểm Danh Ca Này</h4>
-        <div class="history-list">
-          @for (item of recentCheckIns(); track item.bookingCode + item.time) {
-            <div class="history-item">
-              <div class="history-left">
-                <strong>{{ item.studentName }}</strong>
-                <span>{{ item.className }} • Thảm #{{ item.matNumber }}</span>
-              </div>
-              <div class="history-right">
-                <span class="time-tag">{{ item.time }}</span>
-                <span class="status-tag" [class.warning]="item.status === 'ALREADY_CHECKED_IN'">
-                  {{ item.status === 'ALREADY_CHECKED_IN' ? 'Đã quét trước' : 'Hợp lệ' }}
-                </span>
-              </div>
-            </div>
+        <!-- Các nút thao tác -->
+        <div class="panel-actions">
+          <button
+            type="button"
+            class="btn-action-scanner"
+            [class.active]="showScannerPanel()"
+            (click)="toggleScannerPanel()"
+            title="Mở camera quét QR hoặc nhập mã thủ công"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>{{ showScannerPanel() ? 'Đóng Quét QR' : 'Quét QR / Nhập Mã' }}</span>
+          </button>
+
+          @if (unattendedCount() > 0) {
+            <button
+              type="button"
+              class="btn-action-checkin-all"
+              [disabled]="isBatchProcessing()"
+              (click)="checkInAllUnattended()"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>{{ isBatchProcessing() ? 'Đang điểm danh...' : 'Điểm Danh Tất Cả' }}</span>
+            </button>
           }
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+
+    <!-- Collapsible Scanner Panel -->
+    @if (showScannerPanel()) {
+      <div class="scanner-accordion-card">
+        <div class="scanner-accordion-header">
+          <div class="accordion-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>Quét Mã QR Hoặc Nhập Mã Booking Ca Học</span>
+          </div>
+          <button type="button" class="btn-close-accordion" (click)="toggleScannerPanel()">Đóng</button>
+        </div>
+
+        <div class="scanner-accordion-body">
+          <div class="camera-col">
+            <video #camera autoplay playsinline muted aria-label="Camera quét mã QR" [hidden]="!isCameraActive()" style="width:100%;max-height:240px;border-radius:10px;background:#000;"></video>
+            @if (!isCameraActive()) {
+              <button type="button" class="btn-open-camera" (click)="startCamera()" [disabled]="isProcessing()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>Bật Camera Quét Mã</span>
+              </button>
+            } @else {
+              <button type="button" class="btn-stop-camera" (click)="stopCamera()">Tắt Camera</button>
+            }
+          </div>
+
+          <div class="input-col">
+            <form class="scan-form" (ngSubmit)="submitCheckIn()">
+              <div class="input-group">
+                <input
+                  id="qrInput"
+                  name="qrInput"
+                  type="text"
+                  class="form-control"
+                  placeholder="Nhập mã Booking (VD: BK-1790665001) hoặc nội dung QR"
+                  [ngModel]="qrInput()"
+                  (ngModelChange)="qrInput.set($event)"
+                  [disabled]="isProcessing()"
+                />
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  [disabled]="isProcessing() || !qrInput().trim()"
+                >
+                  {{ isProcessing() ? 'Đang kiểm tra...' : 'Xác Nhận' }}
+                </button>
+              </div>
+            </form>
+
+            @if (checkInResult(); as res) {
+              <div class="quick-result-card" [class.success]="!res.alreadyCheckedIn" [class.warning]="res.alreadyCheckedIn">
+                <div class="res-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <div class="res-info">
+                  <strong>{{ res.studentName }}</strong>
+                  <span>{{ res.alreadyCheckedIn ? 'Đã điểm danh trước đó' : 'Điểm danh thành công' }} • Thảm #{{ res.matNumber ?? 'Chưa chỉ định' }}</span>
+                </div>
+                <button type="button" class="btn-res-clear" (click)="clearResult()">Xóa</button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Student Roster List -->
+    <section class="roster-section" aria-label="Danh sách học viên">
+      @if (isLoadingAttendees()) {
+        <div class="roster-loading">
+          <div class="spinner-line"></div>
+          <span>Đang tải danh sách học viên đăng ký...</span>
+        </div>
+      } @else if (attendees().length === 0) {
+        <div class="empty-roster">
+          <div class="empty-roster-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3>Chưa có học viên nào đăng ký ca học này</h3>
+          <p>Học viên có thể đặt chỗ trực tiếp qua ứng dụng hoặc quầy lễ tân cơ sở.</p>
+        </div>
+      } @else if (filteredAttendees().length === 0) {
+        <div class="empty-roster">
+          <p>Không tìm thấy học viên nào khớp với bộ lọc hoặc từ khóa "{{ searchQuery() }}".</p>
+          <button type="button" class="btn-reset-filter" (click)="searchQuery.set(''); filterStatus.set('ALL')">
+            Xóa bộ lọc
+          </button>
+        </div>
+      } @else {
+        <!-- Table view for desktop, Card view for mobile -->
+        <div class="roster-table-wrapper">
+          <table class="roster-table">
+            <thead>
+              <tr>
+                <th style="width: 90px; white-space: nowrap;">Vị Trí</th>
+                <th style="width: 100px; white-space: nowrap;">Mã HV</th>
+                <th>Học Viên</th>
+                <th style="width: 80px; white-space: nowrap;">Giới Tính</th>
+                <th style="white-space: nowrap;">Số Điện Thoại</th>
+                <th>Email</th>
+                <th style="white-space: nowrap;">Mã Đặt Chỗ</th>
+                <th style="white-space: nowrap;">Trạng Thái</th>
+                <th style="text-align: right; width: 70px; white-space: nowrap;">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (student of filteredAttendees(); track student.id) {
+                <tr [class.is-attended]="student.status === 'ATTENDED' || !!student.checkedInAt">
+                  <!-- Mat number -->
+                  <td>
+                    <span class="mat-badge" [class.assigned]="student.matNumber != null">
+                      {{ student.matNumber ? 'Thảm #' + student.matNumber : 'Tự do' }}
+                    </span>
+                  </td>
+
+                  <!-- Student ID -->
+                  <td>
+                    <code class="student-code-pill" [title]="student.studentId">{{ student.studentId.substring(0, 8) }}</code>
+                  </td>
+
+                  <!-- Student details -->
+                  <td>
+                    <div class="student-name-cell">
+                      <div class="student-avatar">
+                        {{ student.studentName.charAt(0) }}
+                      </div>
+                      <div class="student-info-text">
+                        <strong class="student-fullname">{{ student.studentName }}</strong>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Gender -->
+                  <td>
+                    <span class="gender-pill" [class.male]="student.studentGender?.toUpperCase() === 'MALE' || student.studentGender?.toUpperCase() === 'NAM'" [class.female]="student.studentGender?.toUpperCase() === 'FEMALE' || student.studentGender?.toUpperCase() === 'NU' || student.studentGender?.toUpperCase() === 'NỮ'">
+                      {{ formatGender(student.studentGender) }}
+                    </span>
+                  </td>
+
+                  <!-- Phone -->
+                  <td>
+                    <span class="phone-number">{{ student.studentPhone || '---' }}</span>
+                  </td>
+
+                  <!-- Email -->
+                  <td>
+                    <span class="email-text" [title]="student.studentEmail || ''">{{ student.studentEmail || '---' }}</span>
+                  </td>
+
+                  <!-- Booking Code -->
+                  <td>
+                    <code class="booking-code-pill">{{ student.bookingCode }}</code>
+                  </td>
+
+                  <!-- Attendance Status -->
+                  <td>
+                    @if (student.status === 'ATTENDED' || !!student.checkedInAt) {
+                      <span class="status-pill attended">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>ĐÃ CÓ MẶT</span>
+                        @if (student.checkedInAt) {
+                          <span class="checkin-time">({{ student.checkedInAt | date:'HH:mm' }})</span>
+                        }
+                      </span>
+                    } @else {
+                      <span class="status-pill pending">
+                        <span class="dot-pending"></span>
+                        <span>Chưa điểm danh</span>
+                      </span>
+                    }
+                  </td>
+
+                  <!-- Action Button -->
+                  <td style="text-align: right;">
+                    @if (student.status === 'ATTENDED' || !!student.checkedInAt) {
+                      <span
+                        class="icon-action icon-revert"
+                        [class.disabled]="processingBookingId() === student.id"
+                        (click)="processingBookingId() !== student.id && revertCheckInAttendee(student)"
+                        title="Hoàn tác điểm danh"
+                        role="button"
+                        tabindex="0"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="1 4 1 10 7 10"/>
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                        </svg>
+                      </span>
+                    } @else {
+                      <span
+                        class="icon-action icon-checkin"
+                        [class.disabled]="processingBookingId() === student.id || isBatchProcessing()"
+                        (click)="processingBookingId() !== student.id && !isBatchProcessing() && checkInAttendee(student)"
+                        title="Điểm danh học viên này"
+                        role="button"
+                        tabindex="0"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
 </div>

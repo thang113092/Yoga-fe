@@ -4,8 +4,8 @@
   <header class="page-header">
     <div class="header-main-row">
       <div class="header-titles">
-        <div class="pre-title">{{ auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học' }}</div>
-        <h1 class="main-title">{{ auth.isReceptionist() ? 'Danh Sách Lớp & Ca Học' : 'Quản Lý Lớp & Ca Học' }}</h1>
+        <div class="pre-title">{{ auth.isInstructor() ? 'Phân hệ Huấn luyện viên' : (auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học') }}</div>
+        <h1 class="main-title">{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh Sách Lớp & Ca Học' : 'Quản Lý Lớp & Ca Học' }}</h1>
       </div>
 
       <!-- Navigation Tabs & Actions Group -->
@@ -44,7 +44,7 @@
           </button>
         </div>
 
-        @if (!auth.isReceptionist()) {
+        @if (!auth.isReceptionist() && !auth.isInstructor()) {
           <div class="header-actions">
             @if (activeTab() === 'schedules') {
               <button type="button" class="btn-primary" (click)="openCreateScheduleModal()">
@@ -132,34 +132,61 @@
       </div>
 
       <div class="filter-group date-box">
-        <div class="input-date-wrapper">
-          <svg class="date-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
+        <div class="zen-date-control" [class.has-value]="!!dateFilter()">
+          <!-- Leading Calendar Icon -->
+          <svg class="date-leading-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <input
-            type="date"
-            class="filter-date-input"
-            title="Lọc ca học theo ngày diễn ra"
-            [ngModel]="dateFilter()"
-            (ngModelChange)="dateFilter.set($event)"
-          />
-          @if (dateFilter()) {
-            <button
-              type="button"
-              class="btn-clear btn-date-clear"
-              (click)="dateFilter.set('')"
-              title="Xem tất cả các ngày"
-              aria-label="Xóa bộ lọc ngày"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+
+          <!-- Date Text Display (clean date only, without prefix text) -->
+          <div class="date-display-text">
+            @if (dateFilter()) {
+              <span class="date-value">{{ formatDisplayDate(dateFilter()) }}</span>
+            } @else {
+              <span class="date-placeholder">Tất cả các ngày</span>
+            }
+          </div>
+
+          <!-- Actions -->
+          <div class="date-actions">
+            @if (dateFilter()) {
+              <button
+                type="button"
+                class="btn-clear-date btn-icon"
+                (click)="clearDateFilter($event)"
+                title="Xem tất cả các ngày (bỏ lọc ngày)"
+                aria-label="Xóa bộ lọc ngày"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            }
+
+            <div class="date-picker-icon-btn" title="Mở lịch chọn ngày" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-            </button>
-          }
+            </div>
+          </div>
+
+          <!-- Invisible Native Date Input Overlay -->
+          <input
+            #datePickerInput
+            type="date"
+            class="native-date-overlay"
+            [ngModel]="dateFilter()"
+            (ngModelChange)="onDateSelect($event)"
+            title="Nhấp để chọn ngày"
+            aria-label="Chọn ngày lọc ca học"
+          />
         </div>
       </div>
 
@@ -168,7 +195,7 @@
           [options]="branchFilterOptions()"
           [ngModel]="selectedBranchId()"
           (ngModelChange)="onBranchFilterChange($event)"
-          [disabled]="auth.isBranchManager()"
+          [disabled]="isBranchLocked()"
           placeholder="Chọn cơ sở yoga..."
         />
       </div>
@@ -219,9 +246,16 @@
             </div>
             <h3>Không tìm thấy ca học nào</h3>
             <p>Không có ca học nào phù hợp với bộ lọc hiện tại (ngày, cơ sở, HLV, trạng thái hoặc từ khóa).</p>
-            <button type="button" class="btn-clear-filters" (click)="resetFilters()">
-              Xóa Tất Cả Bộ Lọc
-            </button>
+            <div class="empty-filter-actions">
+              @if (dateFilter()) {
+                <button type="button" class="btn-clear-date" (click)="clearDateFilter()">
+                  Xem Tất Cả Các Ngày
+                </button>
+              }
+              <button type="button" class="btn-clear-filters" (click)="clearAllFilters()">
+                Xóa Bộ Lọc
+              </button>
+            </div>
           </div>
         } @else {
           <div class="empty-state">
@@ -235,7 +269,7 @@
             </div>
             <h3>Chưa có ca học nào được điều phối</h3>
             <p>Nhấp nút "Mở Ca Học Mới" ở góc phải để xếp lịch lớp cho học viên đăng ký.</p>
-            @if (!auth.isReceptionist()) {
+            @if (!auth.isReceptionist() && !auth.isInstructor()) {
               <button type="button" class="btn-secondary" (click)="openCreateScheduleModal()">
                 Mở Ca Học Mới
               </button>
@@ -327,7 +361,7 @@
                       <span>Học viên ({{ schedule.bookedCount }})</span>
                     </button>
 
-                    @if (schedule.status === 'SCHEDULED' && !auth.isReceptionist()) {
+                    @if (schedule.status === 'SCHEDULED' && !auth.isReceptionist() && !auth.isInstructor()) {
                       <button
                         type="button"
                         class="btn-row-action btn-action-danger"
@@ -362,7 +396,7 @@
               <span class="type-code-badge">{{ ct.code }}</span>
               <span class="intensity-tag">{{ getIntensityLabel(ct.intensityLevel) }}</span>
             </div>
-            @if (!auth.isReceptionist()) {
+            @if (!auth.isReceptionist() && !auth.isInstructor()) {
               <button
                 type="button"
                 class="btn-delete-type"

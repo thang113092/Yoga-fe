@@ -7,9 +7,10 @@ import { BranchItem, ClassSchedule, ClassTypeItem, CreateClassTypeReq, CreateSch
 export class ScheduleApi {
   private readonly api = inject(ApiClient);
 
-  getSchedules(branchId?: string, start?: string, end?: string): Observable<ClassSchedule[]> {
+  getSchedules(branchId?: string, start?: string, end?: string, instructorId?: string): Observable<ClassSchedule[]> {
     const params: Record<string, string | number | boolean> = {};
     if (branchId) params['branchId'] = branchId;
+    if (instructorId) params['instructorId'] = instructorId;
     if (start) params['start'] = start;
     if (end) params['end'] = end;
 

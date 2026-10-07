@@ -431,152 +431,802 @@
   }
 }
 
-/* PASSES GRID */
-.passes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--spacing-xl);
-}
-
-.digital-pass-card {
-  position: relative;
-  background: linear-gradient(145deg, #132a24 0%, #0d9488 100%);
-  color: #ffffff;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-lg);
+/* PASSES FLOW LAYOUT (ACTIVE PASSES ON TOP, PURCHASE HISTORY BELOW) */
+.passes-flow-layout {
   display: flex;
   flex-direction: column;
+  gap: 2.75rem;
+}
+
+.section-active-pass,
+.section-purchase-history {
+  width: 100%;
+}
+
+.content-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(20, 70, 52, 0.08);
+
+  .head-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .head-title {
+      font-family: var(--font-serif);
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #144634;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    .badge-status-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+
+      &.success {
+        background: #e6f4ea;
+        color: #137333;
+        border: 1px solid #b7e1cd;
+      }
+
+      &.neutral {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+      }
+    }
+  }
+
+  .head-subtitle {
+    font-size: 0.8125rem;
+    color: #536961;
+  }
+}
+
+/* NO ACTIVE PASS BANNER */
+.no-active-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  flex-wrap: wrap;
+
+  .banner-icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .banner-body {
+    flex: 1;
+    min-width: 260px;
+
+    .banner-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #334155;
+      margin: 0 0 3px;
+    }
+
+    .banner-desc {
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+
+  .btn-browse-plans {
+    padding: 9px 18px;
+    background: #0f766e;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #144634;
+      transform: translateY(-1px);
+    }
+  }
+}
+
+/* ACTIVE LANDSCAPE PASS (COMPACT & ELONGATED) */
+.active-landscape-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.active-landscape-pass {
+  position: relative;
+  background: linear-gradient(135deg, #195e45 0%, #167a5b 48%, #11684c 100%);
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 1.25rem 1.75rem;
+  box-shadow: 0 10px 28px -6px rgba(22, 122, 91, 0.32), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   overflow: hidden;
-  transition: all 0.3s var(--ease-spring);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 35px -10px rgba(13, 148, 136, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px -6px rgba(22, 122, 91, 0.42), 0 6px 16px -2px rgba(0, 0, 0, 0.12);
   }
 
   &.vip {
-    background: linear-gradient(145deg, #1f2937 0%, #0f766e 70%, #d97706 120%);
-    border: 1px solid rgba(217, 119, 6, 0.4);
+    background: linear-gradient(135deg, #1d644d 0%, #1c7e60 50%, #3e5a26 100%);
+    border-color: rgba(250, 204, 21, 0.45);
+
+    .card-ambient-glow {
+      background: radial-gradient(circle at 85% 15%, rgba(250, 204, 21, 0.2), transparent 60%);
+    }
   }
 
-  .pass-head {
+  .card-ambient-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: 
+      radial-gradient(circle at 82% 18%, rgba(110, 231, 183, 0.25), transparent 55%),
+      radial-gradient(circle at 18% 82%, rgba(52, 211, 153, 0.18), transparent 50%);
+  }
+
+  /* HEADER ROW */
+  .pass-landscape-header {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-lg);
+    gap: 12px;
+    margin-bottom: 0.875rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 
-    .brand-micro {
+    .brand-and-scope {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      .brand-label {
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .brand-sep {
+        color: rgba(255, 255, 255, 0.35);
+        font-size: 0.75rem;
+      }
+
+      .scope-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 2.5px 9px;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: #d1fae5;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        backdrop-filter: blur(6px);
+
+        svg {
+          flex-shrink: 0;
+          opacity: 0.95;
+        }
+
+        &.all-branches {
+          background: rgba(253, 224, 71, 0.18);
+          color: #fef08a;
+          border-color: rgba(253, 224, 71, 0.4);
+        }
+      }
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+
+      .live-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 9999px;
+        background: rgba(34, 197, 94, 0.2);
+        color: #86efac;
+        border: 1px solid rgba(134, 239, 172, 0.35);
+
+        .pulse-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #4ade80;
+          box-shadow: 0 0 6px #4ade80;
+          animation: pulseStatus 2s infinite ease-in-out;
+        }
+
+        &.frozen {
+          background: rgba(148, 163, 184, 0.15);
+          color: #cbd5e1;
+          border-color: rgba(203, 213, 225, 0.25);
+
+          .pulse-dot {
+            background: #cbd5e1;
+            box-shadow: none;
+            animation: none;
+          }
+        }
+      }
+    }
+  }
+
+  /* BODY ROW */
+  .pass-landscape-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+
+    .main-code-block {
+      flex: 1 1 280px;
+      min-width: 240px;
+
+      .code-header-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2px;
+      }
+
+      .code-sublabel {
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.7);
+        display: inline-block;
+      }
+
+      .registered-facility-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        color: #a7f3d0;
+        background: rgba(0, 0, 0, 0.22);
+        padding: 1px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(167, 243, 208, 0.28);
+
+        .facility-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #34d399;
+          box-shadow: 0 0 5px rgba(52, 211, 153, 0.6);
+        }
+      }
+
+      .landscape-code {
+        font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0 0 4px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .landscape-note {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+        line-height: 1.4;
+
+        strong {
+          color: #ffffff;
+          font-weight: 700;
+        }
+      }
+    }
+
+    .actions-and-stats-block {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+
+      .stats-compact-capsule {
+        display: inline-flex;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(8, 48, 35, 0.38);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        padding: 7px 14px;
+        border-radius: 12px;
+        backdrop-filter: blur(8px);
+
+        .compact-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+
+          .c-label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.65);
+          }
+
+          .c-val {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+
+            &.highlight {
+              color: #fef08a;
+            }
+          }
+        }
+
+        .c-divider {
+          width: 1px;
+          height: 22px;
+          background: rgba(255, 255, 255, 0.18);
+        }
+      }
+
+      .btn-landscape-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 16px;
+        background: #ffffff;
+        color: #125e44;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+
+        svg {
+          flex-shrink: 0;
+        }
+
+        &:hover {
+          background: #f0fdf4;
+          color: #0d4a35;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 1rem 1.25rem;
+
+    .pass-landscape-body {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+
+      .actions-and-stats-block {
+        justify-content: space-between;
+        width: 100%;
+
+        .stats-compact-capsule {
+          flex: 1;
+        }
+
+        .btn-landscape-info {
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 520px) {
+    .pass-landscape-body {
+      .actions-and-stats-block {
+        flex-direction: column;
+        align-items: stretch;
+
+        .btn-landscape-info {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulseStatus {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.6;
+  }
+}
+
+/* PURCHASE HISTORY STREAM & CARDS */
+.orders-history-stream,
+.passes-history-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.past-passes-subblock {
+  margin-top: 1.5rem;
+
+  .subblock-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #536961;
+    margin: 0 0 0.75rem;
+  }
+}
+
+.order-history-card {
+  background: #ffffff;
+  border: 1px solid rgba(20, 70, 52, 0.1);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 12px -2px rgba(20, 70, 52, 0.04);
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 18px -2px rgba(20, 70, 52, 0.08);
+    border-color: rgba(15, 118, 110, 0.25);
+  }
+
+  .order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed rgba(20, 70, 52, 0.1);
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .order-id-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .order-code {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: #144634;
+      }
+
+      .order-status-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        background: #f1f5f9;
+        color: #475569;
+
+        &.paid {
+          background: #dcfce7;
+          color: #15803d;
+        }
+      }
+    }
+
+    .order-date-branch {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 0.8125rem;
-      letter-spacing: 0.08em;
-      opacity: 0.9;
-    }
+      color: #536961;
 
-    .status-badge {
-      font-size: 0.6875rem;
-      font-weight: 800;
-      padding: 3px 8px;
-      border-radius: var(--radius-full);
-      background: rgba(255, 255, 255, 0.2);
-
-      &.active {
-        background: #22c55e;
-        color: #fff;
+      .sep {
+        color: #cbd5e1;
       }
     }
   }
 
-  .pass-body {
-    flex: 1;
+  .order-card-body {
+    .order-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      gap: 1rem;
+      flex-wrap: wrap;
 
-    .pass-meta-top {
-      margin-bottom: var(--spacing-lg);
+      .item-main-info {
+        flex: 1;
+        min-width: 240px;
 
-      .scope-tag {
-        font-size: 0.75rem;
-        color: #5eead4;
-        font-weight: 700;
-        display: block;
-        margin-bottom: 4px;
-      }
-
-      .pass-code {
-        font-family: monospace;
-        font-size: 1.5rem;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: 0.05em;
-      }
-    }
-
-    .pass-stats-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--spacing-md);
-      background: rgba(255, 255, 255, 0.1);
-      padding: var(--spacing-md);
-      border-radius: var(--radius-md);
-      margin-bottom: var(--spacing-md);
-
-      .stat-box {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        .stat-label {
-          font-size: 0.6875rem;
-          opacity: 0.8;
-          text-transform: uppercase;
+        .item-name {
+          font-family: var(--font-serif);
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #144634;
+          margin: 0 0 4px;
         }
 
-        .stat-val {
-          font-size: 1.125rem;
-          font-weight: 700;
+        .item-sub-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.8125rem;
+          color: #536961;
+          flex-wrap: wrap;
 
-          &.highlight {
-            color: #fef08a;
+          .linked-card-code {
+            strong {
+              font-family: monospace;
+              color: #0f766e;
+            }
+          }
+
+          .item-status-pill {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 4px;
+
+            &.active { background: #dcfce7; color: #15803d; }
+            &.replaced { background: #f1f5f9; color: #64748b; }
+            &.expired { background: #fee2e2; color: #991b1b; }
+            &.frozen { background: #e0f2fe; color: #0369a1; }
+          }
+        }
+      }
+
+      .item-price-action {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+
+        .price-box {
+          .price-val {
+            font-family: var(--font-serif);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f766e;
+          }
+        }
+
+        .btn-view-card-detail {
+          padding: 6px 14px;
+          background: #f0fdfa;
+          color: #0f766e;
+          border: 1px solid #ccfbf1;
+          border-radius: 8px;
+          font-size: 0.8125rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            background: #0f766e;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2);
           }
         }
       }
     }
 
-    .pass-note {
-      font-size: 0.75rem;
-      opacity: 0.85;
-      margin: 0 0 var(--spacing-md);
-    }
-  }
-
-  .pass-footer {
-    padding-top: var(--spacing-md);
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-
-    .btn-show-qr {
-      width: 100%;
-      height: 42px;
-      background: rgba(255, 255, 255, 0.95);
-      color: #0f766e;
-      border: none;
-      border-radius: var(--radius-md);
-      font-size: 0.875rem;
-      font-weight: 700;
-      cursor: pointer;
+    .order-payments-summary {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(20, 70, 52, 0.06);
+      font-size: 0.8125rem;
+      flex-wrap: wrap;
       gap: 8px;
-      transition: all 0.2s ease;
 
-      &:hover {
-        background: #ffffff;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      .payment-method-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #536961;
+        font-weight: 500;
+      }
+
+      .order-total-label {
+        color: #334155;
+        strong {
+          color: #0f766e;
+          font-size: 0.9375rem;
+          font-weight: 700;
+        }
       }
     }
   }
+}
+
+/* HISTORICAL PASS CARD */
+.history-pass-card {
+  background: #ffffff;
+  border: 1px solid rgba(20, 70, 52, 0.1);
+  border-radius: 14px;
+  padding: 1.125rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 10px -2px rgba(20, 70, 52, 0.04);
+  transition: all 0.2s ease;
+  flex-wrap: wrap;
+
+  &:hover {
+    border-color: rgba(15, 118, 110, 0.3);
+    box-shadow: 0 4px 16px -2px rgba(20, 70, 52, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &.is-replaced {
+    border-left: 4px solid #94a3b8;
+    background: #fafbfb;
+  }
+
+  &.is-expired {
+    border-left: 4px solid #cbd5e1;
+    opacity: 0.88;
+  }
+
+  &.is-cancelled {
+    border-left: 4px solid #fca5a5;
+    opacity: 0.75;
+  }
+
+  .history-left {
+    flex: 1;
+    min-width: 260px;
+
+    .history-code-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+
+      .history-card-code {
+        font-family: monospace;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #144634;
+      }
+
+      .status-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 9999px;
+
+        &.active { background: #dcfce7; color: #15803d; }
+        &.replaced { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        &.expired { background: #fee2e2; color: #991b1b; }
+        &.cancelled { background: #fee2e2; color: #b91c1c; }
+        &.frozen { background: #e0f2fe; color: #0369a1; }
+      }
+
+      .scope-tag-sm {
+        font-size: 0.75rem;
+        color: #0f766e;
+        font-weight: 600;
+        background: #f0fdfa;
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+    }
+
+    .history-stats-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8125rem;
+      color: #536961;
+      flex-wrap: wrap;
+
+      .sep {
+        color: #cbd5e1;
+      }
+
+      .stat-chip {
+        strong {
+          color: #1e293b;
+        }
+      }
+
+      .price-chip {
+        color: #0f766e;
+        font-weight: 700;
+      }
+    }
+  }
+
+  .history-right {
+    .btn-history-qr {
+      padding: 7px 14px;
+      background: #f0fdfa;
+      color: #0f766e;
+      border: 1px solid #ccfbf1;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #0f766e;
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+.history-empty-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 1.25rem 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 0.875rem;
 }
 
 /* BOOKINGS STREAM & WAITLIST STREAM */
@@ -1156,3 +1806,26 @@
     margin: 0;
   }
 }
+
+/* ==========================================================================
+   WORKOUT HISTORY (LỊCH SỬ TẬP LUYỆN) - ZEN LUXURY & WELLNESS STANDARDS
+   ========================================================================== */
+
+.workout-badge-link {
+  color: #0f766e !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  strong {
+    color: #144634;
+    font-weight: 700;
+  }
+
+  &:hover {
+    color: #144634 !important;
+    text-decoration: underline;
+  }
+}
+
+
+

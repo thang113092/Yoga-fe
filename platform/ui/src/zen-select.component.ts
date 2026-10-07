@@ -403,10 +403,17 @@ export class ZenSelectComponent implements ControlValueAccessor {
   protected readonly selectedOption = computed(() => {
     const current = this.internalValue();
     const opts = this.normalizedOptions();
-    if (current === null || current === undefined || current === '') {
+    if (current === null || current === undefined) {
       return null;
     }
-    return opts.find(o => o.value === current) || null;
+    const matched = opts.find(o => o.value === current);
+    if (matched) {
+      return matched;
+    }
+    if (current === '') {
+      return null;
+    }
+    return null;
   });
 
   private onChange: (val: any) => void = () => {};

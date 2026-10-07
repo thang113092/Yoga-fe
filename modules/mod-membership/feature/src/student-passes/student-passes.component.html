@@ -29,6 +29,12 @@
           <span class="meta-item">{{ auth.profile()?.phone || 'Chưa cập nhật SĐT' }}</span>
           <span class="meta-sep">·</span>
           <span class="meta-item">{{ auth.profile()?.email || 'Chưa cập nhật email' }}</span>
+          @if (workoutHistory().length > 0) {
+            <span class="meta-sep">·</span>
+            <a routerLink="/membership/history" class="meta-item workout-badge-link" title="Xem chi tiết lịch sử rèn luyện tại trang Lịch Sử Tập">
+              <strong>{{ workoutHistory().length }}</strong> buổi đã rèn luyện →
+            </a>
+          }
         </p>
       </div>
     </div>
@@ -110,7 +116,7 @@
       class="tab-link"
       [class.active]="activeTab() === 'passes'"
       [attr.aria-selected]="activeTab() === 'passes'"
-      (click)="activeTab.set('passes')"
+      (click)="setTab('passes')"
     >
       <span>Thẻ tập</span>
       <span class="count-pill">{{ passes().length }}</span>
@@ -122,7 +128,7 @@
       class="tab-link"
       [class.active]="activeTab() === 'bookings'"
       [attr.aria-selected]="activeTab() === 'bookings'"
-      (click)="activeTab.set('bookings')"
+      (click)="setTab('bookings')"
     >
       <span>Lịch đã đặt</span>
       <span class="count-pill">{{ bookings().length }}</span>
@@ -134,7 +140,7 @@
       class="tab-link"
       [class.active]="activeTab() === 'waitlist'"
       [attr.aria-selected]="activeTab() === 'waitlist'"
-      (click)="activeTab.set('waitlist')"
+      (click)="setTab('waitlist')"
     >
       <span>Hàng chờ</span>
       <span class="count-pill" [class.alert-pill]="activeWaitlistCount() > 0">{{ activeWaitlistCount() }}</span>
@@ -147,132 +153,368 @@
     </div>
   }
 
-  <!-- TAB 1: PASSES -->
+  <!-- TAB 1: PASSES & PURCHASE HISTORY -->
   @if (activeTab() === 'passes') {
-    <div class="passes-grid">
-      @for (pass of passes(); track pass.id) {
-        <div class="digital-pass-card" [class.vip]="pass.isAllBranches">
-          <div class="pass-head">
-            <div class="brand-micro">
-              <span>AN YÊN DIGITAL PASS</span>
-            </div>
-            <span class="status-badge" [class.active]="pass.status === 'ACTIVE'">
-              {{ pass.status === 'ACTIVE' ? 'Đang hoạt động' : pass.status }}
-            </span>
+    @if (passes().length === 0 && orders().length === 0) {
+      @if (!isLoading() && !errorMessage()) {
+        <div class="empty-state">
+          <div class="empty-icon-circle">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="3"/>
+              <line x1="2" y1="10" x2="22" y2="10"/>
+              <circle cx="6" cy="15" r="1.5"/>
+            </svg>
+          </div>
+          <h3 class="empty-title">Chưa có thẻ tập hoạt động</h3>
+          <p class="empty-desc">
+            Tài khoản hiện chưa được kích hoạt thẻ tập. Hãy khám phá các gói thẻ All-Access hoặc liên hệ tiếp tân tại cơ sở để bắt đầu hành trình An Yên.
+          </p>
+
+          <div class="empty-actions">
+            <a routerLink="/schedule/calendar" class="btn-primary-action">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span>Xem lịch lớp học</span>
+            </a>
+            <a routerLink="/" class="btn-secondary-action">
+              <span>Bảng giá gói thẻ</span>
+            </a>
+            <a routerLink="/branches" class="btn-outline-action">
+              <span>Hệ thống chi nhánh</span>
+            </a>
           </div>
 
-          <div class="pass-body">
-            <div class="pass-meta-top">
-              <span class="scope-tag">
-                {{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}
-              </span>
-              <h3 class="pass-code">{{ pass.membershipCode }}</h3>
-            </div>
-
-            <div class="pass-stats-row">
-              <div class="stat-box">
-                <span class="stat-label">Buổi khả dụng</span>
-                <span class="stat-val highlight">
-                  {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}
-                </span>
+          <div class="empty-perks">
+            <div class="perk-item">
+              <div class="perk-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 14 14"/>
+                </svg>
               </div>
-              <div class="stat-box">
-                <span class="stat-label">Hạn sử dụng</span>
-                <span class="stat-val">
-                  {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
-                </span>
+              <div class="perk-text">
+                <strong>Khung giờ linh hoạt</strong>
+                <span>Hơn 50+ ca học mỗi tuần từ sáng sớm đến tối</span>
               </div>
             </div>
 
-            <p class="pass-note">
-              {{ pass.isAllBranches ? 'Tập luyện tại tất cả chi nhánh trong hệ thống An Yên.' : 'Áp dụng tại chi nhánh đã đăng ký.' }}
-            </p>
-          </div>
+            <div class="perk-item">
+              <div class="perk-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <div class="perk-text">
+                <strong>Giáo viên chuẩn quốc tế</strong>
+                <span>Đội ngũ chứng chỉ Yoga Alliance tâm huyết</span>
+              </div>
+            </div>
 
-          <div class="pass-footer">
-            <button type="button" class="btn-show-qr" (click)="openPassQrModal(pass)">
-              <span>Thông tin thẻ</span>
-            </button>
+            <div class="perk-item">
+              <div class="perk-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+              </div>
+              <div class="perk-text">
+                <strong>Điểm danh 1 chạm</strong>
+                <span>Quét QR nhanh chóng tại quầy đón tiếp cơ sở</span>
+              </div>
+            </div>
           </div>
         </div>
-      } @empty {
-        @if (!isLoading() && !errorMessage()) {
-          <div class="empty-state">
-            <div class="empty-icon-circle">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="3"/>
-                <line x1="2" y1="10" x2="22" y2="10"/>
-                <circle cx="6" cy="15" r="1.5"/>
-              </svg>
-            </div>
-            <h3 class="empty-title">Chưa có thẻ tập hoạt động</h3>
-            <p class="empty-desc">
-              Tài khoản hiện chưa được kích hoạt thẻ tập. Hãy khám phá các gói thẻ All-Access hoặc liên hệ tiếp tân tại cơ sở để bắt đầu hành trình An Yên.
-            </p>
-
-            <div class="empty-actions">
-              <a routerLink="/schedule/calendar" class="btn-primary-action">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <span>Xem lịch lớp học</span>
-              </a>
-              <a routerLink="/" class="btn-secondary-action">
-                <span>Bảng giá gói thẻ</span>
-              </a>
-              <a routerLink="/branches" class="btn-outline-action">
-                <span>Hệ thống chi nhánh</span>
-              </a>
-            </div>
-
-            <div class="empty-perks">
-              <div class="perk-item">
-                <div class="perk-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 14 14"/>
-                  </svg>
-                </div>
-                <div class="perk-text">
-                  <strong>Khung giờ linh hoạt</strong>
-                  <span>Hơn 50+ ca học mỗi tuần từ sáng sớm đến tối</span>
-                </div>
-              </div>
-
-              <div class="perk-item">
-                <div class="perk-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                </div>
-                <div class="perk-text">
-                  <strong>Giáo viên chuẩn quốc tế</strong>
-                  <span>Đội ngũ chứng chỉ Yoga Alliance tâm huyết</span>
-                </div>
-              </div>
-
-              <div class="perk-item">
-                <div class="perk-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                  </svg>
-                </div>
-                <div class="perk-text">
-                  <strong>Điểm danh 1 chạm</strong>
-                  <span>Quét QR nhanh chóng tại quầy đón tiếp cơ sở</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
       }
-    </div>
+    } @else {
+      <div class="passes-flow-layout">
+
+        <!-- 1. THẺ ĐANG HOẠT ĐỘNG (LÊN ĐẦU) -->
+        <section class="section-active-pass" aria-label="Thẻ đang hoạt động">
+          <div class="content-section-head">
+            <div class="head-title-wrap">
+              <h2 class="head-title">Thẻ đang hoạt động</h2>
+              @if (activePasses().length > 0) {
+                <span class="badge-status-pill success">{{ activePasses().length }} thẻ có hiệu lực</span>
+              }
+            </div>
+            <span class="head-subtitle">Thẻ hội viên dùng để đặt lịch tập và xuất trình mã QR điểm danh</span>
+          </div>
+
+          @if (activePasses().length > 0) {
+            <div class="active-landscape-container">
+              @for (pass of activePasses(); track pass.id) {
+                <div class="active-landscape-pass" [class.vip]="pass.isAllBranches">
+                  <div class="card-ambient-glow" aria-hidden="true"></div>
+
+                  <!-- HEADER ROW -->
+                  <div class="pass-landscape-header">
+                    <div class="brand-and-scope">
+                      <span class="brand-label">AN YÊN DIGITAL PASS</span>
+                      <span class="brand-sep">·</span>
+                      <span class="scope-pill" [class.all-branches]="pass.isAllBranches" title="Cơ sở áp dụng">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                          <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        <span>{{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : getBranchName(pass.registeredBranchId, pass) }}</span>
+                      </span>
+                    </div>
+
+                    <div class="status-indicator">
+                      <span class="live-status-badge" [class.frozen]="pass.status === 'FROZEN'">
+                        <span class="pulse-dot"></span>
+                        <span>{{ membershipStatusLabel(pass.status) }}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- HORIZONTAL CONTENT ROW -->
+                  <div class="pass-landscape-body">
+                    <div class="main-code-block">
+                      <div class="code-header-meta">
+                        <span class="code-sublabel">Mã thẻ hội viên</span>
+                        @if (!pass.isAllBranches) {
+                          <span class="registered-facility-badge">
+                            <span class="facility-dot"></span>
+                            <span>{{ getBranchName(pass.registeredBranchId, pass) }}</span>
+                          </span>
+                        }
+                      </div>
+                      <h3 class="landscape-code" title="{{ pass.membershipCode }}">{{ pass.membershipCode }}</h3>
+                      <p class="landscape-note">
+                        @if (pass.isAllBranches) {
+                          Tập luyện tại tất cả chi nhánh trong hệ thống An Yên Yoga.
+                        } @else {
+                          Cơ sở đăng ký: <strong>{{ getBranchName(pass.registeredBranchId, pass) }}</strong>
+                        }
+                      </p>
+                    </div>
+
+                    <div class="actions-and-stats-block">
+                      <div class="stats-compact-capsule">
+                        <div class="compact-stat">
+                          <span class="c-label">Buổi khả dụng</span>
+                          <strong class="c-val highlight">
+                            {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}
+                          </strong>
+                        </div>
+
+                        <div class="c-divider" aria-hidden="true"></div>
+
+                        <div class="compact-stat">
+                          <span class="c-label">Hạn sử dụng</span>
+                          <strong class="c-val">
+                            {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
+                          </strong>
+                        </div>
+                      </div>
+
+                      <button type="button" class="btn-landscape-info" (click)="openPassQrModal(pass)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="3" width="7" height="7"/>
+                          <rect x="14" y="3" width="7" height="7"/>
+                          <rect x="14" y="14" width="7" height="7"/>
+                          <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <span>Thông tin thẻ</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else if (!isLoading()) {
+            <div class="no-active-banner">
+              <div class="banner-icon-circle">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="3"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+              </div>
+              <div class="banner-body">
+                <h4 class="banner-title">Hiện chưa có thẻ đang hoạt động</h4>
+                <p class="banner-desc">Các thẻ tập trước đây đã hết hạn hoặc đã thay thế. Quý hội viên vui lòng chọn gói thẻ mới để tiếp tục hành trình An Yên.</p>
+              </div>
+              <a routerLink="/" class="btn-browse-plans">Khám phá gói thẻ</a>
+            </div>
+          }
+        </section>
+
+        <!-- 2. LỊCH SỬ MUA THẺ (BÊN DƯỚI) -->
+        <section class="section-purchase-history" aria-label="Lịch sử mua thẻ">
+          <div class="content-section-head">
+            <div class="head-title-wrap">
+              <h2 class="head-title">Lịch sử mua thẻ</h2>
+              <span class="badge-status-pill neutral">
+                {{ orders().length > 0 ? (orders().length + ' giao dịch') : (pastPasses().length + ' thẻ đã dùng') }}
+              </span>
+            </div>
+            <span class="head-subtitle">Toàn bộ lịch sử các giao dịch mua thẻ, nâng cấp đổi gói và thẻ đã lưu trữ</span>
+          </div>
+
+          <!-- A. DANH SÁCH ĐƠN HÀNG MUA THẺ TỪ POS (NẾU CÓ) -->
+          @if (orders().length > 0) {
+            <div class="orders-history-stream">
+              @for (order of orders(); track order.orderId) {
+                <div class="order-history-card">
+                  <div class="order-card-header">
+                    <div class="order-id-group">
+                      <span class="order-code">#{{ order.orderCode }}</span>
+                      <span class="order-status-badge" [class.paid]="order.status === 'PAID'">
+                        {{ orderStatusLabel(order.status) }}
+                      </span>
+                    </div>
+                    <div class="order-date-branch">
+                      <span class="order-date">{{ order.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
+                      <span class="sep">·</span>
+                      <span class="order-branch">{{ order.branchName || 'Cơ sở hệ thống' }}</span>
+                    </div>
+                  </div>
+
+                  <div class="order-card-body">
+                    @for (item of order.items; track (item.itemId || $index)) {
+                      <div class="order-item-row">
+                        <div class="item-main-info">
+                          <h4 class="item-name">{{ item.itemName || 'Gói thẻ An Yên' }}</h4>
+                          <div class="item-sub-meta">
+                            @if (item.membershipCode) {
+                              <span class="linked-card-code">Mã thẻ: <strong>{{ item.membershipCode }}</strong></span>
+                            }
+                            @if (item.membershipStatus) {
+                              <span class="item-status-pill" [ngClass]="item.membershipStatus.toLowerCase()">
+                                {{ membershipStatusLabel(item.membershipStatus) }}
+                              </span>
+                            }
+                            @if (item.startDate) {
+                              <span class="item-dates">
+                                {{ item.startDate | date:'dd/MM/yyyy' }}
+                                {{ item.endDate ? (' – ' + (item.endDate | date:'dd/MM/yyyy')) : '' }}
+                              </span>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="item-price-action">
+                          <div class="price-box">
+                            <span class="price-val">{{ (item.lineTotal || item.unitPrice || order.totalAmount) | number:'1.0-0' }} đ</span>
+                          </div>
+                          @if (item.membershipCode) {
+                            <button
+                              type="button"
+                              class="btn-view-card-detail"
+                              (click)="openPassByCode(item.membershipCode)"
+                              title="Xem chi tiết thẻ tập"
+                            >
+                              <span>Thông tin thẻ</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- PAYMENTS SUMMARY -->
+                    @if (order.payments && order.payments.length > 0) {
+                      <div class="order-payments-summary">
+                        <span class="payment-method-tag">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                            <line x1="1" y1="10" x2="23" y2="10"/>
+                          </svg>
+                          <span>{{ paymentMethodLabel(order.payments[0].paymentMethod) }}</span>
+                        </span>
+                        <span class="order-total-label">
+                          Tổng thanh toán: <strong>{{ order.totalAmount | number:'1.0-0' }} đ</strong>
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- B. DANH SÁCH CÁC THẺ TRONG LỊCH SỬ / ĐÃ THAY THẾ (PAST PASSES) -->
+          @if (pastPasses().length > 0) {
+            <div class="past-passes-subblock">
+              @if (orders().length > 0) {
+                <h3 class="subblock-title">Thẻ đã từng sử dụng & đổi gói</h3>
+              }
+              <div class="passes-history-stream">
+                @for (pass of pastPasses(); track pass.id) {
+                  <div
+                    class="history-pass-card"
+                    [class.is-replaced]="pass.status === 'REPLACED'"
+                    [class.is-expired]="pass.status === 'EXPIRED'"
+                    [class.is-cancelled]="pass.status === 'CANCELLED'"
+                  >
+                    <div class="history-left">
+                      <div class="history-code-row">
+                        <span class="history-card-code">{{ pass.membershipCode }}</span>
+                        <span
+                          class="status-badge"
+                          [class.replaced]="pass.status === 'REPLACED'"
+                          [class.expired]="pass.status === 'EXPIRED'"
+                          [class.cancelled]="pass.status === 'CANCELLED'"
+                          [class.frozen]="pass.status === 'FROZEN'"
+                        >
+                          {{ membershipStatusLabel(pass.status) }}
+                        </span>
+                        <span class="scope-tag-sm">
+                          {{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}
+                        </span>
+                      </div>
+
+                      <div class="history-stats-line">
+                        <span class="stat-chip">
+                          <strong>{{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi khả dụng') : 'Không giới hạn buổi' }}</strong>
+                        </span>
+                        <span class="sep">·</span>
+                        <span class="stat-chip">
+                          Thời hạn: {{ pass.startDate ? (pass.startDate | date:'dd/MM/yyyy') : '---' }}
+                          –
+                          {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
+                        </span>
+                        @if (pass.purchasedPrice) {
+                          <span class="sep">·</span>
+                          <span class="stat-chip price-chip">
+                            {{ pass.purchasedPrice | number:'1.0-0' }} đ
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="history-right">
+                      <button type="button" class="btn-history-qr" (click)="openPassQrModal(pass)">
+                        <span>Thông tin thẻ</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- C. TRƯỜNG HỢP CHỈ CÓ THẺ ACTIVE VÀ CHƯA CÓ LỊCH SỬ THẺ CŨ / ĐƠN HÀNG -->
+          @if (orders().length === 0 && pastPasses().length === 0 && activePasses().length > 0) {
+            <div class="history-empty-note">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>Bạn đang sử dụng thẻ tập đầu tiên. Chưa có lịch sử đổi thẻ hoặc thẻ hết hạn trước đó.</span>
+            </div>
+          }
+        </section>
+
+      </div>
+    }
   }
 
   <!-- TAB 2: BOOKINGS -->
@@ -460,11 +702,11 @@
         <button type="button" class="btn-close" aria-label="Đóng" (click)="closeQrModal()">✕</button>
         <div class="qr-head">
           <h3>{{ pass.membershipCode }}</h3>
-          <p class="subtitle">{{ pass.isAllBranches ? 'Toàn chuỗi đa chi nhánh' : 'Cơ sở đăng ký' }}</p>
+          <p class="subtitle">{{ pass.isAllBranches ? 'Toàn chuỗi đa chi nhánh' : ('Cơ sở: ' + getBranchName(pass.registeredBranchId, pass)) }}</p>
         </div>
 
         <div class="class-callout">
-          <strong>Trạng thái: {{ pass.status === 'ACTIVE' ? 'Đang hoạt động' : pass.status }}</strong>
+          <strong>Trạng thái: {{ membershipStatusLabel(pass.status) }}</strong>
           <span>Số buổi khả dụng: {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}</span>
         </div>
 

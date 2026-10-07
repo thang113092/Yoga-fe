@@ -1,0 +1,440 @@
+<div class="workout-history-page">
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn-close" (click)="loadHistory()" aria-label="Thử lại">Thử lại</button>
+    </div>
+  }
+
+  <!-- PAGE HEADER (ZEN WELLNESS AESTHETIC) -->
+  <header class="history-page-header">
+    <div class="header-content">
+      <div class="header-icon-badge">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="header-titles">
+        <div class="header-eyebrow">NHẬT KÝ RÈN LUYỆN</div>
+        <h1 class="page-title">Lịch Sử Tập Luyện</h1>
+        <p class="page-subtitle">
+          <span>{{ auth.userFullName() || 'Hội viên An Yên' }}</span>
+          <span class="meta-sep">·</span>
+          <span>Ghi dấu từng bước tiến vững vàng và năng lượng bình an trên thảm tập</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn-refresh"
+        (click)="loadHistory()"
+        [disabled]="isLoading()"
+        title="Đồng bộ dữ liệu tập luyện mới nhất"
+      >
+        <svg class="refresh-icon" [class.spinning]="isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        <span>{{ isLoading() ? 'Đang đồng bộ...' : 'Làm mới' }}</span>
+      </button>
+
+      <a routerLink="/schedule/calendar" class="btn-action-book">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Đặt ca tập mới</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- 1. STATS BENTO (TỔNG QUAN HÀNH TRÌNH TẬP LUYỆN) -->
+  <section class="history-stats-bento" aria-label="Thống kê tập luyện">
+    <div class="bento-stat-card primary-card">
+      <div class="stat-top">
+        <span class="stat-badge-zen">Tích lũy</span>
+        <div class="stat-icon-wrapper">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-main">
+        <h3 class="stat-number">{{ workoutHistory().length }}</h3>
+        <span class="stat-unit">buổi đã rèn luyện</span>
+      </div>
+      <p class="stat-footnote">Ghi dấu từng bước tiến vững vàng trên thảm tập</p>
+    </div>
+
+    <div class="bento-stat-card">
+      <div class="stat-top">
+        <span class="stat-badge-zen">Thời gian</span>
+        <div class="stat-icon-wrapper">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-main">
+        <h3 class="stat-number">{{ totalHoursPracticed() }}</h3>
+        <span class="stat-unit">thời gian an trú</span>
+      </div>
+      <p class="stat-footnote">Tổng {{ totalMinutesPracticed() }} phút lắng đọng và kết nối</p>
+    </div>
+
+    <div class="bento-stat-card">
+      <div class="stat-top">
+        <span class="stat-badge-zen">Tháng này</span>
+        <div class="stat-icon-wrapper">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-main">
+        <h3 class="stat-number">{{ thisMonthWorkoutsCount() }}</h3>
+        <span class="stat-unit">buổi trong tháng</span>
+      </div>
+      <p class="stat-footnote">Duy trì nhịp thở và năng lượng tích cực</p>
+    </div>
+
+    <div class="bento-stat-card">
+      <div class="stat-top">
+        <span class="stat-badge-zen">Yêu thích</span>
+        <div class="stat-icon-wrapper">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-main">
+        <h3 class="stat-number favorite-title">{{ favoriteClass()?.name || 'Đang khám phá' }}</h3>
+        @if (favoriteClass(); as fav) {
+          <span class="stat-unit">{{ fav.count }} buổi đã tham gia</span>
+        } @else {
+          <span class="stat-unit">Chưa đủ dữ liệu</span>
+        }
+      </div>
+      <p class="stat-footnote">Lớp học bạn gắn bó và yêu thích nhất</p>
+    </div>
+  </section>
+
+  <!-- 2. CONTROLS TOOLBAR (SEARCH, FILTER CƠ SỞ, FILTER KỲ TẬP) -->
+  <section class="history-controls-bar" aria-label="Bộ lọc lịch sử tập">
+    <div class="search-box">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Tìm theo tên lớp, giáo viên, phòng tập, mã vé..."
+        [ngModel]="historySearchQuery()"
+        (ngModelChange)="historySearchQuery.set($event)"
+      />
+      @if (historySearchQuery()) {
+        <button type="button" class="btn-clear-search" (click)="historySearchQuery.set('')" title="Xóa tìm kiếm">✕</button>
+      }
+    </div>
+
+    <div class="filters-cluster">
+      @if (availableHistoryBranches().length > 1) {
+        <div class="branch-filter-select-wrap">
+          <select
+            class="history-branch-select"
+            [ngModel]="historyBranchFilter()"
+            (ngModelChange)="historyBranchFilter.set($event)"
+          >
+            <option value="ALL">Tất cả chi nhánh</option>
+            @for (br of availableHistoryBranches(); track br) {
+              <option [value]="br">{{ br }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="period-pills" role="radiogroup" aria-label="Lọc theo khoảng thời gian">
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="historyPeriodFilter() === 'ALL'"
+          (click)="setHistoryPeriod('ALL')"
+        >
+          Tất cả
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="historyPeriodFilter() === 'MONTH'"
+          (click)="setHistoryPeriod('MONTH')"
+        >
+          Tháng này
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="historyPeriodFilter() === '3MONTHS'"
+          (click)="setHistoryPeriod('3MONTHS')"
+        >
+          3 tháng
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="historyPeriodFilter() === 'YEAR'"
+          (click)="setHistoryPeriod('YEAR')"
+        >
+          Năm nay
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOADING STATE -->
+  @if (isLoading()) {
+    <div class="loading-state" role="status">
+      <div class="loading-spinner"></div>
+      <span>Đang đồng bộ nhật ký rèn luyện...</span>
+    </div>
+  }
+
+  <!-- 3. WORKOUT SESSIONS STREAM / LIST -->
+  @if (filteredWorkoutHistory().length > 0) {
+    <div class="workout-stream">
+      <div class="stream-summary-bar">
+        <span>Hiển thị <strong>{{ filteredWorkoutHistory().length }}</strong> buổi tập đã hoàn thành</span>
+        @if (historySearchQuery() || historyPeriodFilter() !== 'ALL' || historyBranchFilter() !== 'ALL') {
+          <button
+            type="button"
+            class="btn-reset-filters"
+            (click)="historySearchQuery.set(''); historyPeriodFilter.set('ALL'); historyBranchFilter.set('ALL')"
+          >
+            Xóa bộ lọc
+          </button>
+        }
+      </div>
+
+      <div class="workout-grid">
+        @for (workout of filteredWorkoutHistory(); track workout.bookingId) {
+          <article class="workout-card">
+            <!-- CARD TOP -->
+            <div class="card-head">
+              <div class="head-left">
+                <span class="eyebrow-category">{{ intensityLabel(workout.intensityLevel) | uppercase }}</span>
+                <h2 class="workout-class-title">{{ workout.className }}</h2>
+              </div>
+              <div class="head-right">
+                <span class="completion-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>{{ attendanceStatusLabel(workout.attendanceStatus) }}</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- CARD BODY -->
+            <div class="card-body">
+              <div class="session-time-row">
+                <div class="time-main">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <strong>{{ workout.startTime | date:'EEEE, dd/MM/yyyy':'':'vi' }}</strong>
+                  <span class="clock-span">({{ workout.startTime | date:'HH:mm' }} – {{ workout.endTime | date:'HH:mm' }})</span>
+                </div>
+                <span class="duration-chip">{{ workout.durationMinutes || 60 }} phút</span>
+              </div>
+
+              <div class="session-location-row">
+                <div class="loc-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <span>{{ workout.branchName }}</span>
+                  <span class="dot">·</span>
+                  <span>{{ workout.roomName }}</span>
+                </div>
+
+                <div class="mat-item">
+                  <span class="mat-label">Vị trí:</span>
+                  <strong class="mat-badge-sm">Thảm {{ workout.matNumber ?? 'Tự do' }}</strong>
+                </div>
+              </div>
+
+              <div class="instructor-row">
+                <div class="teacher-avatar">
+                  <span>{{ workout.instructorName ? workout.instructorName.charAt(0).toUpperCase() : 'H' }}</span>
+                </div>
+                <div class="teacher-meta">
+                  <span class="teacher-label">Huấn luyện viên</span>
+                  <strong class="teacher-name">{{ workout.instructorName }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD FOOTER -->
+            <div class="card-footer">
+              <div class="footer-checkin-meta">
+                <div class="checkin-stamp">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span>{{ checkInMethodLabel(workout.checkInMethod) }}: {{ workout.checkedInAt | date:'HH:mm, dd/MM/yyyy' }}</span>
+                </div>
+                <div class="codes-line">
+                  @if (workout.membershipCode) {
+                    <span class="pass-code-pill">Thẻ: {{ workout.membershipCode }}</span>
+                  }
+                  <span class="booking-code-pill">#{{ workout.bookingCode }}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn-detail-zen"
+                (click)="openWorkoutDetailModal(workout)"
+                title="Xem chi tiết và lời khuyên phục hồi"
+              >
+                <span>Chi tiết ca</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  } @else if (!isLoading()) {
+    <!-- EMPTY STATE (ZEN ELEGANCE) -->
+    <div class="empty-state workout-empty-card">
+      <div class="empty-icon-circle">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <h3 class="empty-title">
+        {{ historySearchQuery() || historyPeriodFilter() !== 'ALL' || historyBranchFilter() !== 'ALL' ? 'Không tìm thấy buổi tập phù hợp' : 'Hành trình rèn luyện đang đón chờ bạn' }}
+      </h3>
+      <p class="empty-desc">
+        {{ historySearchQuery() || historyPeriodFilter() !== 'ALL' || historyBranchFilter() !== 'ALL'
+          ? 'Vui lòng thay đổi từ khóa tìm kiếm hoặc điều chỉnh khoảng thời gian lọc.'
+          : 'Mỗi giờ phút trên thảm tập là một hạt mầm an lạc cho thân và tâm. Khi bạn tham gia và hoàn thành các ca học tại An Yên, toàn bộ nhật ký tập luyện sẽ được ghi dấu chi tiết tại đây.' }}
+      </p>
+      <div class="empty-actions">
+        @if (historySearchQuery() || historyPeriodFilter() !== 'ALL' || historyBranchFilter() !== 'ALL') {
+          <button
+            type="button"
+            class="btn-primary-action"
+            (click)="historySearchQuery.set(''); historyPeriodFilter.set('ALL'); historyBranchFilter.set('ALL')"
+          >
+            <span>Xóa bộ lọc tìm kiếm</span>
+          </button>
+        } @else {
+          <a routerLink="/schedule/calendar" class="btn-primary-action">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>Khám phá lịch lớp & Đặt chỗ</span>
+          </a>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: WORKOUT DETAIL & POST-PRACTICE WELLNESS NOTE -->
+  @if (selectedWorkoutForDetail(); as workout) {
+    <div class="modal-backdrop" (click)="closeWorkoutDetailModal()">
+      <div
+        class="workout-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chi tiết ca rèn luyện"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="closeWorkoutDetailModal()"
+      >
+        <button type="button" class="btn-close" aria-label="Đóng" (click)="closeWorkoutDetailModal()">✕</button>
+
+        <div class="modal-header-zen">
+          <span class="zen-eyebrow">NHẬT KÝ RÈN LUYỆN AN YÊN</span>
+          <h2 class="modal-class-title">{{ workout.className }}</h2>
+          <p class="modal-date-line">
+            {{ workout.startTime | date:'EEEE, dd/MM/yyyy':'':'vi' }} · {{ workout.startTime | date:'HH:mm' }} - {{ workout.endTime | date:'HH:mm' }}
+          </p>
+        </div>
+
+        <div class="modal-info-grid">
+          <div class="modal-info-cell">
+            <span class="cell-label">Huấn luyện viên</span>
+            <strong class="cell-val">{{ workout.instructorName }}</strong>
+          </div>
+          <div class="modal-info-cell">
+            <span class="cell-label">Cấp độ & Thời lượng</span>
+            <strong class="cell-val">{{ intensityLabel(workout.intensityLevel) }} · {{ workout.durationMinutes || 60 }} phút</strong>
+          </div>
+          <div class="modal-info-cell">
+            <span class="cell-label">Cơ sở tập luyện</span>
+            <strong class="cell-val">{{ workout.branchName }}</strong>
+          </div>
+          <div class="modal-info-cell">
+            <span class="cell-label">Phòng học & Vị trí thảm</span>
+            <strong class="cell-val">{{ workout.roomName }} · Thảm {{ workout.matNumber ?? 'Tự do' }}</strong>
+          </div>
+          <div class="modal-info-cell">
+            <span class="cell-label">Xác nhận điểm danh</span>
+            <strong class="cell-val highlight-green">{{ checkInMethodLabel(workout.checkInMethod) }} ({{ attendanceStatusLabel(workout.attendanceStatus) }})</strong>
+          </div>
+          <div class="modal-info-cell">
+            <span class="cell-label">Thời điểm điểm danh</span>
+            <strong class="cell-val">{{ workout.checkedInAt | date:'HH:mm:ss, dd/MM/yyyy' }}</strong>
+          </div>
+        </div>
+
+        @if (workout.membershipCode) {
+          <div class="modal-card-meta">
+            <span>Thẻ tập áp dụng: <strong>{{ workout.membershipCode }}</strong></span>
+            <span>Mã đặt chỗ: <strong>#{{ workout.bookingCode }}</strong></span>
+          </div>
+        }
+
+        <!-- POST PRACTICE ADVICE (ZEN LUXURY TOUCH) -->
+        <div class="modal-wellness-tips">
+          <div class="tip-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <strong>Lời khuyên dưỡng sinh sau buổi tập</strong>
+          </div>
+          <p class="tip-body">
+            Uống một cốc nước ấm nhỏ sau 15 phút, duy trì hơi thở sâu và chậm để năng lượng Prana thẩm thấu khắp các tế bào. Giữ ấm cơ thể và hạn chế tắm nước lạnh ngay sau khi rời thảm.
+          </p>
+        </div>
+
+        <div class="modal-actions-zen">
+          <button type="button" class="btn-modal-close" (click)="closeWorkoutDetailModal()">
+            Đóng cửa sổ
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

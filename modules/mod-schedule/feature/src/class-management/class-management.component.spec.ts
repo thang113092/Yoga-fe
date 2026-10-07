@@ -71,6 +71,8 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: isSuperAdminSig,
             isBranchManager: isBranchManagerSig,
+            isInstructor: () => false,
+            currentUserId: () => 'user-1',
             userHomeBranchId: homeBranchSig
           }
         },
@@ -113,6 +115,8 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: isSuperAdminSig,
             isBranchManager: isBranchManagerSig,
+            isInstructor: () => false,
+            currentUserId: () => 'user-1',
             userHomeBranchId: homeBranchSig
           }
         },
@@ -137,7 +141,8 @@ describe('ClassManagementComponent', () => {
     comp.onBranchFilterChange('branch-1');
     expect(comp.selectedBranchId()).toBe('branch-2');
 
-    // Filtered schedules must only contain schedules belonging to branch-2
+    // Filtered schedules must only contain schedules belonging to branch-2 (clearing date filter to test branch isolation)
+    comp.clearDateFilter();
     expect(comp.filteredSchedules().length).toBe(1);
     expect(comp.filteredSchedules()[0].branchId).toBe('branch-2');
 
@@ -146,5 +151,141 @@ describe('ClassManagementComponent', () => {
     expect(comp.scheduleForm().branchId).toBe('branch-2');
     comp.onScheduleFormBranchChange('branch-1');
     expect(comp.scheduleForm().branchId).toBe('branch-2');
+  });
+
+  it('defaults date filter to today and allows clearing / resetting to today', () => {
+    TestBed.configureTestingModule({
+      imports: [ClassManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperAdmin: () => true,
+            isBranchManager: () => false,
+            isInstructor: () => false,
+            currentUserId: () => 'admin-1',
+            userHomeBranchId: () => null
+          }
+        },
+        { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: ZenConfirmService, useValue: confirmMock },
+        { provide: ZenToastService, useValue: toastMock }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ClassManagementComponent);
+    const comp = fixture.componentInstance;
+    comp.ngOnInit();
+
+    // Defaults to today in YYYY-MM-DD
+    const todayStr = comp.getTodayDateStr();
+    expect(comp.dateFilter()).toBe(todayStr);
+
+    // Can clear date filter
+    comp.clearDateFilter();
+    expect(comp.dateFilter()).toBe('');
+
+    // Can set back to today
+    comp.setDateToToday();
+    expect(comp.dateFilter()).toBe(todayStr);
+  });
+
+  it('defaults instructor filter to own instructor ID for Instructor role', () => {
+    const todayStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+
+    const instructorSchedules = [
+      {
+        id: 's-ins-1',
+        branchId: 'branch-1',
+        instructorId: 'ins-1',
+        className: 'Hatha Flow',
+        instructorName: 'An Yên Master',
+        roomName: 'Studio 1',
+        startTime: `${todayStr}T08:00:00Z`,
+        endTime: `${todayStr}T09:00:00Z`,
+        status: 'SCHEDULED',
+        maxCapacity: 20,
+        bookedCount: 5,
+        availableSlots: 15
+      },
+      {
+        id: 's-other',
+        branchId: 'branch-1',
+        instructorId: 'ins-2',
+        className: 'Vinyasa Pro',
+        instructorName: 'Other Master',
+        roomName: 'Studio 2',
+        startTime: `${todayStr}T10:00:00Z`,
+        endTime: `${todayStr}T11:00:00Z`,
+        status: 'SCHEDULED',
+        maxCapacity: 20,
+        bookedCount: 8,
+        availableSlots: 12
+      }
+    ];
+
+    scheduleApiMock.getSchedules = vi.fn().mockReturnValue(of(instructorSchedules));
+
+    TestBed.configureTestingModule({
+      imports: [ClassManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperAdmin: () => false,
+            isBranchManager: () => false,
+            isInstructor: () => true,
+            currentUserId: () => 'ins-1',
+            userFullName: () => 'An Yên Master',
+            userHomeBranchId: () => 'branch-1',
+            branchIds: () => ['branch-1']
+          }
+        },
+        { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: ZenConfirmService, useValue: confirmMock },
+        { provide: ZenToastService, useValue: toastMock }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ClassManagementComponent);
+    const comp = fixture.componentInstance;
+    comp.ngOnInit();
+
+    // Instructor filter defaults to self ('ins-1')
+    expect(comp.selectedInstructorId()).toBe('ins-1');
+
+    // Date filter defaults to today
+    expect(comp.dateFilter()).toBe(todayStr);
+
+    // Filtered schedules only shows own schedule
+    const filtered = comp.filteredSchedules();
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].instructorId).toBe('ins-1');
+    expect(filtered[0].className).toBe('Hatha Flow');
+
+    // Instructor options show '(Tôi)'
+    const options = comp.instructorFilterOptions();
+    const selfOption = options.find(o => o.value === 'ins-1');
+    expect(selfOption).toBeDefined();
+    expect(selfOption?.label).toContain('(Tôi)');
+
+    // Resetting filters restores instructor filter back to self and today's date
+    comp.selectedInstructorId.set('ALL');
+    comp.dateFilter.set('');
+    expect(comp.selectedInstructorId()).toBe('ALL');
+    expect(comp.dateFilter()).toBe('');
+
+    comp.resetFilters();
+    expect(comp.selectedInstructorId()).toBe('ins-1');
+    expect(comp.dateFilter()).toBe(todayStr);
   });
 });

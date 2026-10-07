@@ -178,7 +178,33 @@ export interface ScheduleAttendee {
   studentId: string;
   studentName: string;
   studentPhone: string;
+  studentEmail?: string;
+  studentGender?: string;
   matNumber?: number;
   status: 'CONFIRMED' | 'ATTENDED' | 'CANCELLED' | 'NO_SHOW';
   bookingTime: string;
+  checkedInAt?: string;
 }
+
+export interface WorkoutHistoryItem {
+  bookingId: string;
+  bookingCode: string;
+  scheduleId: string;
+  className: string;
+  intensityLevel?: string;
+  instructorName: string;
+  roomName: string;
+  branchName: string;
+  branchId?: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  matNumber?: number;
+  status: string;
+  checkedInAt?: string;
+  checkInMethod?: string;
+  attendanceStatus?: string;
+  membershipCode?: string;
+  notes?: string;
+}
+

@@ -16,57 +16,121 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             <img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="brand-logo-img" width="38" height="38" />
             <div class="brand-text">
               <span class="brand-title">AN YÊN</span>
-              <span class="brand-sub">WELLNESS PLATFORM</span>
+              <span class="brand-sub">YOGA & WELLNESS</span>
             </div>
           </a>
         </div>
 
-        <nav class="nav">
-          @if (auth.canManageUsers() || auth.isReceptionist()) {
-            <a routerLink="/users" routerLinkActive="active" class="nav-tab highlight-tab">
-              {{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Người Dùng' }}
+        <!-- DESKTOP NAVIGATION MENU (CENTERED) -->
+        <nav class="desktop-nav" aria-label="Menu điều hướng chính">
+            @if (auth.canManageUsers() || auth.isReceptionist()) {
+              <a routerLink="/users" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>{{ auth.isReceptionist() ? 'Học Viên' : 'Người Dùng' }}</span>
+              </a>
+            }
+            @if (auth.canManageClasses()) {
+              <a routerLink="/schedule/manage" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="m9 16 2 2 4-4"/>
+                </svg>
+                <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Lớp Học' : 'Quản Lý Lớp' }}</span>
+              </a>
+            }
+            @if (auth.isSuperAdmin() || auth.isBranchManager()) {
+              <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <span>Đơn Hàng</span>
+              </a>
+              <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/>
+                  <line x1="12" y1="20" x2="12" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                <span>Doanh Thu</span>
+              </a>
+            }
+            @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
+              <a routerLink="/membership/pos" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                  <line x1="6" y1="15" x2="10" y2="15"/>
+                </svg>
+                <span>Bán Thẻ POS</span>
+              </a>
+            }
+            @if (auth.isInstructor()) {
+              <a routerLink="/schedule/check-in" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span>Điểm Danh</span>
+              </a>
+            }
+
+            @if (auth.canManageUsers() || auth.canManageClasses() || auth.isSuperAdmin() || auth.isBranchManager() || (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager())) {
+              <span class="nav-divider" aria-hidden="true"></span>
+            }
+
+            @if (auth.canAccessStudentPortal()) {
+              <a routerLink="/membership/my-passes" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <span>Thẻ Của Tôi</span>
+              </a>
+              <a routerLink="/membership/history" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Lịch Sử Tập</span>
+              </a>
+            }
+            <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
+              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+              <span>Gói Thẻ Tập</span>
             </a>
-          }
-          @if (auth.canManageClasses()) {
-            <a routerLink="/schedule/manage" routerLinkActive="active" class="nav-tab highlight-tab">
-              {{ auth.isReceptionist() ? 'Danh Sách Lớp Học' : 'Quản Lý Lớp Học' }}
+            @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
+              <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Lịch & Đặt Chỗ</span>
+              </a>
+            }
+            <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
+              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>Chi Nhánh</span>
             </a>
-          }
-          @if (auth.isSuperAdmin() || auth.isBranchManager()) {
-            <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab highlight-tab">
-              Danh Sách Đơn Hàng
-            </a>
-            <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab highlight-tab">
-              Báo Cáo Doanh Thu
-            </a>
-          }
-          @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
-            <a routerLink="/membership/pos" routerLinkActive="active" class="nav-tab">
-              Quầy Bán Thẻ (POS)
-            </a>
-          }
-          @if (auth.canAccessCheckIn() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
-            <a routerLink="/schedule/check-in" routerLinkActive="active" class="nav-tab">
-              Điểm Danh QR
-            </a>
-          }
-          @if (auth.canAccessStudentPortal()) {
-            <a routerLink="/membership/my-passes" routerLinkActive="active" class="nav-tab">
-              Thẻ Của Tôi
-            </a>
-          }
-          <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
-            Gói Thẻ Tập
-          </a>
-          @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist()) {
-            <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
-              Lịch & Đặt Chỗ
-            </a>
-          }
-          <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
-            Chi Nhánh
-          </a>
-        </nav>
+          </nav>
 
         <div class="user-profile-bar">
           @if (auth.isAuthenticated()) {
@@ -82,7 +146,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                   title="Thông báo"
                   aria-label="Xem thông báo"
                 >
-                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
@@ -95,8 +159,8 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 @if (isNotificationsOpen()) {
                   <div class="popover-panel notifications-panel" (click)="$event.stopPropagation()">
                     <div class="popover-header">
-                      <div class="header-left">
-                        <h4>Thông báo</h4>
+                      <div class="header-left-title">
+                        <h4>Thông Báo</h4>
                         @if (unreadNotificationsCount() > 0) {
                           <span class="new-pill">{{ unreadNotificationsCount() }} mới</span>
                         }
@@ -128,7 +192,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                         </div>
                         <div class="notif-content">
                           <p class="notif-title">Thẻ tập đã sẵn sàng</p>
-                          <p class="notif-desc">Hệ thống đã đồng bộ quyền truy cập đa chi nhánh cho bạn.</p>
+                          <p class="notif-desc">Hệ thống đã đồng bộ quyền truy cập đa cơ sở cho bạn.</p>
                           <span class="notif-time">2 giờ trước</span>
                         </div>
                       </div>
@@ -162,7 +226,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                   title="Cài đặt & Tùy chọn"
                   aria-label="Cài đặt tài khoản"
                 >
-                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                   </svg>
@@ -172,7 +236,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 @if (isSettingsOpen()) {
                   <div class="popover-panel settings-panel" (click)="$event.stopPropagation()">
                     <div class="popover-header">
-                      <h4>Cài đặt & Tùy chọn</h4>
+                      <h4>Cài Đặt & Tùy Chọn</h4>
                     </div>
 
                     <div class="settings-body">
@@ -206,40 +270,52 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
                       @if (auth.canManageClasses()) {
                         <a routerLink="/schedule/manage" (click)="closeAllPopovers()" class="setting-link">
-                          <span>{{ auth.isReceptionist() ? 'Danh sách lớp & ca học' : 'Quản lý lớp & ca học' }}</span>
-                          <span class="arrow">›</span>
+                          <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh sách lớp học' : 'Quản lý lớp học' }}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
                         </a>
                       }
 
                       @if (auth.isReceptionist()) {
                         <a routerLink="/users" (click)="closeAllPopovers()" class="setting-link">
                           <span>Danh sách học viên</span>
-                          <span class="arrow">›</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
                         </a>
                       }
 
                       @if (auth.isSuperAdmin() || auth.isBranchManager()) {
                         <a routerLink="/membership/revenue" (click)="closeAllPopovers()" class="setting-link">
-                          <span>Báo cáo & Tổng hợp doanh thu</span>
-                          <span class="arrow">›</span>
+                          <span>Báo cáo doanh thu</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
                         </a>
                       }
 
                       <a routerLink="/membership/plans" (click)="closeAllPopovers()" class="setting-link">
                         <span>Danh mục gói thẻ tập</span>
-                        <span class="arrow">›</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
                       </a>
 
-                      @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist()) {
+                      @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
                         <a routerLink="/schedule/calendar" (click)="closeAllPopovers()" class="setting-link">
                           <span>Lịch tập & Đặt chỗ</span>
-                          <span class="arrow">›</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
                         </a>
                       }
 
                       <a routerLink="/branches" (click)="closeAllPopovers()" class="setting-link">
-                        <span>Hệ thống chi nhánh An Yên</span>
-                        <span class="arrow">›</span>
+                        <span>Hệ thống cơ sở</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
                       </a>
                     </div>
                   </div>
@@ -253,6 +329,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
             <div class="header-divider"></div>
 
+            <!-- Khối người dùng -->
             <div class="user-pill">
               <div class="avatar-wrapper">
                 <span class="avatar-letter">{{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'U' }}</span>
@@ -260,19 +337,19 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </div>
               <div class="user-details">
                 <span class="user-name">{{ auth.userFullName() }}</span>
-                <span class="role-supplementary">
+                <span class="role-badge">
                   {{ getRoleLabel(auth.userRole()) }}
                 </span>
               </div>
             </div>
 
             <button type="button" class="btn-logout" (click)="onLogout()" title="Đăng xuất tài khoản">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>
                 <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-              <span>Đăng xuất</span>
+              <span class="logout-text">Đăng xuất</span>
             </button>
           } @else {
             <div class="guest-actions">
@@ -280,8 +357,188 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               <a routerLink="/auth/register" class="btn-register-sm">Đăng Ký Học Viên</a>
             </div>
           }
+
+          <!-- NÚT HAMBURGER MOBILE -->
+          <button
+            type="button"
+            class="btn-mobile-toggle"
+            (click)="toggleMobileMenu()"
+            [attr.aria-expanded]="isMobileMenuOpen()"
+            aria-label="Mở menu điều hướng"
+          >
+            <span class="bar" [class.open-1]="isMobileMenuOpen()"></span>
+            <span class="bar" [class.open-2]="isMobileMenuOpen()"></span>
+            <span class="bar" [class.open-3]="isMobileMenuOpen()"></span>
+          </button>
         </div>
       </header>
+
+      <!-- MOBILE DRAWER / MENU PANEL -->
+      @if (isMobileMenuOpen()) {
+        <div class="mobile-backdrop" (click)="closeMobileMenu()"></div>
+        <aside class="mobile-drawer" role="dialog" aria-label="Menu di động">
+          <div class="drawer-header">
+            <div class="drawer-brand">
+              <img src="/branding/an-yen-logo-v1.png" alt="An Yên" class="drawer-logo-img" width="32" height="32" />
+              <div class="drawer-brand-text">
+                <span class="drawer-brand-title">AN YÊN</span>
+                <span class="drawer-brand-sub">YOGA & WELLNESS</span>
+              </div>
+            </div>
+            <button type="button" class="btn-close-drawer" (click)="closeMobileMenu()" aria-label="Đóng menu">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          @if (auth.isAuthenticated()) {
+            <div class="drawer-user-card">
+              <div class="drawer-avatar">
+                {{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'U' }}
+              </div>
+              <div class="drawer-user-meta">
+                <span class="drawer-user-name">{{ auth.userFullName() }}</span>
+                <span class="drawer-user-role">{{ getRoleLabel(auth.userRole()) }}</span>
+              </div>
+            </div>
+          }
+
+          <nav class="drawer-nav">
+            <div class="drawer-section-title">ĐIỀU HƯỚNG CHÍNH</div>
+
+            @if (auth.canManageUsers() || auth.isReceptionist()) {
+              <a routerLink="/users" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>{{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Người Dùng' }}</span>
+              </a>
+            }
+
+            @if (auth.canManageClasses()) {
+              <a routerLink="/schedule/manage" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="m9 16 2 2 4-4"/>
+                </svg>
+                <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh Sách Lớp Học' : 'Quản Lý Lớp Học' }}</span>
+              </a>
+            }
+
+            @if (auth.isSuperAdmin() || auth.isBranchManager()) {
+              <a routerLink="/membership/orders" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <span>Danh Sách Đơn Hàng</span>
+              </a>
+              <a routerLink="/membership/revenue" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/>
+                  <line x1="12" y1="20" x2="12" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                <span>Báo Cáo Doanh Thu</span>
+              </a>
+            }
+
+            @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
+              <a routerLink="/membership/pos" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                  <line x1="6" y1="15" x2="10" y2="15"/>
+                </svg>
+                <span>Quầy Bán Thẻ (POS)</span>
+              </a>
+            }
+
+            @if (auth.isInstructor()) {
+              <a routerLink="/schedule/check-in" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span>Điểm Danh</span>
+              </a>
+            }
+
+            @if (auth.canAccessStudentPortal()) {
+              <a routerLink="/membership/my-passes" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <span>Thẻ Của Tôi</span>
+              </a>
+              <a routerLink="/membership/history" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Lịch Sử Tập</span>
+              </a>
+            }
+
+            <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+              <span>Gói Thẻ Tập</span>
+            </a>
+
+            @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
+              <a routerLink="/schedule/calendar" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Lịch & Đặt Chỗ</span>
+              </a>
+            }
+
+            <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>Hệ Thống Cơ Sở</span>
+            </a>
+          </nav>
+
+          <div class="drawer-footer">
+            @if (auth.isAuthenticated()) {
+              <button type="button" class="drawer-btn-logout" (click)="onLogout()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Đăng Xuất</span>
+              </button>
+            } @else {
+              <div class="drawer-auth-actions">
+                <a routerLink="/auth/login" (click)="closeMobileMenu()" class="drawer-btn-login">Đăng Nhập</a>
+                <a routerLink="/auth/register" (click)="closeMobileMenu()" class="drawer-btn-register">Đăng Ký Học Viên</a>
+              </div>
+            }
+          </div>
+        </aside>
+      }
     }
 
     <div class="main-content" [class.management-ui]="!isStandalonePage()" [class.no-header]="isStandalonePage()">
@@ -295,39 +552,44 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.65rem 1.75rem;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(20, 70, 52, 0.1);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-      flex-wrap: wrap;
-      gap: 1rem;
+      padding: 0.65rem 2rem;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(20, 70, 52, 0.08);
+      box-shadow: 0 2px 14px -3px rgba(20, 70, 52, 0.05);
       position: sticky;
       top: 0;
       z-index: 100;
+      min-height: 64px;
+      gap: 1.5rem;
 
       .brand {
         display: flex;
         align-items: center;
+        justify-content: flex-start;
+        flex: 1;
+        min-width: 0;
 
         .brand-link {
           display: flex;
           align-items: center;
           gap: 10px;
           text-decoration: none;
-          transition: opacity 0.2s ease;
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 
           &:hover {
-            opacity: 0.85;
+            opacity: 0.9;
+            transform: translateY(-1px);
           }
         }
 
         .brand-logo-img {
-          width: 38px;
-          height: 38px;
-          border-radius: 6px;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
           object-fit: contain;
+          box-shadow: 0 2px 6px rgba(20, 70, 52, 0.08);
         }
 
         .brand-text {
@@ -336,73 +598,112 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
         }
 
         .brand-title {
-          font-family: var(--font-sans);
-          font-size: 17px;
+          font-family: var(--font-serif, 'Playfair Display', Georgia, serif);
+          font-size: 1.125rem;
           font-weight: 700;
           color: #144634;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.05em;
           line-height: 1.1;
         }
 
         .brand-sub {
-          font-size: 8px;
+          font-family: var(--font-sans);
+          font-size: 0.53rem;
           font-weight: 700;
-          letter-spacing: 1.2px;
+          letter-spacing: 0.12em;
           color: #536961;
           text-transform: uppercase;
-          margin-top: 1px;
+          margin-top: 2px;
         }
       }
 
-      .nav {
+      /* Desktop Navigation - Center Aligned & Minimalist Zen (No Active Background) */
+      .desktop-nav {
         display: flex;
         align-items: center;
-        gap: 3px;
-        background: #f1f4f3;
-        border: 1px solid rgba(20, 70, 52, 0.08);
-        padding: 3px 5px;
-        border-radius: 9999px;
+        justify-content: center;
+        gap: 6px;
+        flex-shrink: 0;
+        background: transparent;
+        border: none;
+        padding: 0;
+        box-shadow: none;
 
         .nav-tab {
-          font-size: 0.8125rem;
+          font-size: 0.84rem;
           font-weight: 500;
-          color: #536961;
+          color: #4e675d;
           text-decoration: none;
-          padding: 6px 14px;
-          border-radius: 9999px;
-          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+          padding: 8px 14px;
+          border-radius: 8px;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          position: relative;
+          background: transparent;
+
+          .nav-icon {
+            width: 15px;
+            height: 15px;
+            color: #728c80;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+          }
 
           &:hover:not(.active) {
             color: #144634;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(20, 70, 52, 0.035);
+            transform: translateY(-1px);
+
+            .nav-icon {
+              color: #0f766e;
+            }
           }
 
           &.active {
-            background: #ffffff;
-            color: #0f766e;
+            color: #144634;
             font-weight: 600;
-            box-shadow: 0 1px 4px rgba(20, 70, 52, 0.08), 0 0 0 1px rgba(15, 118, 110, 0.12);
-          }
+            background: transparent !important;
+            box-shadow: none !important;
 
-          &.highlight-tab {
-            color: #0f766e;
-            font-weight: 600;
-
-            &.active {
-              background: #ffffff;
+            .nav-icon {
               color: #0f766e;
-              box-shadow: 0 1px 4px rgba(20, 70, 52, 0.08), 0 0 0 1px rgba(15, 118, 110, 0.12);
+            }
+
+            &::after {
+              content: '';
+              position: absolute;
+              bottom: 0px;
+              left: 10px;
+              right: 10px;
+              height: 2.5px;
+              background: #0f766e;
+              border-radius: 9999px;
+              box-shadow: 0 1.5px 4px rgba(15, 118, 110, 0.35);
             }
           }
+        }
+
+        .nav-divider {
+          width: 1px;
+          height: 18px;
+          background: rgba(20, 70, 52, 0.12);
+          margin: 0 4px;
+          flex-shrink: 0;
         }
       }
 
       .user-profile-bar {
         display: flex;
         align-items: center;
+        justify-content: flex-end;
+        flex: 1;
+        min-width: 0;
         gap: 0.75rem;
         position: relative;
+        flex-shrink: 0;
 
         .utility-actions {
           display: flex;
@@ -413,17 +714,17 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             position: relative;
 
             .btn-icon-utility {
-              width: 34px;
-              height: 34px;
+              width: 36px;
+              height: 36px;
               border-radius: 50%;
               border: 1px solid rgba(20, 70, 52, 0.12);
               background: #ffffff;
-              color: #536961;
+              color: #4b6358;
               display: grid;
               place-items: center;
               cursor: pointer;
               position: relative;
-              transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+              transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
               &:hover, &.active {
                 background: #f0fdfa;
@@ -434,8 +735,8 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
               .notification-badge {
                 position: absolute;
-                top: -3px;
-                right: -3px;
+                top: -2px;
+                right: -2px;
                 min-width: 16px;
                 height: 16px;
                 background: #e11d48;
@@ -452,19 +753,19 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
             .popover-panel {
               position: absolute;
-              top: calc(100% + 10px);
-              right: -40px;
+              top: calc(100% + 12px);
+              right: -30px;
               width: 320px;
               background: #ffffff;
               border: 1px solid rgba(20, 70, 52, 0.1);
               border-radius: 16px;
-              box-shadow: 0 12px 32px -4px rgba(20, 70, 52, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+              box-shadow: 0 16px 36px -6px rgba(20, 70, 52, 0.14), 0 4px 12px rgba(0, 0, 0, 0.04);
               z-index: 1000;
-              animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+              animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
               overflow: hidden;
 
               &.settings-panel {
-                right: -20px;
+                right: -10px;
                 width: 290px;
               }
 
@@ -483,7 +784,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                   color: #144634;
                 }
 
-                .header-left {
+                .header-left-title {
                   display: flex;
                   align-items: center;
                   gap: 8px;
@@ -647,8 +948,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                     color: #0f766e;
                   }
 
-                  .arrow {
-                    font-size: 1.1rem;
+                  svg {
                     color: #94a3b8;
                   }
                 }
@@ -674,7 +974,10 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           display: flex;
           align-items: center;
           gap: 0.65rem;
-          padding: 2px 4px;
+          padding: 3px 8px 3px 4px;
+          border-radius: 9999px;
+          background: rgba(20, 70, 52, 0.03);
+          border: 1px solid rgba(20, 70, 52, 0.06);
 
           .avatar-wrapper {
             position: relative;
@@ -709,28 +1012,29 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           .user-details {
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 2px;
 
             .user-name {
-              font-size: 0.85rem;
+              font-size: 0.8125rem;
               font-weight: 600;
               color: #144634;
-              max-width: 140px;
+              max-width: 130px;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              line-height: 1.2;
+              line-height: 1.15;
             }
 
-            .role-supplementary {
+            .role-badge {
               font-size: 0.65rem;
-              font-weight: 400;
-              color: #688377;
-              line-height: 1;
-              background: transparent;
-              border: none;
-              padding: 0;
-              margin: 0;
+              font-weight: 500;
+              color: #0f766e;
+              background: rgba(15, 118, 110, 0.08);
+              padding: 0 6px;
+              border-radius: 9999px;
+              display: inline-block;
+              width: fit-content;
+              line-height: 1.35;
             }
           }
         }
@@ -744,15 +1048,16 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           font-size: 0.75rem;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
 
           &:hover {
             background: #fef2f2;
             color: #dc2626;
             border-color: #fecaca;
+            transform: translateY(-1px);
           }
         }
 
@@ -762,12 +1067,12 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           gap: 0.5rem;
 
           .btn-login-sm {
-            padding: 9px 14px;
+            padding: 7px 14px;
             font-size: 0.8125rem;
             font-weight: 600;
             color: #475569;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 9999px;
             border: 1px solid #cbd5e1;
             transition: all 0.2s ease;
 
@@ -778,18 +1083,338 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           }
 
           .btn-register-sm {
-            padding: 9px 14px;
+            padding: 7px 14px;
             font-size: 0.8125rem;
             font-weight: 600;
             color: #ffffff;
-            background: var(--color-primary);
+            background: #144634;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 9999px;
             transition: all 0.2s ease;
 
             &:hover {
-              background: var(--color-primary-hover);
+              background: #0d2f23;
+              box-shadow: 0 2px 8px rgba(20, 70, 52, 0.25);
             }
+          }
+        }
+
+        /* Nút Hamburger Mobile */
+        .btn-mobile-toggle {
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          width: 36px;
+          height: 36px;
+          background: rgba(20, 70, 52, 0.05);
+          border: 1px solid rgba(20, 70, 52, 0.1);
+          border-radius: 8px;
+          cursor: pointer;
+          gap: 4px;
+          padding: 0;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: rgba(20, 70, 52, 0.09);
+          }
+
+          .bar {
+            width: 18px;
+            height: 2px;
+            background: #144634;
+            border-radius: 2px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+            &.open-1 {
+              transform: translateY(6px) rotate(45deg);
+            }
+            &.open-2 {
+              opacity: 0;
+              transform: scale(0);
+            }
+            &.open-3 {
+              transform: translateY(-6px) rotate(-45deg);
+            }
+          }
+        }
+      }
+    }
+
+    /* Mobile Drawer */
+    .mobile-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(19, 42, 36, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .mobile-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(340px, 86vw);
+      background: #ffffff;
+      z-index: 1001;
+      box-shadow: -8px 0 32px rgba(20, 70, 52, 0.16);
+      display: flex;
+      flex-direction: column;
+      animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+      .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(20, 70, 52, 0.08);
+
+        .drawer-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          .drawer-logo-img {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+          }
+
+          .drawer-brand-text {
+            display: flex;
+            flex-direction: column;
+
+            .drawer-brand-title {
+              font-family: var(--font-serif, 'Playfair Display', Georgia, serif);
+              font-size: 1rem;
+              font-weight: 700;
+              color: #144634;
+              letter-spacing: 0.05em;
+            }
+
+            .drawer-brand-sub {
+              font-size: 0.5rem;
+              font-weight: 700;
+              letter-spacing: 0.1em;
+              color: #536961;
+            }
+          }
+        }
+
+        .btn-close-drawer {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 1px solid rgba(20, 70, 52, 0.1);
+          background: #fafcfb;
+          color: #4b6358;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: #f1f4f3;
+            color: #144634;
+          }
+        }
+      }
+
+      .drawer-user-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 1rem 1.5rem;
+        background: rgba(20, 70, 52, 0.03);
+        border-bottom: 1px solid rgba(20, 70, 52, 0.06);
+
+        .drawer-avatar {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #144634 0%, #0d9488 100%);
+          color: #ffffff;
+          display: grid;
+          place-items: center;
+          font-weight: 700;
+          font-size: 0.95rem;
+          box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
+        }
+
+        .drawer-user-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+
+          .drawer-user-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #144634;
+          }
+
+          .drawer-user-role {
+            font-size: 0.7rem;
+            color: #0f766e;
+            font-weight: 500;
+          }
+        }
+      }
+
+      .drawer-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .drawer-section-title {
+          font-size: 0.65rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: #8da499;
+          padding: 8px 12px 4px;
+        }
+
+        .drawer-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          text-decoration: none;
+          color: #4b6358;
+          font-size: 0.85rem;
+          font-weight: 500;
+          transition: all 0.18s ease;
+
+          svg {
+            color: #688377;
+            transition: color 0.18s ease;
+          }
+
+          &:hover {
+            background: rgba(20, 70, 52, 0.04);
+            color: #144634;
+
+            svg {
+              color: #0f766e;
+            }
+          }
+
+          &.active {
+            background: rgba(15, 118, 110, 0.09);
+            color: #0f766e;
+            font-weight: 600;
+
+            svg {
+              color: #0f766e;
+            }
+          }
+        }
+      }
+
+      .drawer-footer {
+        padding: 1.25rem 1.5rem;
+        border-top: 1px solid rgba(20, 70, 52, 0.08);
+        background: #fafcfb;
+
+        .drawer-btn-logout {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 10px;
+          border-radius: 10px;
+          border: 1px solid #fecaca;
+          background: #fef2f2;
+          color: #dc2626;
+          font-size: 0.8125rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.18s ease;
+
+          &:hover {
+            background: #fee2e2;
+          }
+        }
+
+        .drawer-auth-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+
+          .drawer-btn-login {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+          }
+
+          .drawer-btn-register {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            background: #144634;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+
+    /* Breakpoints */
+    @media (max-width: 1120px) {
+      .app-header {
+        padding: 0.65rem 1.25rem;
+
+        .desktop-nav {
+          display: none;
+        }
+
+        .user-profile-bar {
+          .btn-logout .logout-text {
+            display: none;
+          }
+
+          .btn-mobile-toggle {
+            display: flex;
+          }
+        }
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-header {
+        padding: 0.5rem 1rem;
+
+        .brand-sub {
+          display: none;
+        }
+
+        .user-profile-bar {
+          .user-details {
+            display: none;
+          }
+
+          .header-divider {
+            display: none;
+          }
+
+          .btn-logout {
+            display: none;
           }
         }
       }
@@ -814,6 +1439,20 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
         transform: translateY(0) scale(1);
       }
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -827,10 +1466,19 @@ export class AppComponent {
     return url === '/' || url === '' || url.startsWith('/auth/');
   });
 
+  protected readonly isMobileMenuOpen = signal(false);
+  protected readonly isNotificationsOpen = signal(false);
+  protected readonly isSettingsOpen = signal(false);
+  protected readonly unreadNotificationsCount = signal(2);
+  protected readonly reminderEnabled = signal(true);
+  protected readonly zenMode = signal(false);
+
   constructor() {
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentUrl.set(event.urlAfterRedirects);
+        this.isMobileMenuOpen.set(false);
+        this.closeAllPopovers();
       }
     });
   }
@@ -838,11 +1486,11 @@ export class AppComponent {
   getRoleLabel(roleCode: string | null): string {
     switch (roleCode) {
       case 'SUPER_ADMIN':
-        return 'Tối Cao (Super Admin)';
+        return 'Quản Trị Viên';
       case 'BRANCH_MANAGER':
-        return 'Quản Lý Chi Nhánh';
+        return 'Quản Lý Cơ Sở';
       case 'RECEPTIONIST':
-        return 'Lễ Tân';
+        return 'Lễ Tân Đón Tiếp';
       case 'INSTRUCTOR':
         return 'Huấn Luyện Viên';
       case 'STUDENT':
@@ -852,11 +1500,14 @@ export class AppComponent {
     }
   }
 
-  protected readonly isNotificationsOpen = signal(false);
-  protected readonly isSettingsOpen = signal(false);
-  protected readonly unreadNotificationsCount = signal(2);
-  protected readonly reminderEnabled = signal(true);
-  protected readonly zenMode = signal(false);
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen.update(v => !v);
+    this.closeAllPopovers();
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen.set(false);
+  }
 
   toggleNotifications(): void {
     this.isNotificationsOpen.update(v => !v);
@@ -879,10 +1530,8 @@ export class AppComponent {
 
   onLogout(): void {
     this.closeAllPopovers();
+    this.closeMobileMenu();
     this.auth.logout();
     void this.router.navigate(['/auth/login']);
   }
 }
-
-
-

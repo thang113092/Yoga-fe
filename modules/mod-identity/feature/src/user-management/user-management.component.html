@@ -714,7 +714,6 @@
                     <table class="zen-sub-table">
                       <thead>
                         <tr>
-                          <th>Mã Đơn</th>
                           <th>Thời Gian</th>
                           <th>Cơ Sở</th>
                           <th>Gói Thẻ & Mã Thẻ</th>
@@ -727,9 +726,6 @@
                       <tbody>
                         @for (o of studentOrders(); track o.orderId) {
                           <tr>
-                            <td>
-                              <span class="code-pill">{{ o.orderCode }}</span>
-                            </td>
                             <td>
                               <span class="date-text">{{ o.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
                             </td>

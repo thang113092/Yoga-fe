@@ -268,69 +268,142 @@
       flex: 0.95;
       min-width: 170px;
 
-      .input-date-wrapper {
+      .zen-date-control {
         position: relative;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         width: 100%;
+        min-height: 40px;
+        height: 40px;
+        padding: 0 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(20, 70, 52, 0.16);
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+        box-sizing: border-box;
+        cursor: pointer;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 
-        .date-icon {
-          position: absolute;
-          left: 11px;
-          color: #94a3b8;
+        &:hover {
+          border-color: #0f766e;
+          background: #fafcfb;
+          box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+
+          .date-leading-icon,
+          .date-picker-icon-btn {
+            color: #0f766e;
+          }
+        }
+
+        &:focus-within {
+          border-color: #0f766e;
+          box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+        }
+
+        .date-leading-icon {
+          color: #0f766e;
+          flex-shrink: 0;
+          margin-right: 8px;
           pointer-events: none;
-          z-index: 1;
         }
 
-        .filter-date-input {
-          width: 100%;
-          min-height: 40px !important;
-          height: 40px !important;
-          padding: 8px 10px 8px 34px !important;
-          border-radius: 10px !important;
-          border: 1px solid rgba(20, 70, 52, 0.16) !important;
-          background: #ffffff !important;
-          font-family: var(--font-sans) !important;
-          font-size: 0.85rem !important;
-          font-weight: 500 !important;
-          color: #144634 !important;
-          outline: none !important;
-          box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04) !important;
-          box-sizing: border-box !important;
-          cursor: pointer;
-          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        .date-display-text {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          pointer-events: none;
 
-          &:hover {
-            border-color: #0f766e !important;
-            background: #fafcfb !important;
+          .date-value {
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #144634;
+            letter-spacing: 0.01em;
           }
 
-          &:focus {
-            border-color: #0f766e !important;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14) !important;
+          .date-placeholder {
+            font-family: var(--font-sans);
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: #71887e;
           }
         }
 
-        .btn-date-clear {
-          position: absolute;
-          right: 8px;
+        .date-actions {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: rgba(20, 70, 52, 0.08);
-          color: #64748b;
-          border: none;
-          cursor: pointer;
-          padding: 0;
-          transition: all 0.15s ease;
-          z-index: 1;
+          gap: 6px;
+          flex-shrink: 0;
+          margin-left: 8px;
 
-          &:hover {
-            background: #fee2e2;
-            color: #dc2626;
+          .btn-clear-date {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            background: transparent;
+            color: #475569;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: none;
+            transition: color 0.15s ease;
+
+            svg {
+              display: block;
+              width: 16px;
+              height: 16px;
+              flex-shrink: 0;
+              stroke: currentColor;
+            }
+
+            &:hover {
+              color: #0f766e;
+            }
+          }
+
+          .date-picker-icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #71887e;
+            pointer-events: none;
+            transition: color 0.15s ease;
+
+            svg {
+              display: block;
+              width: 15px;
+              height: 15px;
+              stroke: currentColor;
+            }
+          }
+        }
+
+        .native-date-overlay {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          cursor: pointer;
+          z-index: 1;
+          border: none;
+          margin: 0;
+          padding: 0;
+
+          &::-webkit-calendar-picker-indicator {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
           }
         }
       }
@@ -994,6 +1067,36 @@
   p {
     font-size: 0.875rem;
     margin: 0 0 1.5rem;
+  }
+
+  .empty-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    .btn-clear-date {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 9px 18px !important;
+      border-radius: 10px !important;
+      border: 1px solid rgba(15, 118, 110, 0.3) !important;
+      background: #f0fdf9 !important;
+      color: #0f766e !important;
+      font-family: var(--font-sans) !important;
+      font-size: 0.84rem !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      box-shadow: 0 1px 3px rgba(15, 118, 110, 0.06) !important;
+      transition: all 0.2s ease !important;
+
+      &:hover {
+        background: #0f766e !important;
+        color: #ffffff !important;
+      }
+    }
   }
 
   .btn-clear-filters {

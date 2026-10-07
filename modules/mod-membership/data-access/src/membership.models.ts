@@ -1,6 +1,6 @@
 export type PlanType = 'TIME_BASED' | 'SESSION_BASED' | 'COMBO';
 export type PaymentMethod = 'CASH' | 'POS_CARD' | 'BANK_TRANSFER_QR';
-export type MembershipStatus = 'PENDING_PAYMENT' | 'ACTIVE' | 'FROZEN' | 'EXPIRED' | 'CANCELLED';
+export type MembershipStatus = 'PENDING_PAYMENT' | 'ACTIVE' | 'FROZEN' | 'EXPIRED' | 'CANCELLED' | 'REPLACED' | 'TRANSFERRED';
 
 export interface MembershipPlan {
   readonly id: string;
@@ -35,7 +35,21 @@ export interface UpdatePlanReq {
   readonly isActive?: boolean;
 }
 
+export interface CheckoutQuote {
+  readonly currentMembership: MembershipResp | null;
+  readonly currentPlanName?: string;
+  readonly contractValue?: number;
+  readonly credit: number;
+  readonly totalAmount: number;
+  readonly issue: string | null;
+}
+
 export interface CreateOrderReq {
+  readonly replacesMembershipId?: string;
+  readonly expectedCredit?: number;
+  readonly expectedTotal?: number;
+  readonly adjustedCredit?: number;
+  readonly adjustmentReason?: string;
   readonly branchId: string;
   readonly studentId: string;
   readonly planId: string;

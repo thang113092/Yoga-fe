@@ -1,32 +1,47 @@
 <div class="schedule-calendar-container">
   <!-- Notifications -->
   @if (successMessage()) {
-    <div class="alert alert-success" role="alert">
-      <span>{{ successMessage() }}</span>
-      <button type="button" class="btn-close" (click)="successMessage.set(null)">✕</button>
+    <div class="zen-alert zen-alert-success" role="alert">
+      <div class="alert-icon-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <div class="alert-text">{{ successMessage() }}</div>
+      <button type="button" class="btn-close" (click)="successMessage.set(null)" aria-label="Đóng thông báo">✕</button>
     </div>
   }
 
   @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">
-      <span>{{ errorMessage() }}</span>
-      <button type="button" class="btn-close" (click)="errorMessage.set(null)">✕</button>
+    <div class="zen-alert zen-alert-danger" role="alert">
+      <div class="alert-icon-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="alert-text">{{ errorMessage() }}</div>
+      <button type="button" class="btn-close" (click)="errorMessage.set(null)" aria-label="Đóng thông báo">✕</button>
     </div>
   }
 
-  <!-- Header Banner -->
-  <div class="calendar-header">
-    <div class="header-info">
-      <div class="header-pre">LỊCH TẬP & ĐẶT CHỖ</div>
-      <h1 class="header-title">Thời Khóa Biểu Lớp Học An Yên</h1>
-      <p class="subtitle">Đảm bảo vị trí thảm tập ưng ý, kiểm soát sĩ số an toàn theo tiêu chuẩn Zen Yoga</p>
+  <!-- Compact Header Banner -->
+  <div class="calendar-header-compact">
+    <div class="header-left">
+      <div class="header-pre-tag">LỊCH TẬP & ĐẶT CHỖ AN YÊN</div>
+      <div class="title-with-meta">
+        <h1 class="header-title">Thời Khóa Biểu Lớp Học</h1>
+        <span class="header-count-badge">{{ filteredSchedules().length }} ca mở</span>
+      </div>
     </div>
 
-    <!-- Tab navigation -->
-    <div class="tabs-nav">
+    <!-- Zen Luxury Navigation Tabs -->
+    <div class="calendar-tabs-group">
       <button
         type="button"
-        class="tab-btn"
+        class="zen-tab-pill"
         [class.active]="activeTab() === 'calendar'"
         (click)="activeTab.set('calendar')"
       >
@@ -38,9 +53,10 @@
         </svg>
         <span>Thời Khóa Biểu Lớp</span>
       </button>
+
       <button
         type="button"
-        class="tab-btn"
+        class="zen-tab-pill"
         [class.active]="activeTab() === 'my-bookings'"
         (click)="activeTab.set('my-bookings')"
       >
@@ -52,17 +68,17 @@
         </svg>
         <span>Lịch Đã Đặt Của Tôi</span>
         @if (upcomingBookingCount() > 0) {
-          <span class="count-badge">{{ upcomingBookingCount() }}</span>
+          <span class="tab-badge">{{ upcomingBookingCount() }}</span>
         }
       </button>
 
       @if (auth.canManageClasses()) {
-        <a routerLink="/schedule/manage" class="tab-btn btn-admin-shortcut" style="text-decoration: none; color: #0f766e; font-weight: 600;">
+        <a routerLink="/schedule/manage" class="zen-tab-pill btn-admin-link">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          <span>Quản Lý & Mở Lớp</span>
+          <span>Mở Lớp</span>
         </a>
       }
     </div>
@@ -71,159 +87,416 @@
   @if (activeTab() === 'calendar') {
     @if (!auth.isStudent()) {
       <div class="login-notice-bar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
         <span>Vui lòng <a routerLink="/auth/login" class="link-bold">đăng nhập tài khoản học viên</a> để đặt chỗ và xem lịch cá nhân.</span>
       </div>
     }
-    <!-- Filters Bar -->
-    <div class="filters-bar">
-      <div class="filter-group">
-        <label for="branchSelect">Cơ sở tập luyện:</label>
-        <div class="select-field-box">
-          <zen-select
-            id="branchSelect"
-            [options]="branches()"
-            valueKey="id"
-            labelKey="name"
-            sublabelKey="code"
-            [ngModel]="selectedBranch()"
-            (ngModelChange)="onBranchChange($event)"
-            placeholder="Chọn cơ sở"
-          />
+
+    <!-- Unified Control Toolbar -->
+    <div class="compact-control-bar">
+      <!-- Dòng 1: Danh sách các ngày trong tháng -->
+      <div class="control-row month-calendar-row">
+        <div class="month-selector-box">
+          <button type="button" class="btn-month-nav" (click)="prevMonth()" title="Tháng trước">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <span class="current-month-text">{{ currentMonthLabel() }}</span>
+          <button type="button" class="btn-month-nav" (click)="nextMonth()" title="Tháng sau">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="month-days-scroll">
+          <button
+            type="button"
+            class="month-day-pill all-days-pill"
+            [class.active]="selectedDate() === 'ALL'"
+            (click)="selectedDate.set('ALL')"
+          >
+            <span class="day-sub">Toàn bộ</span>
+            <span class="day-num">Cả tháng</span>
+          </button>
+
+          @for (day of monthDays(); track day.isoDate) {
+            <button
+              type="button"
+              class="month-day-pill"
+              [class.active]="selectedDate() === day.isoDate"
+              [class.is-today]="day.isToday"
+              [class.has-classes]="day.count > 0"
+              (click)="selectedDate.set(day.isoDate)"
+            >
+              <div class="day-sub-wrap">
+                <span class="day-sub">{{ day.dayName }}</span>
+                @if (day.count > 0) {
+                  <span class="day-dot" [title]="day.count + ' ca học'"></span>
+                }
+              </div>
+              <span class="day-num">{{ day.dayNumber }}</span>
+            </button>
+          }
         </div>
       </div>
 
-      <div class="category-pills">
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedCategory() === 'ALL'"
-          (click)="selectedCategory.set('ALL')"
-        >
-          Tất cả bộ môn
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedCategory() === 'Hatha'"
-          (click)="selectedCategory.set('Hatha')"
-        >
-          Hatha Yoga
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedCategory() === 'Vinyasa'"
-          (click)="selectedCategory.set('Vinyasa')"
-        >
-          Vinyasa Flow
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedCategory() === 'Yin'"
-          (click)="selectedCategory.set('Yin')"
-        >
-          Yin & Chuông
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedCategory() === 'Ashtanga'"
-          (click)="selectedCategory.set('Ashtanga')"
-        >
-          Ashtanga
-        </button>
+      <!-- Dòng 2: Search chung -> Bộ môn -> Cơ sở -->
+      <div class="control-row filters-bottom-row">
+        <!-- 1. Tìm kiếm chung -->
+        <div class="inline-search">
+          <div class="search-input-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Tìm lớp, HLV..."
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+            />
+            @if (searchQuery()) {
+              <button type="button" class="btn-clear-search" (click)="searchQuery.set('')">✕</button>
+            }
+          </div>
+        </div>
+
+        <!-- 2. Bộ môn -->
+        <div class="inline-categories">
+          <div class="category-pills">
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedCategory() === 'ALL'"
+              (click)="selectedCategory.set('ALL')"
+            >
+              Tất cả bộ môn
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedCategory() === 'Hatha'"
+              (click)="selectedCategory.set('Hatha')"
+            >
+              Hatha
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedCategory() === 'Vinyasa'"
+              (click)="selectedCategory.set('Vinyasa')"
+            >
+              Vinyasa Flow
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedCategory() === 'Yin'"
+              (click)="selectedCategory.set('Yin')"
+            >
+              Yin & Chuông
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedCategory() === 'Ashtanga'"
+              (click)="selectedCategory.set('Ashtanga')"
+            >
+              Ashtanga
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Cơ sở tập luyện -->
+        <div class="inline-branch-right">
+          <label for="branchSelect" class="branch-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>Cơ sở:</span>
+          </label>
+          <div class="branch-select-box">
+            <zen-select
+              id="branchSelect"
+              [options]="branchOptions()"
+              valueKey="id"
+              labelKey="name"
+              [ngModel]="selectedBranch()"
+              (ngModelChange)="onBranchChange($event)"
+              placeholder="Tất cả cơ sở"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Schedules Grid -->
-    <div class="schedules-grid">
-      @for (schedule of filteredSchedules(); track schedule.id) {
-        <div class="schedule-card" [class.is-full]="schedule.availableSlots === 0">
-          <div class="card-top">
-            <div class="time-badge">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <strong>{{ schedule.startTime | date:'dd/MM/yyyy HH:mm' }} - {{ schedule.endTime | date:'HH:mm' }}</strong>
-            </div>
-            <span class="room-tag">{{ schedule.roomName }}</span>
-          </div>
+    @if (filteredSchedules().length === 0) {
+      <div class="empty-schedules-state">
+        <div class="empty-icon-circle">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="10" y1="15" x2="14" y2="15"/>
+          </svg>
+        </div>
+        <h3>Không tìm thấy ca học phù hợp</h3>
+        <p>Hiện không có ca học nào thỏa mãn bộ lọc hiện tại. Hãy thử chọn ngày khác hoặc mở rộng bộ môn.</p>
+        <button
+          type="button"
+          class="btn btn-clear-filters"
+          (click)="selectedCategory.set('ALL'); selectedDate.set('ALL'); searchQuery.set('')"
+        >
+          Xóa Bộ Lọc & Xem Tất Cả
+        </button>
+      </div>
+    } @else {
+      <div class="schedules-grid">
+        @for (schedule of filteredSchedules(); track schedule.id) {
+          <div
+            class="schedule-card"
+            [class.is-full]="schedule.availableSlots === 0"
+            [class.is-booked]="isBooked(schedule.id)"
+          >
+            <!-- Card Top Header: Time, Duration & Category -->
+            <div class="card-top">
+              <div class="time-block">
+                <div class="time-badge">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <strong class="time-range">{{ schedule.startTime | date:'HH:mm' }} – {{ schedule.endTime | date:'HH:mm' }}</strong>
+                </div>
+                <span class="duration-tag">{{ getDurationMinutes(schedule.startTime, schedule.endTime) }} phút</span>
+              </div>
 
-          <h3 class="class-title">{{ schedule.className }}</h3>
-
-          <div class="instructor-row">
-            <svg class="instructor-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            <span class="instructor-name">{{ schedule.instructorName }}</span>
-          </div>
-
-          <!-- Capacity Bar -->
-          <div class="capacity-section">
-            <div class="capacity-labels">
-              <span>Sĩ số lớp:</span>
-              <strong [class.full-text]="schedule.availableSlots === 0">
-                {{ schedule.bookedCount }}/{{ schedule.maxCapacity }} học viên
-              </strong>
+              <span class="category-tag" [class]="getCategoryBadge(schedule.className).type">
+                {{ getCategoryBadge(schedule.className).label }}
+              </span>
             </div>
-            <div class="progress-track">
-              <div
-                class="progress-fill"
-                [class.full]="schedule.availableSlots === 0"
-                [class.warning]="schedule.availableSlots <= 4 && schedule.availableSlots > 0"
-                [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
-              ></div>
+
+            <!-- Card Meta: Date -->
+            <div class="card-meta-row">
+              <div class="card-date">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>{{ formatDateLabel(schedule.startTime) }}</span>
+              </div>
             </div>
-            <div class="slot-status">
-              @if (schedule.availableSlots > 0) {
-                <span class="status-available">Còn {{ schedule.availableSlots }} chỗ trống</span>
+
+            <div class="card-divider"></div>
+
+            <!-- Class Info -->
+            <div class="class-info-block">
+              <h3 class="class-title" [title]="schedule.className">{{ schedule.className }}</h3>
+
+              <div class="instructor-row">
+                <div class="instructor-avatar">
+                  <span>{{ getInitials(schedule.instructorName) }}</span>
+                </div>
+                <div class="instructor-meta">
+                  <span class="instructor-name">{{ schedule.instructorName }}</span>
+                  <span class="instructor-role">Huấn luyện viên An Yên</span>
+                </div>
+              </div>
+
+              <!-- Location Row (Branch & Room) -->
+              <div class="card-location-row" [title]="(schedule.branchName ? schedule.branchName + ' · ' : '') + schedule.roomName">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span class="location-text">
+                  @if (schedule.branchName) {
+                    <span class="branch-name">{{ schedule.branchName }}</span>
+                    <span class="loc-sep">·</span>
+                  }
+                  <span class="room-name">{{ schedule.roomName }}</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Capacity & Mat Bar -->
+            <div class="capacity-section">
+              <div class="capacity-labels">
+                <span class="label-title">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                  </svg>
+                  Sĩ số lớp
+                </span>
+                <span class="label-count" [class.full-text]="schedule.availableSlots === 0">
+                  <strong>{{ schedule.bookedCount }}/{{ schedule.maxCapacity }}</strong> thảm tập
+                </span>
+              </div>
+
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  [class.full]="schedule.availableSlots === 0"
+                  [class.warning]="schedule.availableSlots <= 4 && schedule.availableSlots > 0"
+                  [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
+                ></div>
+              </div>
+
+              <div class="slot-status">
+                @if (schedule.availableSlots > 4) {
+                  <span class="status-available">
+                    <span class="dot"></span> Còn {{ schedule.availableSlots }} vị trí thảm trống
+                  </span>
+                } @else if (schedule.availableSlots > 0) {
+                  <span class="status-warning">
+                    <span class="dot"></span> Chỉ còn {{ schedule.availableSlots }} vị trí cuối cùng
+                  </span>
+                } @else {
+                  <span class="status-full">
+                    <span class="dot"></span> Đã kín chỗ • Nhận đăng ký hàng chờ
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- Action Buttons Footer -->
+            <div class="card-footer">
+              @if (isBooked(schedule.id)) {
+                <div class="booked-state-card">
+                  <div class="booked-info">
+                    <div class="booked-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <span class="booked-text">Bạn đã giữ chỗ ca này</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-link-action"
+                    (click)="activeTab.set('my-bookings')"
+                  >
+                    Xem vé & Thảm tập →
+                  </button>
+                </div>
+              } @else if (getWaitingItem(schedule.id)) {
+                <div class="waitlist-state-card">
+                  <div class="waitlist-info">
+                    <div class="waitlist-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                    </div>
+                    <span class="waitlist-text">Đang trong hàng chờ (#{{ getWaitingItem(schedule.id)?.queuePosition }})</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-link-action"
+                    (click)="activeTab.set('my-bookings')"
+                  >
+                    Quản lý thứ hạng →
+                  </button>
+                </div>
+              } @else if (hasTimeConflict(schedule)) {
+                <button
+                  type="button"
+                  class="btn btn-conflict-card"
+                  (click)="alertConflict(schedule)"
+                  title="Trùng khung giờ với một ca học bạn đã đặt"
+                >
+                  <div class="conflict-head">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Trùng lịch ca đã đặt</span>
+                  </div>
+                  <span class="conflict-sub">Nhấp để xem chi tiết ca trùng</span>
+                </button>
+              } @else if (isDifferentBranchOnly(schedule)) {
+                <div class="card-view-only-box" title="Thẻ tập của bạn là thẻ đơn cơ sở, chỉ áp dụng tại cơ sở đã đăng ký">
+                  <div class="view-only-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span>Chỉ Xem • Khác Cơ Sở Thẻ Tập</span>
+                  </div>
+                  <span class="view-only-sub">Thẻ đơn cơ sở không áp dụng tại đây</span>
+                </div>
+              } @else if (!auth.isStudent()) {
+                <a
+                  routerLink="/auth/login"
+                  class="btn btn-secondary-login"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                  </svg>
+                  <span>Đăng Nhập Để Đặt Chỗ</span>
+                </a>
+              } @else if (!canBookSchedule(schedule)) {
+                <div class="card-no-pass-box" title="Bạn chưa có gói thẻ hoạt động phù hợp với ca học này">
+                  <div class="no-pass-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Chỉ Xem • Chưa Có Thẻ Phù Hợp</span>
+                  </div>
+                  <span class="no-pass-sub">Vui lòng đăng ký thẻ tập để giữ chỗ</span>
+                </div>
+              } @else if (schedule.availableSlots > 0) {
+                <button
+                  type="button"
+                  class="btn btn-primary-reserve"
+                  (click)="openBookingModal(schedule)"
+                >
+                  <span>Đặt Chỗ Ngay</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </button>
               } @else {
-                <span class="status-full">Đã kín chỗ (Có thể đăng ký hàng chờ)</span>
+                <button
+                  type="button"
+                  class="btn btn-waitlist-reserve"
+                  (click)="openWaitlistModal(schedule)"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <line x1="19" y1="8" x2="19" y2="14"/>
+                    <line x1="22" y1="11" x2="16" y2="11"/>
+                  </svg>
+                  <span>Đăng Ký Hàng Chờ</span>
+                </button>
               }
             </div>
           </div>
-
-          <div class="card-footer">
-            @if (isBooked(schedule.id)) {
-              <button type="button" class="btn btn-booked" disabled>
-                ✓ Bạn đã đặt chỗ ca này
-              </button>
-            } @else if (getWaitingItem(schedule.id)) {
-              <button type="button" class="btn btn-waiting" disabled>
-                Đang ở hàng chờ (#{{ getWaitingItem(schedule.id)?.queuePosition }})
-              </button>
-            } @else if (schedule.availableSlots > 0) {
-              <button
-                type="button"
-                class="btn btn-primary"
-                (click)="openBookingModal(schedule)"
-              >
-                Đặt Chỗ Ngay
-              </button>
-            } @else {
-              <button
-                type="button"
-                class="btn btn-waitlist"
-                (click)="openWaitlistModal(schedule)"
-              >
-                Đăng Ký Hàng Chờ
-              </button>
-            }
-          </div>
-        </div>
-      }
-    </div>
+        }
+      </div>
+    }
   } @else {
     <!-- My Bookings & Waitlist Tab -->
     <div class="my-bookings-container">
-      <div class="bookings-header">
-        <h3>Lịch Học & Hàng Chờ Của Bạn</h3>
-        <p>Kiểm tra thời gian, vị trí thảm, trạng thái điểm danh và thứ hạng hàng đợi lớp học</p>
-      </div>
-
       <!-- Section 1: Ca Đã Đặt Chỗ -->
       <div class="section-block">
         <h4 class="section-title">
@@ -233,7 +506,7 @@
         @if (myBookings().length === 0) {
           <div class="empty-state">
             <div class="empty-icon-circle">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
@@ -241,7 +514,7 @@
               </svg>
             </div>
             <p>Bạn chưa có lịch đặt chỗ nào. Hãy chọn ca học phù hợp từ Thời khóa biểu!</p>
-            <button type="button" class="btn btn-primary" (click)="activeTab.set('calendar')">
+            <button type="button" class="btn btn-primary-reserve" (click)="activeTab.set('calendar')">
               Xem Thời Khóa Biểu
             </button>
           </div>
@@ -264,27 +537,27 @@
                   </div>
                   <div class="booking-meta">
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                       </svg>
-                      {{ b.startTime | date:'EEEE, dd/MM HH:mm' }} - {{ b.endTime | date:'HH:mm' }}
+                      {{ b.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ b.endTime | date:'HH:mm' }}
                     </span>
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                         <circle cx="12" cy="10" r="3"/>
                       </svg>
                       {{ b.roomName }} • {{ b.branchName }}
                     </span>
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                       </svg>
                       HLV: <strong>{{ b.instructorName }}</strong>
                     </span>
-                    <span class="meta-item">
+                    <span class="meta-item mat-highlight">
                       Thảm số: <strong>{{ b.matNumber || 1 }}</strong>
                     </span>
                   </div>
@@ -339,21 +612,21 @@
                   </div>
                   <div class="booking-meta">
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                       </svg>
-                      {{ w.startTime | date:'EEEE, dd/MM HH:mm' }} - {{ w.endTime | date:'HH:mm' }}
+                      {{ w.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ w.endTime | date:'HH:mm' }}
                     </span>
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                         <circle cx="12" cy="10" r="3"/>
                       </svg>
                       {{ w.roomName }} • {{ w.branchName }}
                     </span>
                     <span class="meta-item">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                       </svg>
@@ -388,7 +661,10 @@
     <div class="modal-backdrop" (click)="closeBookingModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>Xác Nhận Đặt Chỗ Ca Học</h3>
+          <div class="modal-title-group">
+            <span class="modal-pre-title">XÁC NHẬN GIỮ CHỖ</span>
+            <h3>Đặt Chỗ Ca Học Yoga</h3>
+          </div>
           <button type="button" class="btn-close" (click)="closeBookingModal()">✕</button>
         </div>
 
@@ -396,7 +672,7 @@
           <div class="class-summary">
             <h4>{{ bookingModalSchedule()?.className }}</h4>
             <div class="summary-details">
-              <span>{{ bookingModalSchedule()?.startTime | date:'HH:mm' }} - {{ bookingModalSchedule()?.endTime | date:'HH:mm' }}</span>
+              <span>{{ bookingModalSchedule()?.startTime | date:'HH:mm' }} – {{ bookingModalSchedule()?.endTime | date:'HH:mm' }}</span>
               <span>·</span>
               <span>{{ bookingModalSchedule()?.roomName }}</span>
               <span>·</span>
@@ -424,11 +700,13 @@
           <p class="mat-alloc-note">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</p>
 
           <div class="policy-callout">
-            <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
+            <div class="callout-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </div>
             <div>
               <strong>Chính sách giữ & hoàn lượt:</strong>
               <p>Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.</p>
@@ -442,7 +720,7 @@
           </button>
           <button
             type="button"
-            class="btn btn-primary"
+            class="btn btn-primary-submit"
             (click)="submitBooking()"
             [disabled]="isSubmittingBooking() || !selectedPassId()"
           >
@@ -462,7 +740,10 @@
     <div class="modal-backdrop" (click)="closeWaitlistModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header waitlist-modal-header">
-          <h3>Đăng Ký Vào Hàng Chờ Ca Học</h3>
+          <div class="modal-title-group">
+            <span class="modal-pre-title">HÀNG ĐỢI TỰ ĐỘNG</span>
+            <h3>Đăng Ký Vào Hàng Chờ Ca Học</h3>
+          </div>
           <button type="button" class="btn-close" (click)="closeWaitlistModal()">✕</button>
         </div>
 
@@ -470,20 +751,20 @@
           <div class="class-summary waitlist-summary">
             <h4>{{ waitlistModalSchedule()?.className }}</h4>
             <div class="summary-details">
-              <span>{{ waitlistModalSchedule()?.startTime | date:'HH:mm' }} - {{ waitlistModalSchedule()?.endTime | date:'HH:mm' }}</span>
+              <span>{{ waitlistModalSchedule()?.startTime | date:'HH:mm' }} – {{ waitlistModalSchedule()?.endTime | date:'HH:mm' }}</span>
               <span>·</span>
               <span>{{ waitlistModalSchedule()?.roomName }}</span>
               <span>·</span>
               <span>HLV: {{ waitlistModalSchedule()?.instructorName }}</span>
             </div>
             <div class="full-notice">
-              Ca học này hiện đã kín {{ waitlistModalSchedule()?.maxCapacity }}/{{ waitlistModalSchedule()?.maxCapacity }} học viên.
+              Ca học này hiện đã kín {{ waitlistModalSchedule()?.maxCapacity }}/{{ waitlistModalSchedule()?.maxCapacity }} thảm tập.
             </div>
           </div>
 
           <div class="form-group">
             <label for="waitlistPassSelect">Chọn thẻ tập liên kết:</label>
-            @if (studentPasses().length > 0) {
+            @if (eligiblePasses(waitlistModalSchedule()).length > 0) {
               <zen-select
                 id="waitlistPassSelect"
                 [options]="waitlistPassOptions()"
@@ -493,15 +774,17 @@
               />
             } @else {
               <div class="alert alert-danger" style="margin-top: 6px; padding: 10px; font-size: 0.8125rem;">
-                Học viên chưa có thẻ tập đang hoạt động.
+                Học viên chưa có thẻ tập hoạt động phù hợp với cơ sở của ca học này.
               </div>
             }
           </div>
 
           <div class="policy-callout waitlist-callout">
-            <svg class="info-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
+            <div class="callout-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
             <div>
               <strong>Cơ chế hàng đợi tự động (Auto-Promotion):</strong>
               <p>Hệ thống không trừ lượt tập khi bạn đang trong hàng chờ. Ngay khi có bất kỳ học viên nào hủy chỗ, vị trí số 1 sẽ được tự động đôn lên thành ca giữ chỗ chính thức.</p>
@@ -515,7 +798,7 @@
           </button>
           <button
             type="button"
-            class="btn btn-warning"
+            class="btn btn-warning-submit"
             (click)="submitWaitlist()"
             [disabled]="isSubmittingWaitlist() || !selectedPassId()"
           >

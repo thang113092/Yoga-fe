@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@yoga/platform/api';
 import { Observable } from 'rxjs';
-import { CreateOrderReq, OrderResp, PaymentReq, PaymentResp } from './membership.models';
+import { CheckoutQuote, CreateOrderReq, OrderResp, PaymentReq, PaymentResp } from './membership.models';
 
 export interface OrderListRow {
   id: string; orderCode: string; branchId: string; branchName: string | null;
@@ -18,6 +18,14 @@ export class PosApi {
 
   listOrders(params: Record<string, string | number>): Observable<OrderListResult> {
     return this.api.get<OrderListResult>('/pos/orders', params);
+  }
+
+  getCheckoutQuote(studentId: string, planId: string, branchId: string): Observable<CheckoutQuote> {
+    return this.api.get<CheckoutQuote>('/pos/quote', { studentId, planId, branchId });
+  }
+
+  cancelPendingOrder(orderId: string): Observable<void> {
+    return this.api.post<void>(`/pos/orders/${orderId}/cancel`, {});
   }
 
   createOrder(req: CreateOrderReq, key: string): Observable<OrderResp> {

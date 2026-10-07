@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -15,6 +15,23 @@ import {
   ScheduleAttendee,
   ScheduleApi
 } from '@yoga/mod-schedule/data-access';
+
+function getTodayIsoDate(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+}
 
 @Component({
   selector: 'yoga-class-management',
@@ -40,11 +57,13 @@ export class ClassManagementComponent implements OnInit {
   readonly instructors = signal<InstructorItem[]>([]);
   readonly schedules = signal<ClassSchedule[]>([]);
 
-  // Selected filters
+  // Selected filters (default date to today; for instructor, default instructor to self)
   readonly selectedBranchId = signal<string>('ALL');
-  readonly selectedInstructorId = signal<string>('ALL');
+  readonly selectedInstructorId = signal<string>(
+    this.auth.isInstructor() && this.auth.currentUserId() ? this.auth.currentUserId()! : 'ALL'
+  );
   readonly searchQuery = signal<string>('');
-  readonly dateFilter = signal<string>('');
+  readonly dateFilter = signal<string>(getTodayIsoDate());
   readonly statusFilter = signal<string>('ALL');
 
   // Loading & Feedback
@@ -92,11 +111,15 @@ export class ClassManagementComponent implements OnInit {
   readonly attendeesList = signal<ScheduleAttendee[]>([]);
   readonly isLoadingAttendees = signal(false);
 
+  // Branch lock for Branch Manager & Instructor
+  readonly isBranchLocked = computed(() => this.auth.isBranchManager() || this.auth.isInstructor());
+  readonly userRestrictedBranchId = computed(() => this.auth.userHomeBranchId() || this.auth.branchIds()[0] || null);
+
   // Computed Options for ZenSelect
   readonly branchFilterOptions = computed(() => {
     let list = this.branches();
-    if (this.auth.isBranchManager()) {
-      const homeBranch = this.auth.userHomeBranchId();
+    if (this.isBranchLocked()) {
+      const homeBranch = this.userRestrictedBranchId();
       if (homeBranch) {
         list = list.filter(b => b.id === homeBranch);
       }
@@ -118,8 +141,8 @@ export class ClassManagementComponent implements OnInit {
 
   readonly branchSelectOptions = computed(() => {
     let list = this.branches();
-    if (this.auth.isBranchManager()) {
-      const homeBranch = this.auth.userHomeBranchId();
+    if (this.isBranchLocked()) {
+      const homeBranch = this.userRestrictedBranchId();
       if (homeBranch) {
         list = list.filter(b => b.id === homeBranch);
       }
@@ -156,12 +179,13 @@ export class ClassManagementComponent implements OnInit {
   });
 
   readonly instructorFilterOptions = computed(() => {
+    const myId = this.auth.currentUserId();
     return [
       { value: 'ALL', label: 'Tất cả huấn luyện viên' },
       ...this.instructors().map(ins => ({
         value: ins.id,
-        label: ins.fullName,
-        sublabel: ins.phone
+        label: ins.fullName + (myId && ins.id === myId ? ' (Tôi)' : ''),
+        sublabel: ins.phone ? `SĐT: ${ins.phone}` : undefined
       }))
     ];
   });
@@ -174,10 +198,97 @@ export class ClassManagementComponent implements OnInit {
     { value: 'CANCELLED', label: 'Đã hủy ca' }
   ];
 
+  readonly datePickerInput = viewChild<ElementRef<HTMLInputElement>>('datePickerInput');
+
+  triggerDatePicker(): void {
+    const el = this.datePickerInput()?.nativeElement;
+    if (el) {
+      if (typeof el.showPicker === 'function') {
+        try {
+          el.showPicker();
+          return;
+        } catch {
+          // fallback
+        }
+      }
+      el.focus();
+      el.click();
+    }
+  }
+
+  isTodayDate(iso: string): boolean {
+    if (!iso) return false;
+    return iso === this.getTodayDateStr();
+  }
+
+  isTomorrowDate(iso: string): boolean {
+    if (!iso) return false;
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(tomorrow);
+      return iso === tomorrowStr;
+    } catch {
+      return false;
+    }
+  }
+
+  formatDisplayDate(iso: string): string {
+    if (!iso) return '';
+    try {
+      const [y, m, d] = iso.split('-').map(Number);
+      if (!y || !m || !d) return iso;
+      const date = new Date(y, m - 1, d);
+      return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(date);
+    } catch {
+      return iso;
+    }
+  }
+
+  getWeekdayDisplay(iso: string): string {
+    if (!iso) return '';
+    try {
+      const [y, m, d] = iso.split('-').map(Number);
+      if (!y || !m || !d) return '';
+      const date = new Date(y, m - 1, d);
+      const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      return days[date.getDay()] || '';
+    } catch {
+      return '';
+    }
+  }
+
+  onDateSelect(newDate: string): void {
+    this.dateFilter.set(newDate || '');
+  }
+
   getBranchName(schedule: ClassSchedule): string {
     if (schedule.branchName) return schedule.branchName;
     const b = this.branches().find(item => item.id === schedule.branchId);
     return b ? b.name : 'Chi nhánh';
+  }
+
+  getTodayDateStr(): string {
+    return getTodayIsoDate();
+  }
+
+  clearDateFilter(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.dateFilter.set('');
+  }
+
+  setDateToToday(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.dateFilter.set(getTodayIsoDate());
   }
 
   getScheduleDateStr(iso: string): string {
@@ -197,12 +308,40 @@ export class ClassManagementComponent implements OnInit {
 
   resetFilters(): void {
     this.searchQuery.set('');
+    this.dateFilter.set(getTodayIsoDate());
+    if (this.auth.isInstructor()) {
+      const myId = this.auth.currentUserId();
+      this.selectedInstructorId.set(myId || 'ALL');
+    } else {
+      this.selectedInstructorId.set('ALL');
+    }
+    this.statusFilter.set('ALL');
+    if (!this.isBranchLocked()) {
+      this.selectedBranchId.set('ALL');
+      this.loadSchedules();
+    } else {
+      const homeBranch = this.userRestrictedBranchId();
+      if (homeBranch) {
+        this.selectedBranchId.set(homeBranch);
+        this.loadSchedules();
+      }
+    }
+  }
+
+  clearAllFilters(): void {
+    this.searchQuery.set('');
     this.dateFilter.set('');
     this.selectedInstructorId.set('ALL');
     this.statusFilter.set('ALL');
-    if (!this.auth.isBranchManager()) {
+    if (!this.isBranchLocked()) {
       this.selectedBranchId.set('ALL');
       this.loadSchedules();
+    } else {
+      const homeBranch = this.userRestrictedBranchId();
+      if (homeBranch) {
+        this.selectedBranchId.set(homeBranch);
+        this.loadSchedules();
+      }
     }
   }
 
@@ -210,9 +349,11 @@ export class ClassManagementComponent implements OnInit {
     return !!(
       this.searchQuery().trim() ||
       this.dateFilter() ||
-      this.selectedInstructorId() !== 'ALL' ||
+      (this.auth.isInstructor()
+        ? this.selectedInstructorId() !== (this.auth.currentUserId() || 'ALL')
+        : this.selectedInstructorId() !== 'ALL') ||
       this.statusFilter() !== 'ALL' ||
-      (!this.auth.isBranchManager() && this.selectedBranchId() !== 'ALL')
+      (!this.isBranchLocked() && this.selectedBranchId() !== 'ALL')
     );
   });
 
@@ -224,8 +365,8 @@ export class ClassManagementComponent implements OnInit {
     const insId = this.selectedInstructorId();
     const targetDate = this.dateFilter();
 
-    if (this.auth.isBranchManager()) {
-      const homeBranch = this.auth.userHomeBranchId();
+    if (this.isBranchLocked()) {
+      const homeBranch = this.userRestrictedBranchId();
       if (homeBranch) {
         list = list.filter(s => s.branchId === homeBranch);
       }
@@ -256,6 +397,12 @@ export class ClassManagementComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.auth.isInstructor()) {
+      const myId = this.auth.currentUserId();
+      if (myId) {
+        this.selectedInstructorId.set(myId);
+      }
+    }
     this.loadBranches();
     this.loadClassTypes();
     this.loadInstructors();
@@ -266,8 +413,8 @@ export class ClassManagementComponent implements OnInit {
       next: (data) => {
         this.branches.set(data || []);
         if (data && data.length > 0) {
-          if (this.auth.isBranchManager()) {
-            const homeBranch = this.auth.userHomeBranchId();
+          if (this.isBranchLocked()) {
+            const homeBranch = this.userRestrictedBranchId();
             const target = (homeBranch ? data.find(b => b.id === homeBranch) : null) || data[0];
             this.selectedBranchId.set(target.id);
             this.loadSchedules();
@@ -325,17 +472,39 @@ export class ClassManagementComponent implements OnInit {
   }
 
   loadInstructors(): void {
-    this.scheduleApi.getInstructors().subscribe({
+    const branchId = this.isBranchLocked() ? (this.userRestrictedBranchId() || undefined) : undefined;
+    this.scheduleApi.getInstructors(branchId).subscribe({
       next: (instList) => {
-        this.instructors.set(instList || []);
-        if (instList && instList.length > 0) {
+        let list = instList || [];
+        if (this.auth.isInstructor()) {
+          const myId = this.auth.currentUserId();
+          const myName = this.auth.userFullName();
+          if (myId) {
+            if (!list.some(i => i.id === myId)) {
+              list = [{ id: myId, fullName: myName, phone: '' }, ...list];
+            }
+            this.selectedInstructorId.set(myId);
+          }
+        }
+        this.instructors.set(list);
+        if (list.length > 0) {
           this.scheduleForm.update(f => ({
             ...f,
-            instructorId: instList[0].id
+            instructorId: this.auth.isInstructor() && this.auth.currentUserId()
+              ? this.auth.currentUserId()!
+              : list[0].id
           }));
         }
       },
       error: () => {
+        if (this.auth.isInstructor()) {
+          const myId = this.auth.currentUserId();
+          if (myId) {
+            this.instructors.set([{ id: myId, fullName: this.auth.userFullName(), phone: '' }]);
+            this.selectedInstructorId.set(myId);
+            return;
+          }
+        }
         this.instructors.set([]);
       }
     });
@@ -346,14 +515,14 @@ export class ClassManagementComponent implements OnInit {
     this.errorMessage.set(null);
 
     const rawBranchId = this.selectedBranchId();
-    const branchId = this.auth.isBranchManager()
-      ? (this.auth.userHomeBranchId() || (rawBranchId !== 'ALL' ? rawBranchId : undefined))
+    const branchId = this.isBranchLocked()
+      ? (this.userRestrictedBranchId() || (rawBranchId !== 'ALL' ? rawBranchId : undefined))
       : (rawBranchId && rawBranchId !== 'ALL' ? rawBranchId : undefined);
 
     this.scheduleApi.getSchedules(branchId).subscribe({
       next: (res) => {
         let list = res || [];
-        if (this.auth.isBranchManager() && branchId) {
+        if (this.isBranchLocked() && branchId) {
           list = list.filter(s => s.branchId === branchId);
         }
         this.schedules.set(list);
@@ -368,7 +537,7 @@ export class ClassManagementComponent implements OnInit {
   }
 
   onBranchFilterChange(branchId: string): void {
-    if (this.auth.isBranchManager()) {
+    if (this.isBranchLocked()) {
       return;
     }
     this.selectedBranchId.set(branchId);
@@ -382,8 +551,8 @@ export class ClassManagementComponent implements OnInit {
   openCreateScheduleModal(): void {
     const rawBranch = this.selectedBranchId();
     let curBranch = (rawBranch && rawBranch !== 'ALL') ? rawBranch : (this.branches()[0]?.id ?? '');
-    if (this.auth.isBranchManager()) {
-      const managerBranchId = this.auth.userHomeBranchId();
+    if (this.isBranchLocked()) {
+      const managerBranchId = this.userRestrictedBranchId();
       if (managerBranchId) {
         curBranch = managerBranchId;
       }
@@ -459,6 +628,7 @@ export class ClassManagementComponent implements OnInit {
     }
 
     if (!form.branchId || !form.roomId || !form.classTypeId || !form.instructorId || !form.date || !form.startTimeStr) {
+      this.toast.warning('Vui lòng điền đầy đủ các trường thông tin bắt buộc.');
       this.errorMessage.set('Vui lòng điền đầy đủ các trường thông tin bắt buộc.');
       return;
     }
@@ -471,7 +641,34 @@ export class ClassManagementComponent implements OnInit {
     const endDate = new Date(startDate.getTime() + form.durationMinutes * 60 * 1000);
 
     if (startDate.getTime() <= Date.now()) {
+      this.toast.warning('Thời gian bắt đầu ca học phải ở thời điểm tương lai.');
       this.errorMessage.set('Thời gian bắt đầu ca học phải ở thời điểm tương lai.');
+      return;
+    }
+
+    // Kiểm tra trùng lịch phòng tập và huấn luyện viên từ danh sách lịch đã tải
+    const reqStartMs = startDate.getTime();
+    const reqEndMs = endDate.getTime();
+
+    const roomConflict = this.schedules().find(s =>
+      s.roomId === form.roomId &&
+      s.status !== 'CANCELLED' &&
+      new Date(s.startTime).getTime() < reqEndMs &&
+      new Date(s.endTime).getTime() > reqStartMs
+    );
+    if (roomConflict) {
+      this.toast.error(`Phòng tập đã có ca học [${roomConflict.className}] (${this.formatTime(roomConflict.startTime)} - ${this.formatTime(roomConflict.endTime)}) trong khung giờ này.`);
+      return;
+    }
+
+    const instructorConflict = this.schedules().find(s =>
+      s.instructorId === form.instructorId &&
+      s.status !== 'CANCELLED' &&
+      new Date(s.startTime).getTime() < reqEndMs &&
+      new Date(s.endTime).getTime() > reqStartMs
+    );
+    if (instructorConflict) {
+      this.toast.error(`Huấn luyện viên đã có lịch dạy ca [${instructorConflict.className}] (${this.formatTime(instructorConflict.startTime)} - ${this.formatTime(instructorConflict.endTime)}) trong khung giờ này.`);
       return;
     }
 

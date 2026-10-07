@@ -17,16 +17,16 @@ export const SCHEDULE_ROUTES: Routes = [
   },
   {
     path: 'check-in',
-    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR'])],
+    canActivate: [roleGuard(['INSTRUCTOR'])],
     loadComponent: () =>
       import('./qr-scanner/qr-scanner.component').then(
         (m) => m.QrScannerComponent
       ),
-    title: 'Điểm Danh QR - Yoga Center'
+    title: 'Điểm Danh - Yoga Center'
   },
   {
     path: 'manage',
-    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'])],
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR'])],
     loadComponent: () =>
       import('./class-management/class-management.component').then(
         (m) => m.ClassManagementComponent

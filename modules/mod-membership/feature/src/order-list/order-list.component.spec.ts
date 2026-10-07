@@ -23,7 +23,7 @@ describe('OrderListComponent', () => {
     const fixture = TestBed.createComponent(OrderListComponent);
     fixture.detectChanges();
     expect(fixture.componentInstance.branches().map(b => b.id)).toEqual(['home', 'assigned']);
-    expect(fixture.nativeElement.textContent).toContain('Không có đơn hàng phù hợp.');
+    expect(fixture.nativeElement.textContent).toContain('Không có đơn hàng nào phù hợp với bộ lọc hiện tại.');
   });
   it('sends filters with the requested page', () => {
     const component = TestBed.createComponent(OrderListComponent).componentInstance;
