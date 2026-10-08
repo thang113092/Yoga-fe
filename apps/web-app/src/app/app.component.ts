@@ -35,16 +35,9 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </a>
             }
             @if (auth.canManageClasses()) {
-              <a routerLink="/schedule/manage" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                  <path d="m9 16 2 2 4-4"/>
-                </svg>
-                <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Lớp Học' : 'Quản Lý Lớp' }}</span>
-              </a>
+              <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">Bộ môn</a>
+              <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">Khóa học</a>
+              <a routerLink="/schedule/timetable" routerLinkActive="active" class="nav-tab">Lịch học</a>
             }
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
               <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab">
@@ -104,6 +97,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <span>Lịch Sử Tập</span>
               </a>
             }
+            @if (!auth.canManageClasses()) {<a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">Khóa học</a>}
             <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
               <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -330,16 +324,14 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             <div class="header-divider"></div>
 
             <!-- Khối người dùng -->
-            <div class="user-pill">
+            <div class="user-pill" [title]="auth.userFullName()">
               <div class="avatar-wrapper">
                 <span class="avatar-letter">{{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'U' }}</span>
                 <span class="online-dot" title="Đang trực tuyến"></span>
               </div>
               <div class="user-details">
                 <span class="user-name">{{ auth.userFullName() }}</span>
-                <span class="role-badge">
-                  {{ getRoleLabel(auth.userRole()) }}
-                </span>
+                <span class="role-badge">{{ getRoleLabel(auth.userRole()) }}</span>
               </div>
             </div>
 
@@ -421,16 +413,9 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             }
 
             @if (auth.canManageClasses()) {
-              <a routerLink="/schedule/manage" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                  <path d="m9 16 2 2 4-4"/>
-                </svg>
-                <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh Sách Lớp Học' : 'Quản Lý Lớp Học' }}</span>
-              </a>
+              <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Bộ môn</a>
+              <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Khóa học</a>
+              <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Lịch học</a>
             }
 
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
@@ -490,6 +475,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </a>
             }
 
+            @if (!auth.canManageClasses()) {<a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Khóa học</a>}
             <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -974,10 +960,17 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           display: flex;
           align-items: center;
           gap: 0.65rem;
-          padding: 3px 8px 3px 4px;
+          padding: 3px 12px 3px 4px;
           border-radius: 9999px;
           background: rgba(20, 70, 52, 0.03);
-          border: 1px solid rgba(20, 70, 52, 0.06);
+          border: 1px solid rgba(20, 70, 52, 0.08);
+          box-shadow: 0 1px 2px rgba(20, 70, 52, 0.02);
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+
+          &:hover {
+            background: rgba(20, 70, 52, 0.05);
+            border-color: rgba(20, 70, 52, 0.12);
+          }
 
           .avatar-wrapper {
             position: relative;
@@ -1012,29 +1005,28 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           .user-details {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            justify-content: center;
+            gap: 1px;
 
             .user-name {
-              font-size: 0.8125rem;
+              font-size: 0.84rem;
               font-weight: 600;
               color: #144634;
-              max-width: 130px;
+              max-width: 140px;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              line-height: 1.15;
+              line-height: 1.2;
+              letter-spacing: -0.01em;
             }
 
             .role-badge {
-              font-size: 0.65rem;
+              font-size: 0.625rem;
               font-weight: 500;
               color: #0f766e;
-              background: rgba(15, 118, 110, 0.08);
-              padding: 0 6px;
-              border-radius: 9999px;
-              display: inline-block;
-              width: fit-content;
-              line-height: 1.35;
+              line-height: 1.15;
+              letter-spacing: 0.02em;
+              white-space: nowrap;
             }
           }
         }

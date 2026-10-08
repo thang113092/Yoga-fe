@@ -311,6 +311,7 @@ export class ScheduleCalendarComponent implements OnInit {
   }
 
   canBookSchedule(schedule: ClassSchedule): boolean {
+    if (schedule.courseClassId) return false;
     if (!this.auth.isStudent()) return false;
     return this.eligiblePasses(schedule).length > 0;
   }

@@ -1,0 +1,993 @@
+<div class="zen-container">
+
+  <!-- Header Section (Compact Unified Control Header matching class-management) -->
+  <header class="page-header">
+    <div class="header-main-row">
+      <div class="header-titles">
+        <div class="pre-title">{{ auth.isStudent() ? 'An Yên · Hành trình học tập' : 'Phân hệ Quản trị Lớp học' }}</div>
+        <h1 class="main-title">Khóa học</h1>
+      </div>
+
+      <!-- Navigation Tabs & Actions Group -->
+      <div class="header-controls">
+        <div class="zen-tabs" role="tablist">
+@if (!auth.isStudent()) {<button type="button" role="tab" class="zen-tab-btn" [class.active]="view()==='programs'" [attr.aria-selected]="view()==='programs'" (click)="view.set('programs');selected.set(null);enrollment.set(null)">Chương trình học <span class="tab-badge">{{courses().length}}</span></button>}
+          <button
+            type="button"
+            role="tab"
+            class="zen-tab-btn"
+            [class.active]="view() === 'classes'"
+            [attr.aria-selected]="view() === 'classes'"
+            (click)="view.set('classes'); selected.set(null); enrollment.set(null)"
+          >
+            <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="tab-text">Khóa học</span>
+            <span class="tab-badge">{{ classes().length }}</span>
+          </button>
+
+          @if (auth.isStudent()) {
+            <button
+              type="button"
+              role="tab"
+              class="zen-tab-btn"
+              [class.active]="view() === 'mine'"
+              (click)="view.set('mine'); selected.set(null); enrollment.set(null)"
+            >
+              <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="tab-text">Khóa Học Của Tôi</span>
+              <span class="tab-badge">{{ mine().length }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="header-actions">
+          <a [routerLink]="auth.isStudent() ? '/schedule/calendar' : '/schedule/timetable'" class="btn-secondary" title="Xem lịch học chung">
+            <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Lịch Học Chung</span>
+          </a>
+
+          @if (auth.isSuperAdmin()) {
+            <button type="button" class="btn-secondary" (click)="openCourse()" [disabled]="busy()">
+              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Tạo Chương Trình</span>
+            </button>
+          }
+
+          @if (canCreateClass()) {
+            <button type="button" class="btn-primary" (click)="openClass()" [disabled]="busy() || !courses().length">
+              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Mở khóa học</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Messages Feedback (Alerts) -->
+  @if (success()) {
+    <div class="zen-alert alert-success" role="status">
+      <div class="alert-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <span>{{ success() }}</span>
+      </div>
+      <button type="button" class="alert-close-btn" (click)="success.set('')" aria-label="Đóng thông báo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="zen-alert alert-error" role="alert">
+      <div class="alert-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <span>{{ error() }}</span>
+      </div>
+      <button type="button" class="alert-close-btn" (click)="error.set('')" aria-label="Đóng thông báo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Compact Filters Toolbar (Matching class-management) -->
+  @if (!selected() && !enrollment()) {
+    <div class="filter-card">
+      <div class="filter-group search-box">
+        <div class="input-search-wrapper">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            class="filter-input"
+            placeholder="Tìm theo tên lớp, mã khóa, cơ sở..."
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+          />
+        </div>
+      </div>
+
+      <div class="filter-group branch-selector">
+        <div class="branch-select-wrap">
+          <svg class="branch-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <select
+            class="filter-select"
+            [(ngModel)]="branchId"
+            (ngModelChange)="filterBranch()"
+            [disabled]="busy()"
+          >
+            @if (auth.isStudent() || auth.isSuperAdmin()) {
+              <option value="">Tất cả cơ sở</option>
+            }
+            @for (b of branches(); track b.id) {
+              <option [value]="b.id">{{ b.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-action">
+        <button type="button" class="btn-refresh" (click)="refresh()" [disabled]="busy()" title="Đồng bộ danh sách">
+          <svg class="refresh-icon" [class.spinning]="busy()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>Làm Mới</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Main Table Container Card (Matching class-management) -->
+  @if (!selected() && !enrollment()) {
+    <div class="table-container-card">
+      @if (busy()) {
+        <div class="loading-state">
+          <div class="zen-spinner"></div>
+          <p>Đang đồng bộ dữ liệu khóa học từ hệ thống...</p>
+        </div>
+       } @else if (view() === 'programs') {
+<div class="program-list"><p>Chương trình học là kế hoạch nhiều buổi của một bộ môn, dùng để mở các khóa học.</p>
+@for(course of courses();track course.id){<article class="program-row"><div><h3>{{course.name}}</h3><p>{{course.description || 'Chưa có mô tả chương trình.'}}</p><small>{{course.totalSessions}} buổi · {{course.sessions?.length ? 'Thời lượng theo từng buổi' : course.defaultDurationMinutes + ' phút/buổi'}} · Học phí gợi ý {{course.defaultFee | number}} đ</small>@if(course.sessions?.length){<details><summary>Xem kế hoạch từng buổi</summary>@for(session of course.sessions;track $index){<p><strong>Buổi {{$index+1}} · {{session.title}} · {{session.durationMinutes}} phút</strong><br>{{session.content}}</p>}</details>}</div>@if(canCreateClass()){<button type="button" class="btn-primary" (click)="openClassFor(course.id)" [disabled]="busy()">Mở khóa học</button>}</article>}
+@empty{<div class="empty-state"><h3>Chưa có chương trình học</h3><p>Tạo chương trình để chuẩn bị mở khóa học.</p></div>}</div>
+} @else if (view() === 'classes') {
+        @if (filteredClasses().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <h3>Chưa có lớp theo khóa nào</h3>
+            <p>
+              @if (canCreateClass()) {
+                Tạo chương trình và mở lớp để bắt đầu xếp lịch.
+              } @else {
+                Các lớp mới sẽ xuất hiện khi cơ sở mở đăng ký.
+              }
+            </p>
+            @if (canCreateClass()) {
+              <button type="button" class="btn-primary" (click)="openClass()" [disabled]="busy() || !courses().length">
+                Mở khóa học
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="zen-table">
+              <thead>
+                <tr>
+                  <th>Khung Thời Gian</th>
+                  <th>Tên Khóa & Lớp Học</th>
+                  <th>Cơ Sở</th>
+                  <th>Số Buổi</th>
+                  <th>Sĩ Số Lớp</th>
+                  <th>Học Phí</th>
+                  <th>Trạng Thái</th>
+                  <th class="text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of filteredClasses(); track c.id) {
+                  <tr>
+                    <td class="cell-time">
+                      <div class="time-primary">{{ c.startTime | date:'dd/MM/yyyy':'+0700' }}</div>
+                      <div class="date-secondary">đến {{ c.endTime | date:'dd/MM/yyyy':'+0700' }}</div>
+                    </td>
+
+                    <td class="cell-class">
+                      <div class="class-title">{{ c.name }}</div>
+                      <span class="code-secondary">{{ c.code }}</span>
+                    </td>
+
+                    <td class="cell-branch">
+                      <div class="branch-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                          <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>{{ c.branchName }}</span>
+                      </div>
+                    </td>
+
+                    <td class="cell-sessions">
+                      <span class="sessions-count">{{ c.plannedSessions }} buổi</span>
+                    </td>
+
+                    <td class="cell-capacity">
+                      <div class="capacity-stats">
+                        <span class="count-booked">{{ c.enrolledCount }}</span>
+                        <span class="count-divider">/</span>
+                        <span class="count-max">{{ c.maxCapacity }} chỗ</span>
+                      </div>
+                      <div class="progress-track">
+                        <div
+                          class="progress-fill"
+                          [style.width.%]="(c.enrolledCount / c.maxCapacity) * 100"
+                          [class.fill-full]="c.enrolledCount >= c.maxCapacity"
+                        ></div>
+                      </div>
+                    </td>
+
+                    <td class="cell-fee">
+                      <div class="fee-text">{{ c.tuitionFee | number }} đ</div>
+                    </td>
+
+                    <td class="cell-status">
+                      <span class="status-pill" [class]="'status-' + (c.status | lowercase)">
+                        {{ label(c.status) }}
+                      </span>
+                    </td>
+
+                    <td class="cell-actions text-right">
+                      <button
+                        type="button"
+                        class="btn-row-action"
+                        (click)="showClass(c.id)"
+                        title="Xem chi tiết lớp và lịch học"
+                        [disabled]="busy()"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>Xem Lớp & Lịch</span>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else {
+        <!-- view() === 'mine' -->
+        @if (filteredMine().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <h3>Bạn chưa đăng ký khóa học nào</h3>
+            <p>Chọn một lớp để xem lịch và đăng ký toàn bộ khóa.</p>
+            <button type="button" class="btn-primary" (click)="view.set('classes')">
+              Xem Các Lớp Đang Mở
+            </button>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="zen-table">
+              <thead>
+                <tr>
+                  <th>Khung Thời Gian</th>
+                  <th>Tên Khóa Học</th>
+                  <th>Cơ Sở</th>
+                  <th>Tiến Độ Tham Dự</th>
+                  <th>Trạng Thái Đăng Ký</th>
+                  <th class="text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (e of filteredMine(); track e.id) {
+                  <tr>
+                    <td class="cell-time">
+                      <div class="time-primary">{{ e.startTime | date:'dd/MM/yyyy':'+0700' }}</div>
+                      <div class="date-secondary">đến {{ e.endTime | date:'dd/MM/yyyy':'+0700' }}</div>
+                    </td>
+
+                    <td class="cell-class">
+                      <div class="class-title">{{ e.className }}</div>
+                      <span class="code-secondary">{{ e.classCode }}</span>
+                    </td>
+
+                    <td class="cell-branch">
+                      <div class="branch-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                          <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>{{ e.branchName }}</span>
+                      </div>
+                    </td>
+
+                    <td class="cell-capacity">
+                      <div class="capacity-stats">
+                        <span class="count-booked">{{ e.attendedSessions }} / {{ e.plannedSessions }} buổi</span>
+                      </div>
+                      <div class="progress-track">
+                        <div
+                          class="progress-fill"
+                          [style.width.%]="(e.attendedSessions / e.plannedSessions) * 100"
+                        ></div>
+                      </div>
+                      <progress class="visually-hidden" [value]="e.attendedSessions" [max]="e.plannedSessions" aria-label="Tiến độ tham dự khóa học"></progress>
+                    </td>
+
+                    <td class="cell-status">
+                      <span class="status-pill" [class]="'status-' + (e.status | lowercase)">
+                        {{ label(e.status) }}
+                      </span>
+                    </td>
+
+                    <td class="cell-actions text-right">
+                      <button
+                        type="button"
+                        class="btn-row-action"
+                        (click)="showEnrollment(e.id)"
+                        title="Xem lịch học và tiến độ"
+                        [disabled]="busy()"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>Xem Lịch & Tiến Độ</span>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Chi Tiết Lớp Học (Selected Class Detail View) -->
+  @if (selected(); as c) {
+    <div class="detail-container-card">
+      <div class="detail-card-header">
+        <div class="header-left">
+          <div class="badge-group">
+            <span class="type-code-badge">{{ c.code }}</span>
+            <span class="branch-tag">{{ c.branchName }}</span>
+            <span class="status-pill" [class]="'status-' + (c.status | lowercase)">{{ label(c.status) }}</span>
+          </div>
+          <h2 class="detail-title">{{ c.name }}</h2>
+          @if (c.description) {
+            <p class="detail-desc">{{ c.description }}</p>
+          }
+        </div>
+        <button type="button" class="btn-secondary" (click)="selected.set(null)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Quay Lại Danh Sách</span>
+        </button>
+      </div>
+
+      <!-- Facts Grid -->
+      <div class="detail-stats-grid">
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Bắt đầu</span>
+          <strong class="stat-val">{{ c.startTime | date:'dd/MM/yyyy':'+0700' }}</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Kết thúc</span>
+          <strong class="stat-val">{{ c.endTime | date:'dd/MM/yyyy':'+0700' }}</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Tổng số buổi</span>
+          <strong class="stat-val">{{ c.plannedSessions }} buổi</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Sĩ số</span>
+          <strong class="stat-val">{{ c.enrolledCount }} / {{ c.maxCapacity }}</strong>
+        </div>
+        <div class="detail-stat-card highlight">
+          <span class="stat-lbl">Học phí trọn khóa</span>
+          <strong class="stat-val fee-number">{{ c.tuitionFee | number }} đ</strong>
+        </div>
+      </div>
+
+      <!-- Ghi danh học viên -->
+      @if (canEnroll() && c.status === 'OPEN') {
+        <div class="enroll-bar-card">
+          @if (!auth.isStudent()) {
+            <div class="enroll-field">
+              <label>Chọn học viên ghi danh:</label>
+              <select class="form-input" [(ngModel)]="studentId">
+                <option value="">Chọn học viên</option>
+                @for (s of students(); track s.id) {
+                  <option [value]="s.id">{{ s.fullName }} · {{ s.phone }}</option>
+                }
+              </select>
+            </div>
+          }
+          <div class="enroll-action-group">
+            <button class="btn-primary" (click)="enroll()" [disabled]="busy() || !studentId || c.enrolledCount >= c.maxCapacity">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+              <span>Đăng Ký Toàn Bộ Khóa</span>
+            </button>
+            <span class="hint-text">Giữ chỗ tối đa 24 giờ, không quá giờ bắt đầu khóa.</span>
+          </div>
+        </div>
+      }
+
+      <!-- Danh sách ca học của lớp -->
+      <div class="section-title-line">
+        <h3>Lịch Học Của Lớp</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="zen-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Buổi</th>
+              <th>Thời Gian Ca Học</th>
+              <th>Phòng Tập</th>
+              <th>Huấn Luyện Viên</th>
+              <th>Trạng Thái</th>
+              <th class="text-right">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of c.sessions; track s.id) {
+              <tr>
+                <td class="font-medium">Buổi {{ s.sessionNumber }}<br><strong>{{ s.sessionTitle || s.title }}</strong>@if(s.plannedContent){<p>{{s.plannedContent}}</p>}</td>
+                <td>
+                  <div class="time-primary">{{ s.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
+                  <div class="date-secondary">đến {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                </td>
+                <td><span class="room-name">{{ s.roomName }}</span></td>
+                <td>
+                  <div class="instructor-badge">
+                    <span class="avatar-dot"></span>
+                    <span>{{ s.instructorName }}</span>
+                  </div>
+                </td>
+                <td><span class="status-pill" [class]="'status-' + (s.status | lowercase)">{{ label(s.status || '') }}</span></td>
+                <td class="text-right">
+                  @if (canCreateClass() && future(s) && s.status !== 'CANCELLED') {
+                    <button class="btn-row-action" (click)="editSession(s)" [disabled]="busy()">Đổi Lịch</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Danh sách học viên ghi danh -->
+      @if (!auth.isStudent()) {
+        <div class="section-title-line mt-4">
+          <h3>Học Viên Và Tiến Độ Tham Dự ({{ roster().length }})</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="zen-table">
+            <thead>
+              <tr>
+                <th>Học Viên</th>
+                <th>Tiến Độ Tham Dự</th>
+                <th>Trạng Thái Đăng Ký</th>
+                <th>Thanh Toán</th>
+                <th class="text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of roster(); track e.id) {
+                <tr>
+                  <td>
+                    <div class="class-title">{{ e.studentName }}</div>
+                    <div class="date-secondary">{{ e.studentPhone }}</div>
+                  </td>
+                  <td>{{ e.attendedSessions }} / {{ e.plannedSessions }} buổi</td>
+                  <td><span class="status-pill" [class]="'status-' + (e.status | lowercase)">{{ label(e.status) }}</span></td>
+                  <td><span class="status-pill" [class]="'status-' + (e.paymentStatus | lowercase)">{{ label(e.paymentStatus) }}</span></td>
+                  <td class="text-right">
+                    <button class="btn-row-action" (click)="showEnrollment(e.id)" [disabled]="busy()">Chi Tiết</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">Chưa có học viên nào đăng ký khóa này.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Chi Tiết Đăng Ký (Enrollment View) -->
+  @if (enrollment(); as e) {
+    <div class="detail-container-card">
+      <div class="detail-card-header">
+        <div class="header-left">
+          <div class="badge-group">
+            <span class="type-code-badge">{{ e.enrollmentCode }}</span>
+            <span class="branch-tag">{{ e.classCode }}</span>
+            <span class="status-pill" [class]="'status-' + (e.status | lowercase)">{{ label(e.status) }}</span>
+          </div>
+          <h2 class="detail-title">{{ e.className }}</h2>
+          <p class="detail-desc">{{ e.studentName }} · {{ e.branchName }}</p>
+        </div>
+        <button type="button" class="btn-secondary" (click)="enrollment.set(null)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Quay Lại Danh Sách</span>
+        </button>
+      </div>
+
+      <!-- Facts Grid -->
+      <div class="detail-stats-grid">
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Ngày bắt đầu</span>
+          <strong class="stat-val">{{ e.startTime | date:'dd/MM/yyyy':'+0700' }}</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Ngày kết thúc</span>
+          <strong class="stat-val">{{ e.endTime | date:'dd/MM/yyyy':'+0700' }}</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Bạn đã tham dự</span>
+          <strong class="stat-val">{{ e.attendedSessions }} / {{ e.plannedSessions }} buổi</strong>
+        </div>
+        <div class="detail-stat-card">
+          <span class="stat-lbl">Lớp đã tổ chức</span>
+          <strong class="stat-val">{{ e.heldSessions }} buổi</strong>
+        </div>
+        <div class="detail-stat-card highlight">
+          <span class="stat-lbl">Đăng ký</span>
+          <strong class="stat-val">{{ label(e.status) }}</strong>
+        </div>
+      </div>
+
+      <!-- Thanh tiến độ -->
+      <div class="attendance-progress-card">
+        <div class="progress-track large">
+          <div class="progress-fill" [style.width.%]="(e.attendedSessions / e.plannedSessions) * 100"></div>
+        </div>
+        <progress class="visually-hidden" [value]="e.attendedSessions" [max]="e.plannedSessions" aria-label="Tiến độ tham dự khóa học"></progress>
+      </div>
+
+      <!-- Buổi học tiếp theo -->
+      @if (nextSession(e); as next) {
+        <div class="next-session-box">
+          <div class="next-text">
+            <span class="next-badge">Buổi Học Tiếp Theo</span>
+            <div class="next-time">{{ next.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
+            <div class="next-loc">Phòng {{ next.roomName }} · HLV {{ next.instructorName }}</div>
+          </div>
+          @if (e.status === 'ACTIVE' && next.bookingCode) {
+            <div class="next-qr">
+              <yoga-qr-code [value]="next.bookingCode" />
+              <small>Mã vào lớp: <strong>{{ next.bookingCode }}</strong></small>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Chờ thanh toán POS -->
+      @if (e.status === 'PENDING_PAYMENT') {
+        <div class="zen-alert alert-error">
+          <div class="alert-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+          <div class="alert-content">
+            Học phí {{ e.totalAmount | number }} đ · Giữ chỗ đến {{ e.reservedUntil | date:'dd/MM/yyyy HH:mm':'+0700' }}. Vui lòng thanh toán tại cơ sở để kích hoạt quyền học.
+          </div>
+        </div>
+
+        @if (auth.canAccessPos()) {
+          <div class="pos-bar-card">
+            <div class="form-field">
+              <label class="form-label">Phương Thức Thanh Toán:</label>
+              <select class="form-input" [(ngModel)]="paymentMethod">
+                <option value="CASH">Tiền mặt</option>
+                <option value="POS_CARD">Thẻ quẹt POS</option>
+                <option value="BANK_TRANSFER_QR">Chuyển khoản QR</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Mã Giao Dịch:</label>
+              <input class="form-input" [(ngModel)]="paymentReference" placeholder="VD: MB-882991">
+            </div>
+            <div class="pos-actions">
+              <button class="btn-primary" (click)="pay()" [disabled]="busy()">Xác Nhận Đã Thu {{ e.totalAmount | number }} đ</button>
+              <button class="btn-cancel" (click)="cancelPending()" [disabled]="busy()">Hủy Đăng Ký Giữ Chỗ</button>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- Bảng lịch học và điểm danh -->
+      <div class="section-title-line mt-4">
+        <h3>Lịch Học Và Trạng Thái Điểm Danh</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="zen-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Buổi</th>
+              <th>Thời Gian Ca Học</th>
+              <th>Phòng · Huấn Luyện Viên</th>
+              <th>Điểm Danh</th>
+              <th class="text-right">Mã Vào Lớp</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of e.sessions; track s.id) {
+              <tr>
+                <td class="font-medium">Buổi {{ s.sessionNumber }}<br><strong>{{ s.sessionTitle || s.title }}</strong>@if(s.plannedContent){<p>{{s.plannedContent}}</p>}</td>
+                <td>
+                  <div class="time-primary">{{ s.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
+                  <div class="date-secondary">đến {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                </td>
+                <td>
+                  <div class="class-title">{{ s.roomName }}</div>
+                  <div class="date-secondary">{{ s.instructorName }}</div>
+                </td>
+                <td><span class="status-pill" [class]="'status-' + (s.attendanceState | lowercase)">{{ label(s.attendanceState || '') }}</span></td>
+                <td class="text-right">
+                  @if (e.status === 'ACTIVE' && s.status !== 'CANCELLED') {
+                    <span class="code-badge">{{ s.bookingCode }}</span>
+                  } @else {
+                    <span class="date-secondary">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: TẠO CHƯƠNG TRÌNH KHÓA HỌC -->
+  @if (form() === 'course') {
+    <div class="modal-backdrop" (click)="form.set(null)">
+      <div class="modal-dialog program-modal" role="dialog" aria-modal="true" aria-label="Tạo chương trình học" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="pre-title">Danh Mục Đào Tạo</div>
+            <h2 class="modal-title">Tạo chương trình học</h2>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="form.set(null)" [disabled]="busy()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <form (ngSubmit)="saveCourse()" #courseNgForm="ngForm">
+          <div class="modal-body">
+            @if(error()){<p class="zen-alert alert-error" role="alert">{{error()}}</p>}
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label">Mã chương trình <span class="req">*</span></label>
+                <input class="form-input" name="code" [(ngModel)]="courseForm.code" required maxlength="50" placeholder="VD: YOGA-BASIC-01">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Tên chương trình <span class="req">*</span></label>
+                <input class="form-input" name="name" [(ngModel)]="courseForm.name" required maxlength="150" placeholder="VD: Yoga Nền Tảng 12 Buổi">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Bộ môn <span class="req">*</span></label>
+                <select class="form-input" name="type" [(ngModel)]="courseForm.classTypeId" required>
+                  <option value="">Chọn bộ môn</option>
+                  @for (t of types(); track t.id) {
+                    <option [value]="t.id">{{ t.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Tổng Số Buổi <span class="req">*</span></label>
+                <input class="form-input" type="number" name="total" [ngModel]="courseForm.totalSessions" (ngModelChange)="resizeProgram($event)" required min="1" max="120">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Thời lượng gợi ý cho buổi mới (phút) <span class="req">*</span></label>
+                <input class="form-input" type="number" name="duration" [(ngModel)]="courseForm.defaultDurationMinutes" required min="15" max="240">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Học Phí Mặc Định (Đồng) <span class="req">*</span></label>
+                <input class="form-input" type="number" name="fee" [(ngModel)]="courseForm.defaultFee" required min="0">
+              </div>
+              <div class="form-field full-width">
+                <label class="form-label">Giới thiệu chương trình</label>
+                <textarea class="form-input form-textarea" name="description" [(ngModel)]="courseForm.description" maxlength="5000" rows="3" placeholder="Mô tả mục tiêu và nội dung khóa..."></textarea>
+              </div>
+            </div>
+          <section class="program-plan"><h3>Kế hoạch từng buổi học</h3><p>Nhập nội dung và thời lượng cho từng buổi. Ngày giờ, phòng và HLV được xếp khi mở khóa.</p>
+            @for (session of courseForm.sessions; track $index) {
+              <fieldset class="plan-session"><legend>Buổi {{ $index + 1 }}</legend>
+                <label>Tên buổi học<input class="form-input" [name]="'planTitle'+$index" [(ngModel)]="session.title" required maxlength="200" /></label>
+                <label>Thời lượng (phút)<input class="form-input" type="number" [name]="'planDuration'+$index" [(ngModel)]="session.durationMinutes" required min="15" max="240" step="1" /></label>
+                <label class="plan-content">Nội dung học<textarea class="form-input" [name]="'planContent'+$index" [(ngModel)]="session.content" required maxlength="5000" rows="2" placeholder="Các nội dung, bài tập và mục tiêu của buổi học"></textarea></label>
+              </fieldset>
+            }
+          </section>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" (click)="form.set(null)" [disabled]="busy()">Hủy Bỏ</button>
+            <button class="btn-primary" type="submit" [disabled]="busy() || courseNgForm.invalid">Tạo Chương Trình</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: MỞ LỚP THEO KHÓA -->
+  @if (form() === 'class') {
+    <div class="modal-backdrop" (click)="form.set(null)">
+      <div class="modal-dialog modal-large" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="pre-title">Xếp Lịch Đào Tạo</div>
+            <h2 class="modal-title">Mở khóa học</h2>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="form.set(null)" [disabled]="busy()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <form #classNgForm="ngForm" (ngSubmit)="saveClass()" (input)="invalidate()">
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label">Chương trình học <span class="req">*</span></label>
+                <select class="form-input" name="course" [(ngModel)]="classForm.courseId" (ngModelChange)="selectCourse()" required>
+                  @for (c of courses(); track c.id) {
+                    <option [value]="c.id">{{ c.name }} · {{ c.totalSessions }} buổi</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Cơ Sở Trực Thuộc <span class="req">*</span></label>
+                <select class="form-input" name="branch" [(ngModel)]="classForm.branchId" (ngModelChange)="classBranchChanged()" required>
+                  @for (b of branches(); track b.id) {
+                    <option [value]="b.id">{{ b.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Mã Lớp Học <span class="req">*</span></label>
+                <input class="form-input" name="classCode" [(ngModel)]="classForm.code" required maxlength="50" placeholder="VD: LOP-YOGA-T10">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Tên Lớp Học <span class="req">*</span></label>
+                <input class="form-input" name="className" [(ngModel)]="classForm.name" required maxlength="150" placeholder="VD: Yoga Chuyên Sâu Khóa K01">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Sĩ Số Tối Đa <span class="req">*</span></label>
+                <input class="form-input" name="capacity" type="number" [(ngModel)]="classForm.maxCapacity" required min="1" max="200">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Học Phí Trọn Khóa (Đồng) <span class="req">*</span></label>
+                <input class="form-input" name="tuition" type="number" [(ngModel)]="classForm.tuitionFee" required min="0">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Phòng Tập Mặc Định <span class="req">*</span></label>
+                <select class="form-input" name="room" [(ngModel)]="roomId" required>
+                  @for (r of rooms(); track r.id) {
+                    <option [value]="r.id">{{ r.name }} · {{ r.maxCapacity }} chỗ</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Huấn Luyện Viên <span class="req">*</span></label>
+                <select class="form-input" name="teacher" [(ngModel)]="instructorId" required>
+                  @for (i of instructors(); track i.id) {
+                    <option [value]="i.id">{{ i.fullName }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Ngày Bắt Đầu <span class="req">*</span></label>
+                <input class="form-input" name="startDate" type="date" [(ngModel)]="startDate" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Giờ Bắt Đầu <span class="req">*</span></label>
+                <input class="form-input" name="startTime" type="time" [(ngModel)]="startTime" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Thời Lượng (Phút) <span class="req">*</span></label>
+                <input class="form-input" name="minutes" type="number" [(ngModel)]="duration" required min="15" max="240">
+              </div>
+
+              <!-- Thứ học trong tuần -->
+              <div class="form-field full-width">
+                <label class="form-label">Thứ Học Trong Tuần <span class="req">*</span></label>
+                <div class="weekday-pills">
+                  @for (d of days; track d.value) {
+                    <label class="weekday-pill-item" [class.selected]="weekdays.includes(d.value)">
+                      <input type="checkbox" [checked]="weekdays.includes(d.value)" (change)="toggleDay(d.value, $any($event.target).checked)">
+                      <span>{{ d.label }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="generator-action-row">
+              <button type="button" class="btn-secondary" (click)="generate()" [disabled]="busy()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Sinh Lịch Học Tự Động</span>
+              </button>
+            </div>
+
+            @if (classForm.sessions.length) {
+              <div class="section-title-line mt-3">
+                <h3>Lịch Dự Kiến · {{ classForm.sessions.length }} Buổi</h3>
+                <small class="date-secondary">Có thể điều chỉnh ngày giờ, phòng và HLV từng buổi trước khi lưu.</small>
+              </div>
+
+              <div class="table-responsive">
+                <table class="zen-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 70px;">Buổi</th>
+                      <th>Bắt Đầu</th>
+                      <th>Kết Thúc</th>
+                      <th>Phòng Tập</th>
+                      <th>Huấn Luyện Viên</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of classForm.sessions; track $index) {
+                      <tr>
+                        <td class="font-medium">Buổi {{ $index + 1 }}<br><strong>{{s.title}}</strong><small>{{s.plannedContent}}</small></td>
+                        <td><input class="form-input input-compact" type="datetime-local" [attr.aria-label]="'Bắt đầu buổi ' + ($index + 1)" [value]="localTime(s.startTime)" (change)="setTime(s, 'startTime', $any($event.target).value)"></td>
+                        <td><input class="form-input input-compact" type="datetime-local" [attr.aria-label]="'Kết thúc buổi ' + ($index + 1)" [value]="localTime(s.endTime)" (change)="setTime(s, 'endTime', $any($event.target).value)"></td>
+                        <td>
+                          <select class="form-input input-compact" [name]="'room' + $index" [(ngModel)]="s.roomId" (ngModelChange)="invalidate()">
+                            @for (r of rooms(); track r.id) {
+                              <option [value]="r.id">{{ r.name }}</option>
+                            }
+                          </select>
+                        </td>
+                        <td>
+                          <select class="form-input input-compact" [name]="'teacher' + $index" [(ngModel)]="s.instructorId" (ngModelChange)="invalidate()">
+                            @for (i of instructors(); track i.id) {
+                              <option [value]="i.id">{{ i.fullName }}</option>
+                            }
+                          </select>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="schedule-actions-row">
+                <button type="button" class="btn-secondary" (click)="checkSchedule()" [disabled]="busy() || classNgForm.invalid">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                  <span>Kiểm Tra Trùng Lịch</span>
+                </button>
+              </div>
+
+              @if (previewed() && !conflicts().length) {
+                <div class="zen-alert alert-success mt-2">
+                  <div class="alert-icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <div class="alert-content"><span>Toàn bộ lịch phù hợp, không trùng phòng hoặc huấn luyện viên.</span></div>
+                </div>
+              }
+              @for (c of conflicts(); track $index) {
+                <div class="zen-alert alert-error mt-2">
+                  <div class="alert-icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
+                  <div class="alert-content"><span>Buổi {{ c.sessionNumber }}: {{ c.message }}</span></div>
+                </div>
+              }
+            }
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" (click)="form.set(null)" [disabled]="busy()">Hủy Bỏ</button>
+            <button class="btn-primary" type="submit" [disabled]="busy() || classNgForm.invalid || !previewed() || conflicts().length > 0">
+              Mở Lớp Và Lưu Lịch
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: ĐỔI LỊCH BUỔI HỌC -->
+  @if (editing(); as s) {
+    <div class="modal-backdrop" (click)="editing.set(null)">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="pre-title">Điều Chỉnh Lịch Học</div>
+            <h2 class="modal-title">Đổi Lịch Buổi {{ s.sessionNumber }}</h2>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="editing.set(null)" [disabled]="busy()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">Thời Gian Bắt Đầu</label>
+              <input class="form-input" type="datetime-local" [value]="localTime(s.startTime)" (change)="setTime(s, 'startTime', $any($event.target).value)">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Thời Gian Kết Thúc</label>
+              <input class="form-input" type="datetime-local" [value]="localTime(s.endTime)" (change)="setTime(s, 'endTime', $any($event.target).value)">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Phòng Tập</label>
+              <select class="form-input" [(ngModel)]="s.roomId">
+                @for (r of rooms(); track r.id) {
+                  <option [value]="r.id">{{ r.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Huấn Luyện Viên</label>
+              <select class="form-input" [(ngModel)]="s.instructorId">
+                @for (i of instructors(); track i.id) {
+                  <option [value]="i.id">{{ i.fullName }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" (click)="editing.set(null)" [disabled]="busy()">Hủy Bỏ</button>
+          <button class="btn-primary" (click)="saveSession()" [disabled]="busy()">Lưu Lịch Mới</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

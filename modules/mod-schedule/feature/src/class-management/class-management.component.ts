@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '@yoga/platform/auth';
 import { ZenSelectComponent, ZenConfirmService, ZenToastService } from '@yoga/platform/api';
 import {
@@ -47,6 +47,7 @@ export class ClassManagementComponent implements OnInit {
   private readonly confirmService = inject(ZenConfirmService);
   private readonly toast = inject(ZenToastService);
 
+  private readonly route = inject(ActivatedRoute);
   // Active Tab
   readonly activeTab = signal<'schedules' | 'class-types'>('schedules');
 
@@ -363,7 +364,7 @@ export class ClassManagementComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     const st = this.statusFilter();
     const insId = this.selectedInstructorId();
-    const targetDate = this.dateFilter();
+
 
     if (this.isBranchLocked()) {
       const homeBranch = this.userRestrictedBranchId();
@@ -380,9 +381,7 @@ export class ClassManagementComponent implements OnInit {
       list = list.filter(s => s.instructorId === insId);
     }
 
-    if (targetDate) {
-      list = list.filter(s => this.getScheduleDateStr(s.startTime) === targetDate);
-    }
+    list = list.filter(s => this.weekDays().some(day => day.iso === this.getScheduleDateStr(s.startTime)));
 
     if (query) {
       list = list.filter(s =>
@@ -396,7 +395,22 @@ export class ClassManagementComponent implements OnInit {
     return list;
   });
 
+  readonly hours = Array.from({length:19}, (_,i)=>i+4);
+  readonly weekDays = computed(()=>{
+    const date = new Date((this.dateFilter() || getTodayIsoDate())+'T00:00:00Z');
+    date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);
+    return Array.from({length:7},(_,i)=>{const d=new Date(date);d.setUTCDate(d.getUTCDate()+i);return {iso:d.toISOString().slice(0,10),label:['Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy','Chủ Nhật'][i]};});
+  });
+  moveWeek(offset:number):void {const d=new Date(this.weekDays()[0].iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+offset*7);this.dateFilter.set(d.toISOString().slice(0,10));}
+  private minutes(iso:string):number {const d=new Date(new Date(iso).getTime()+7*3600000);return d.getUTCHours()*60+d.getUTCMinutes();}
+  readonly weekColumns=computed(()=>this.weekDays().map(day=>{
+    const items=this.filteredSchedules().filter(s=>this.getScheduleDateStr(s.startTime)===day.iso).map(schedule=>({schedule,start:Math.max(240,this.minutes(schedule.startTime)),end:Math.min(1320,this.getScheduleDateStr(schedule.endTime)>day.iso?1440:this.minutes(schedule.endTime)),lane:0,lanes:1})).filter(s=>s.end>s.start).sort((a,b)=>a.start-b.start||a.end-b.end);
+    let group:typeof items=[];let groupEnd=0;
+    const finish=()=>{const ends:number[]=[];for(const item of group){let lane=ends.findIndex(end=>end<=item.start);if(lane<0)lane=ends.length;item.lane=lane;ends[lane]=item.end;}group.forEach(item=>item.lanes=ends.length);};
+    for(const item of items){if(group.length&&item.start>=groupEnd){finish();group=[];groupEnd=0;}group.push(item);groupEnd=Math.max(groupEnd,item.end);}finish();return {...day,items};
+  }));
   ngOnInit(): void {
+    this.route.data.subscribe(data => this.activeTab.set(data['trainingTab'] === 'class-types' ? 'class-types' : 'schedules'));
     if (this.auth.isInstructor()) {
       const myId = this.auth.currentUserId();
       if (myId) {

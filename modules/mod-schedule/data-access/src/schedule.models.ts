@@ -1,4 +1,6 @@
 export interface ClassSchedule {
+  courseClassId?: string;
+  sessionNumber?: number;
   id: string;
   branchId: string;
   branchName?: string;

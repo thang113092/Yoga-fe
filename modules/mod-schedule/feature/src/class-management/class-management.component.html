@@ -5,44 +5,12 @@
     <div class="header-main-row">
       <div class="header-titles">
         <div class="pre-title">{{ auth.isInstructor() ? 'Phân hệ Huấn luyện viên' : (auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học') }}</div>
-        <h1 class="main-title">{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh Sách Lớp & Ca Học' : 'Quản Lý Lớp & Ca Học' }}</h1>
+        <h1 class="main-title">{{ activeTab() === 'class-types' ? 'Bộ môn' : 'Lịch học' }}</h1>
       </div>
 
       <!-- Navigation Tabs & Actions Group -->
       <div class="header-controls">
-        <div class="zen-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            class="zen-tab-btn"
-            [class.active]="activeTab() === 'schedules'"
-            (click)="activeTab.set('schedules')"
-          >
-            <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span class="tab-text">Lịch & Ca Học</span>
-            <span class="tab-badge">{{ schedules().length }}</span>
-          </button>
 
-          <button
-            type="button"
-            role="tab"
-            class="zen-tab-btn"
-            [class.active]="activeTab() === 'class-types'"
-            (click)="activeTab.set('class-types')"
-          >
-            <svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-            </svg>
-            <span class="tab-text">Bộ Môn</span>
-            <span class="tab-badge">{{ classTypes().length }}</span>
-          </button>
-        </div>
 
         @if (!auth.isReceptionist() && !auth.isInstructor()) {
           <div class="header-actions">
@@ -52,7 +20,7 @@
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Mở Ca Học Mới</span>
+                <span>Tạo buổi học lẻ</span>
               </button>
             } @else {
               <button type="button" class="btn-primary" (click)="openCreateClassTypeModal()">
@@ -131,64 +99,7 @@
         </div>
       </div>
 
-      <div class="filter-group date-box">
-        <div class="zen-date-control" [class.has-value]="!!dateFilter()">
-          <!-- Leading Calendar Icon -->
-          <svg class="date-leading-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-
-          <!-- Date Text Display (clean date only, without prefix text) -->
-          <div class="date-display-text">
-            @if (dateFilter()) {
-              <span class="date-value">{{ formatDisplayDate(dateFilter()) }}</span>
-            } @else {
-              <span class="date-placeholder">Tất cả các ngày</span>
-            }
-          </div>
-
-          <!-- Actions -->
-          <div class="date-actions">
-            @if (dateFilter()) {
-              <button
-                type="button"
-                class="btn-clear-date btn-icon"
-                (click)="clearDateFilter($event)"
-                title="Xem tất cả các ngày (bỏ lọc ngày)"
-                aria-label="Xóa bộ lọc ngày"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            }
-
-            <div class="date-picker-icon-btn" title="Mở lịch chọn ngày" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Invisible Native Date Input Overlay -->
-          <input
-            #datePickerInput
-            type="date"
-            class="native-date-overlay"
-            [ngModel]="dateFilter()"
-            (ngModelChange)="onDateSelect($event)"
-            title="Nhấp để chọn ngày"
-            aria-label="Chọn ngày lọc ca học"
-          />
-        </div>
-      </div>
+      <div class="filter-group date-box"><label for="week-date">Tuần chứa ngày</label><input id="week-date" type="date" class="filter-input" [ngModel]="dateFilter()" (ngModelChange)="onDateSelect($event)" /></div>
 
       <div class="filter-group branch-selector">
         <zen-select
@@ -228,163 +139,20 @@
       </div>
     </div>
 
-    <!-- Schedules Table Card -->
-    <div class="table-container-card">
-      @if (isLoading()) {
-        <div class="loading-state">
-          <div class="zen-spinner"></div>
-          <p>Đang đồng bộ dữ liệu ca học từ hệ thống...</p>
-        </div>
-      } @else if (filteredSchedules().length === 0) {
-        @if (hasActiveFilters()) {
-          <div class="empty-state">
-            <div class="empty-icon-wrap">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </div>
-            <h3>Không tìm thấy ca học nào</h3>
-            <p>Không có ca học nào phù hợp với bộ lọc hiện tại (ngày, cơ sở, HLV, trạng thái hoặc từ khóa).</p>
-            <div class="empty-filter-actions">
-              @if (dateFilter()) {
-                <button type="button" class="btn-clear-date" (click)="clearDateFilter()">
-                  Xem Tất Cả Các Ngày
-                </button>
-              }
-              <button type="button" class="btn-clear-filters" (click)="clearAllFilters()">
-                Xóa Bộ Lọc
-              </button>
-            </div>
-          </div>
-        } @else {
-          <div class="empty-state">
-            <div class="empty-icon-wrap">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-            </div>
-            <h3>Chưa có ca học nào được điều phối</h3>
-            <p>Nhấp nút "Mở Ca Học Mới" ở góc phải để xếp lịch lớp cho học viên đăng ký.</p>
-            @if (!auth.isReceptionist() && !auth.isInstructor()) {
-              <button type="button" class="btn-secondary" (click)="openCreateScheduleModal()">
-                Mở Ca Học Mới
-              </button>
-            }
-          </div>
-        }
-      } @else {
-        <div class="table-responsive">
-          <table class="zen-table">
-            <thead>
-              <tr>
-                <th>Khung Giờ & Ngày</th>
-                <th>Tên Bộ Môn / Lớp</th>
-                <th>Cơ Sở</th>
-                <th>Phòng Tập</th>
-                <th>Huấn Luyện Viên</th>
-                <th>Sĩ Số Lớp</th>
-                <th>Trạng Thái</th>
-                <th class="text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (schedule of filteredSchedules(); track schedule.id) {
-                <tr [class.row-cancelled]="schedule.status === 'CANCELLED'">
-                  <td class="cell-time">
-                    <div class="time-primary">{{ formatTime(schedule.startTime) }} - {{ formatTime(schedule.endTime) }}</div>
-                    <div class="date-secondary">{{ formatDate(schedule.startTime) }}</div>
-                  </td>
-
-                  <td class="cell-class">
-                    <span class="class-title">{{ schedule.className }}</span>
-                  </td>
-
-                  <td class="cell-branch">
-                    <div class="branch-badge">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                      <span>{{ getBranchName(schedule) }}</span>
-                    </div>
-                  </td>
-
-                  <td class="cell-room">
-                    <div class="room-name">{{ schedule.roomName }}</div>
-                  </td>
-
-                  <td class="cell-instructor">
-                    <div class="instructor-badge">
-                      <span class="avatar-dot"></span>
-                      <span>{{ schedule.instructorName }}</span>
-                    </div>
-                  </td>
-
-                  <td class="cell-capacity">
-                    <div class="capacity-stats">
-                      <span class="count-booked">{{ schedule.bookedCount }}</span>
-                      <span class="count-divider">/</span>
-                      <span class="count-max">{{ schedule.maxCapacity }} chỗ</span>
-                    </div>
-                    <div class="progress-track">
-                      <div
-                        class="progress-fill"
-                        [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
-                        [class.fill-full]="schedule.bookedCount >= schedule.maxCapacity"
-                      ></div>
-                    </div>
-                  </td>
-
-                  <td class="cell-status">
-                    <span class="status-pill" [ngClass]="getStatusBadgeClass(schedule.status)">
-                      {{ getStatusLabel(schedule.status) }}
-                    </span>
-                  </td>
-
-                  <td class="cell-actions text-right">
-                    <button
-                      type="button"
-                      class="btn-row-action"
-                      (click)="openAttendeesModal(schedule)"
-                      title="Xem danh sách học viên đăng ký"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                      </svg>
-                      <span>Học viên ({{ schedule.bookedCount }})</span>
-                    </button>
-
-                    @if (schedule.status === 'SCHEDULED' && !auth.isReceptionist() && !auth.isInstructor()) {
-                      <button
-                        type="button"
-                        class="btn-row-action btn-action-danger"
-                        (click)="cancelSchedule(schedule)"
-                        title="Hủy ca học này"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <span>Hủy ca</span>
-                      </button>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-  }
+<div class="week-toolbar"><button type="button" class="btn-secondary" (click)="moveWeek(-1)">Tuần trước</button><button type="button" class="btn-secondary" (click)="setDateToToday()">Tuần này</button><button type="button" class="btn-secondary" (click)="moveWeek(1)">Tuần sau</button><strong>{{ formatDisplayDate(weekDays()[0].iso) }} – {{ formatDisplayDate(weekDays()[6].iso) }}</strong><small>04:00–22:00</small></div>
+@if (isLoading()) {<p role="status">Đang tải lịch học…</p>} @else {
+@if (!filteredSchedules().length) {<p role="status">Chưa có buổi học phù hợp trong tuần này.</p>}
+<div class="week-scroll" aria-label="Lịch học theo tuần"><div class="week-grid"><div class="week-heading">Giờ</div>
+@for(day of weekColumns();track day.iso){<div class="week-heading" [class.is-today]="isTodayDate(day.iso)"><strong>{{day.label}}</strong><span>{{formatDisplayDate(day.iso)}}</span></div>}
+<div class="time-axis">@for(hour of hours;track hour){<span [style.top.px]="(hour-4)*72">{{hour<10?'0':''}}{{hour}}:00</span>}</div>
+@for(day of weekColumns();track day.iso){<div class="day-track" [class.is-today]="isTodayDate(day.iso)">
+@for(item of day.items;track item.schedule.id){<div class="week-event" [class.course-event]="!!item.schedule.courseClassId" [class.cancelled-event]="item.schedule.status==='CANCELLED'" [style.top.px]="(item.start-240)*1.2" [style.height.px]="(item.end-item.start)*1.2" [style.left.%]="item.lane*100/item.lanes" [style.width.%]="100/item.lanes">
+<button type="button" class="event-main" (click)="openAttendeesModal(item.schedule)" [title]="item.schedule.className+' · '+item.schedule.roomName+' · '+item.schedule.instructorName"><strong>{{item.schedule.className}}</strong><span>{{formatTime(item.schedule.startTime)}}–{{formatTime(item.schedule.endTime)}}</span><span>{{item.schedule.roomName}} · {{item.schedule.instructorName}}</span><small>{{item.schedule.courseClassId?'Theo khóa · Buổi '+item.schedule.sessionNumber:'Buổi học lẻ'}} · {{item.schedule.bookedCount}}/{{item.schedule.maxCapacity}}</small></button>
+@if(item.schedule.courseClassId){<a routerLink="/schedule/courses" [queryParams]="{classId:item.schedule.courseClassId}">Xem khóa học</a>}
+@if(item.schedule.status==='SCHEDULED' && !auth.isReceptionist() && !auth.isInstructor()){<button type="button" class="event-cancel" (click)="cancelSchedule(item.schedule)">Hủy buổi</button>}
+</div>}</div>}
+</div></div>}
+}
 
   <!-- TAB 2: CLASS TYPES (BỘ MÔN) -->
   @if (activeTab() === 'class-types') {
@@ -446,7 +214,7 @@
       <div class="modal-header">
         <div class="modal-title-group">
           <div class="pre-title">Xếp Lịch Giảng Dạy</div>
-          <h2 class="modal-title">Mở Ca Học Mới</h2>
+          <h2 class="modal-title">Tạo buổi học lẻ</h2>
         </div>
         <button type="button" class="btn-close-modal" (click)="closeCreateScheduleModal()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

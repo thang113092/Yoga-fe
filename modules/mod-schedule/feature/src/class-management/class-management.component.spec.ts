@@ -86,6 +86,17 @@ describe('ClassManagementComponent', () => {
     const comp = fixture.componentInstance;
     comp.ngOnInit();
 
+    comp.dateFilter.set('2026-10-11');
+    expect(comp.weekDays().map(day=>day.iso)).toEqual(['2026-10-05','2026-10-06','2026-10-07','2026-10-08','2026-10-09','2026-10-10','2026-10-11']);
+    const column=comp.weekColumns().find(day=>day.iso==='2026-10-10')!;
+    expect(column.items).toHaveLength(2);
+    expect(column.items.map(item=>item.lane)).toEqual([0,1]);
+    expect(column.items.every(item=>item.lanes===2)).toBe(true);
+    expect(column.items[0].start).toBe(15*60);
+    comp.moveWeek(1);
+    expect(comp.weekDays()[0].iso).toBe('2026-10-12');
+    expect(comp.filteredSchedules()).toHaveLength(0);
+    comp.moveWeek(-1);
     // Super admin sees all branches in options
     expect(comp.branchSelectOptions().length).toBe(2);
 

@@ -374,7 +374,9 @@
 
             <!-- Action Buttons Footer -->
             <div class="card-footer">
-              @if (isBooked(schedule.id)) {
+              @if (schedule.courseClassId) {
+                <a routerLink="/schedule/courses" [queryParams]="{classId:schedule.courseClassId}" class="btn btn-secondary-login">Buổi {{schedule.sessionNumber}} · Xem và đăng ký cả khóa</a>
+              } @else if (isBooked(schedule.id)) {
                 <div class="booked-state-card">
                   <div class="booked-info">
                     <div class="booked-icon">

@@ -1,4 +1,5 @@
 export * from './schedule.models';
+export * from './course.api';
 export * from './schedule.api';
 export * from './booking.api';
 export * from './checkin.api';
