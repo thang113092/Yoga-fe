@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnIni
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ZenSelectComponent, ZenConfirmService, ZenToastService } from '@yoga/platform/api';
 import {
@@ -66,6 +67,11 @@ export class ClassManagementComponent implements OnInit {
   readonly searchQuery = signal<string>('');
   readonly dateFilter = signal<string>(getTodayIsoDate());
   readonly statusFilter = signal<string>('ALL');
+  readonly selectedRoomId = signal<string>('ALL');
+  readonly isSingleRoomSelected = computed(() => this.selectedRoomId() !== 'ALL');
+  readonly dateRangeMode = signal<'week' | 'month' | 'custom'>('week');
+  readonly fromDate = signal<string>('');
+  readonly toDate = signal<string>('');
 
   // Loading & Feedback
   readonly isLoading = signal(false);
@@ -162,6 +168,46 @@ export class ClassManagementComponent implements OnInit {
       sublabel: `${r.maxCapacity} chỗ`
     }));
   });
+
+  readonly currentContextRooms = computed<RoomItem[]>(() => {
+    const branchId = this.selectedBranchId();
+    let list = this.rooms();
+    if (this.isBranchLocked()) {
+      const homeBranch = this.userRestrictedBranchId();
+      if (homeBranch) {
+        list = list.filter(r => r.branchId === homeBranch);
+      }
+    } else if (branchId && branchId !== 'ALL') {
+      list = list.filter(r => r.branchId === branchId);
+    }
+    return list;
+  });
+
+  getBranchNameByRoom(room: RoomItem): string {
+    const b = this.branches().find(item => item.id === room.branchId);
+    return b ? b.name : '';
+  }
+
+  readonly roomFilterOptions = computed(() => {
+    const branchId = this.selectedBranchId();
+    const list = this.currentContextRooms();
+    return [
+      {
+        value: 'ALL',
+        label: 'Tất cả các phòng',
+        sublabel: 'Xem trạng thái đồng thời mọi phòng học'
+      },
+      ...list.map(r => ({
+        value: r.id,
+        label: `${r.name}${r.floor ? ' (' + r.floor + ')' : ''}`,
+        sublabel: `${r.maxCapacity} chỗ tập${!branchId || branchId === 'ALL' ? (this.getBranchNameByRoom(r) ? ' • ' + this.getBranchNameByRoom(r) : '') : ''}`
+      }))
+    ];
+  });
+
+  onRoomFilterChange(roomId: string): void {
+    this.selectedRoomId.set(roomId || 'ALL');
+  }
 
   readonly classTypeSelectOptions = computed(() => {
     return this.classTypes().map(ct => ({
@@ -317,6 +363,7 @@ export class ClassManagementComponent implements OnInit {
       this.selectedInstructorId.set('ALL');
     }
     this.statusFilter.set('ALL');
+    this.selectedRoomId.set('ALL');
     if (!this.isBranchLocked()) {
       this.selectedBranchId.set('ALL');
       this.loadSchedules();
@@ -334,6 +381,7 @@ export class ClassManagementComponent implements OnInit {
     this.dateFilter.set('');
     this.selectedInstructorId.set('ALL');
     this.statusFilter.set('ALL');
+    this.selectedRoomId.set('ALL');
     if (!this.isBranchLocked()) {
       this.selectedBranchId.set('ALL');
       this.loadSchedules();
@@ -354,6 +402,7 @@ export class ClassManagementComponent implements OnInit {
         ? this.selectedInstructorId() !== (this.auth.currentUserId() || 'ALL')
         : this.selectedInstructorId() !== 'ALL') ||
       this.statusFilter() !== 'ALL' ||
+      this.selectedRoomId() !== 'ALL' ||
       (!this.isBranchLocked() && this.selectedBranchId() !== 'ALL')
     );
   });
@@ -364,7 +413,7 @@ export class ClassManagementComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     const st = this.statusFilter();
     const insId = this.selectedInstructorId();
-
+    const roomId = this.selectedRoomId();
 
     if (this.isBranchLocked()) {
       const homeBranch = this.userRestrictedBranchId();
@@ -381,6 +430,10 @@ export class ClassManagementComponent implements OnInit {
       list = list.filter(s => s.instructorId === insId);
     }
 
+    if (roomId && roomId !== 'ALL') {
+      list = list.filter(s => s.roomId === roomId);
+    }
+
     list = list.filter(s => this.weekDays().some(day => day.iso === this.getScheduleDateStr(s.startTime)));
 
     if (query) {
@@ -395,21 +448,224 @@ export class ClassManagementComponent implements OnInit {
     return list;
   });
 
-  readonly hours = Array.from({length:19}, (_,i)=>i+4);
-  readonly weekDays = computed(()=>{
-    const date = new Date((this.dateFilter() || getTodayIsoDate())+'T00:00:00Z');
-    date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);
-    return Array.from({length:7},(_,i)=>{const d=new Date(date);d.setUTCDate(d.getUTCDate()+i);return {iso:d.toISOString().slice(0,10),label:['Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy','Chủ Nhật'][i]};});
+  getThisWeekRange(): { from: string; to: string } {
+    const todayIso = getTodayIsoDate();
+    const d = new Date(todayIso + 'T00:00:00Z');
+    const dayOfWeek = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dayOfWeek);
+    const from = d.toISOString().slice(0, 10);
+    d.setUTCDate(d.getUTCDate() + 6);
+    const to = d.toISOString().slice(0, 10);
+    return { from, to };
+  }
+
+  getThisMonthRange(): { from: string; to: string } {
+    const todayIso = getTodayIsoDate();
+    const [yStr, mStr] = todayIso.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10);
+    const from = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { from, to };
+  }
+
+  selectThisWeek(): void {
+    const range = this.getThisWeekRange();
+    this.dateRangeMode.set('week');
+    this.fromDate.set(range.from);
+    this.toDate.set(range.to);
+    this.dateFilter.set(getTodayIsoDate());
+  }
+
+  selectThisMonth(): void {
+    const range = this.getThisMonthRange();
+    this.dateRangeMode.set('month');
+    this.fromDate.set(range.from);
+    this.toDate.set(range.to);
+  }
+
+  onFromDateChange(val: string): void {
+    this.dateRangeMode.set('custom');
+    this.fromDate.set(val || '');
+  }
+
+  onToDateChange(val: string): void {
+    this.dateRangeMode.set('custom');
+    this.toDate.set(val || '');
+  }
+
+  readonly hours = Array.from({ length: 19 }, (_, i) => i + 4);
+
+  readonly weekDays = computed(() => {
+    const mode = this.dateRangeMode();
+    const from = this.fromDate();
+    const to = this.toDate();
+
+    if ((mode === 'custom' || mode === 'month') && from && to) {
+      try {
+        const start = new Date(from + 'T00:00:00Z');
+        const end = new Date(to + 'T00:00:00Z');
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+          const days: Array<{ iso: string; label: string }> = [];
+          const dayLabels = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+          const cur = new Date(start);
+          let count = 0;
+          while (cur <= end && count < 35) {
+            const iso = cur.toISOString().slice(0, 10);
+            const dayOfWeek = cur.getUTCDay();
+            days.push({
+              iso,
+              label: dayLabels[dayOfWeek]
+            });
+            cur.setUTCDate(cur.getUTCDate() + 1);
+            count++;
+          }
+          if (days.length > 0) return days;
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    const date = new Date((this.dateFilter() || getTodayIsoDate()) + 'T00:00:00Z');
+    date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(date);
+      d.setUTCDate(d.getUTCDate() + i);
+      return {
+        iso: d.toISOString().slice(0, 10),
+        label: ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'][i]
+      };
+    });
   });
-  moveWeek(offset:number):void {const d=new Date(this.weekDays()[0].iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+offset*7);this.dateFilter.set(d.toISOString().slice(0,10));}
-  private minutes(iso:string):number {const d=new Date(new Date(iso).getTime()+7*3600000);return d.getUTCHours()*60+d.getUTCMinutes();}
-  readonly weekColumns=computed(()=>this.weekDays().map(day=>{
-    const items=this.filteredSchedules().filter(s=>this.getScheduleDateStr(s.startTime)===day.iso).map(schedule=>({schedule,start:Math.max(240,this.minutes(schedule.startTime)),end:Math.min(1320,this.getScheduleDateStr(schedule.endTime)>day.iso?1440:this.minutes(schedule.endTime)),lane:0,lanes:1})).filter(s=>s.end>s.start).sort((a,b)=>a.start-b.start||a.end-b.end);
-    let group:typeof items=[];let groupEnd=0;
-    const finish=()=>{const ends:number[]=[];for(const item of group){let lane=ends.findIndex(end=>end<=item.start);if(lane<0)lane=ends.length;item.lane=lane;ends[lane]=item.end;}group.forEach(item=>item.lanes=ends.length);};
-    for(const item of items){if(group.length&&item.start>=groupEnd){finish();group=[];groupEnd=0;}group.push(item);groupEnd=Math.max(groupEnd,item.end);}finish();return {...day,items};
+
+  moveWeek(offset: number): void {
+    const d = new Date(this.weekDays()[0].iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + offset * 7);
+    this.dateFilter.set(d.toISOString().slice(0, 10));
+  }
+  private minutes(iso: string): number {
+    const d = new Date(new Date(iso).getTime() + 7 * 3600000);
+    return d.getUTCHours() * 60 + d.getUTCMinutes();
+  }
+  readonly weekColumns = computed(() => this.weekDays().map(day => {
+    const dayFilteredSchedules = this.filteredSchedules().filter(s => this.getScheduleDateStr(s.startTime) === day.iso);
+
+    // 1. Regular items calculation (maintained for backward-compatibility, single-room view, and tests)
+    const items = dayFilteredSchedules.map(schedule => ({
+      schedule,
+      start: Math.max(240, this.minutes(schedule.startTime)),
+      end: Math.min(1320, this.getScheduleDateStr(schedule.endTime) > day.iso ? 1440 : this.minutes(schedule.endTime)),
+      lane: 0,
+      lanes: 1
+    })).filter(s => s.end > s.start).sort((a, b) => a.start - b.start || a.end - b.end);
+
+    let group: typeof items = [];
+    let groupEnd = 0;
+    const finish = () => {
+      const ends: number[] = [];
+      for (const item of group) {
+        let lane = ends.findIndex(end => end <= item.start);
+        if (lane < 0) lane = ends.length;
+        item.lane = lane;
+        ends[lane] = item.end;
+      }
+      group.forEach(item => item.lanes = ends.length);
+    };
+    for (const item of items) {
+      if (group.length && item.start >= groupEnd) {
+        finish();
+        group = [];
+        groupEnd = 0;
+      }
+      group.push(item);
+      groupEnd = Math.max(groupEnd, item.end);
+    }
+    finish();
+
+    // 2. Clusters calculation for "Tất cả các phòng" view
+    const contextRooms = this.currentContextRooms();
+    const clusters: Array<{
+      id: string;
+      start: number;
+      end: number;
+      startTimeStr: string;
+      endTimeStr: string;
+      timeLabel: string;
+      minHeight: number;
+      rooms: Array<{
+        roomId: string;
+        roomName: string;
+        hasClass: boolean;
+        schedule?: ClassSchedule;
+      }>;
+    }> = [];
+
+    let clusterGroup: typeof items = [];
+    let clusterGroupEnd = 0;
+
+    const finishCluster = () => {
+      if (clusterGroup.length === 0) return;
+      const cStart = Math.min(...clusterGroup.map(g => g.start));
+      const cEnd = Math.max(...clusterGroup.map(g => g.end));
+
+      const startH = Math.floor(cStart / 60);
+      const startM = cStart % 60;
+      const endH = Math.floor(cEnd / 60);
+      const endM = cEnd % 60;
+      const startTimeStr = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+      const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+      const timeLabel = `${startTimeStr} – ${endTimeStr}`;
+
+      const roomsToEvaluate: Array<{ id: string; name: string }> = contextRooms.length > 0
+        ? contextRooms.map(r => ({ id: r.id, name: r.name }))
+        : Array.from(new Set(clusterGroup.map(g => g.schedule.roomId))).map(rId => {
+            const found = clusterGroup.find(g => g.schedule.roomId === rId);
+            return { id: rId, name: found?.schedule.roomName || 'Phòng học' };
+          });
+
+      const roomStatuses = roomsToEvaluate.map(room => {
+        const matching = clusterGroup.find(g => g.schedule.roomId === room.id);
+        return {
+          roomId: room.id,
+          roomName: room.name,
+          hasClass: !!matching,
+          schedule: matching?.schedule
+        };
+      });
+
+      const minHeight = Math.max((cEnd - cStart) * 1.2, 36);
+
+      clusters.push({
+        id: `${day.iso}_${cStart}_${cEnd}`,
+        start: cStart,
+        end: cEnd,
+        startTimeStr,
+        endTimeStr,
+        timeLabel,
+        minHeight,
+        rooms: roomStatuses
+      });
+    };
+
+    for (const item of items) {
+      if (clusterGroup.length && item.start >= clusterGroupEnd) {
+        finishCluster();
+        clusterGroup = [];
+        clusterGroupEnd = 0;
+      }
+      clusterGroup.push(item);
+      clusterGroupEnd = Math.max(clusterGroupEnd, item.end);
+    }
+    finishCluster();
+
+    return { ...day, items, clusters };
   }));
   ngOnInit(): void {
+    const weekRange = this.getThisWeekRange();
+    this.fromDate.set(weekRange.from);
+    this.toDate.set(weekRange.to);
     this.route.data.subscribe(data => this.activeTab.set(data['trainingTab'] === 'class-types' ? 'class-types' : 'schedules'));
     if (this.auth.isInstructor()) {
       const myId = this.auth.currentUserId();
@@ -437,7 +693,7 @@ export class ClassManagementComponent implements OnInit {
             // SUPER_ADMIN, RECEPTIONIST, v.v. mặc định xem Tất cả cơ sở
             this.selectedBranchId.set('ALL');
             this.loadSchedules();
-            this.loadRooms(data[0].id);
+            this.loadRooms('ALL');
           }
         }
       },
@@ -448,7 +704,20 @@ export class ClassManagementComponent implements OnInit {
   }
 
   loadRooms(branchId: string): void {
-    if (!branchId || branchId === 'ALL') return;
+    if (!branchId || branchId === 'ALL') {
+      const bList = this.branches();
+      if (bList.length > 0) {
+        forkJoin(bList.map(b => this.scheduleApi.getRoomsByBranch(b.id))).subscribe({
+          next: (results) => {
+            this.rooms.set(results.flat());
+          },
+          error: () => {
+            this.rooms.set([]);
+          }
+        });
+      }
+      return;
+    }
     this.scheduleApi.getRoomsByBranch(branchId).subscribe({
       next: (rooms) => {
         this.rooms.set(rooms || []);
@@ -555,10 +824,27 @@ export class ClassManagementComponent implements OnInit {
       return;
     }
     this.selectedBranchId.set(branchId);
+    this.selectedRoomId.set('ALL');
     this.loadSchedules();
-    if (branchId !== 'ALL') {
-      this.loadRooms(branchId);
+    this.loadRooms(branchId);
+  }
+
+  openCreateScheduleForSlot(date: string, startTimeStr: string, roomId?: string): void {
+    this.openCreateScheduleModal();
+    let curBranch = this.scheduleForm().branchId;
+    if (roomId) {
+      const r = this.rooms().find(rm => rm.id === roomId);
+      if (r && r.branchId) {
+        curBranch = r.branchId;
+      }
     }
+    this.scheduleForm.update(f => ({
+      ...f,
+      branchId: curBranch,
+      date: date || f.date,
+      startTimeStr: startTimeStr || f.startTimeStr,
+      roomId: roomId || f.roomId
+    }));
   }
 
   // --- Modal Openers ---

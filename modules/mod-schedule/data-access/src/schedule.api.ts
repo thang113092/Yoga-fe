@@ -41,6 +41,10 @@ export class ScheduleApi {
     return this.api.get<RoomItem[]>(`/branches/${branchId}/rooms`);
   }
 
+  getAllRooms(): Observable<RoomItem[]> {
+    return this.api.get<RoomItem[]>('/branches/all-rooms');
+  }
+
   getClassTypes(activeOnly = false): Observable<ClassTypeItem[]> {
     return this.api.get<ClassTypeItem[]>('/class-types', { activeOnly });
   }

@@ -48,18 +48,8 @@
         </div>
 
         <div class="header-actions">
-          <a [routerLink]="auth.isStudent() ? '/schedule/calendar' : '/schedule/timetable'" class="btn-secondary" title="Xem lịch học chung">
-            <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span>Lịch Học Chung</span>
-          </a>
-
-          @if (auth.isSuperAdmin()) {
-            <button type="button" class="btn-secondary" (click)="openCourse()" [disabled]="busy()">
+          @if (view() === 'programs' && auth.isSuperAdmin()) {
+            <button type="button" class="btn-primary" (click)="openCourse()" [disabled]="busy()">
               <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -68,7 +58,7 @@
             </button>
           }
 
-          @if (canCreateClass()) {
+          @if (view() === 'classes' && canCreateClass()) {
             <button type="button" class="btn-primary" (click)="openClass()" [disabled]="busy() || !courses().length">
               <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -144,25 +134,13 @@
       </div>
 
       <div class="filter-group branch-selector">
-        <div class="branch-select-wrap">
-          <svg class="branch-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
-          <select
-            class="filter-select"
-            [(ngModel)]="branchId"
-            (ngModelChange)="filterBranch()"
-            [disabled]="busy()"
-          >
-            @if (auth.isStudent() || auth.isSuperAdmin()) {
-              <option value="">Tất cả cơ sở</option>
-            }
-            @for (b of branches(); track b.id) {
-              <option [value]="b.id">{{ b.name }}</option>
-            }
-          </select>
-        </div>
+        <zen-select
+          [options]="branchFilterOptions()"
+          [ngModel]="branchId"
+          (ngModelChange)="filterBranch($event)"
+          [disabled]="busy()"
+          placeholder="Chọn cơ sở..."
+        />
       </div>
 
       <div class="filter-action">
@@ -186,7 +164,7 @@
         </div>
        } @else if (view() === 'programs') {
 <div class="program-list"><p>Chương trình học là kế hoạch nhiều buổi của một bộ môn, dùng để mở các khóa học.</p>
-@for(course of courses();track course.id){<article class="program-row"><div><h3>{{course.name}}</h3><p>{{course.description || 'Chưa có mô tả chương trình.'}}</p><small>{{course.totalSessions}} buổi · {{course.sessions?.length ? 'Thời lượng theo từng buổi' : course.defaultDurationMinutes + ' phút/buổi'}} · Học phí gợi ý {{course.defaultFee | number}} đ</small>@if(course.sessions?.length){<details><summary>Xem kế hoạch từng buổi</summary>@for(session of course.sessions;track $index){<p><strong>Buổi {{$index+1}} · {{session.title}} · {{session.durationMinutes}} phút</strong><br>{{session.content}}</p>}</details>}</div>@if(canCreateClass()){<button type="button" class="btn-primary" (click)="openClassFor(course.id)" [disabled]="busy()">Mở khóa học</button>}</article>}
+@for(course of courses();track course.id){<article class="program-row"><div><h3>{{course.name}}</h3><p>{{course.description || 'Chưa có mô tả chương trình.'}}</p><small>{{course.totalSessions}} buổi · {{course.defaultDurationMinutes}} phút/buổi · Học phí gợi ý {{course.defaultFee | number}} đ</small>@if(course.sessions?.length){<details><summary>Xem kế hoạch từng buổi</summary>@for(session of course.sessions;track $index){<p><strong>Buổi {{$index+1}} · {{session.title}} · {{session.durationMinutes || course.defaultDurationMinutes}} phút</strong><br>{{session.content}}</p>}</details>}</div>@if(canCreateClass()){<button type="button" class="btn-primary" (click)="openClassFor(course.id)" [disabled]="busy()">Mở khóa học</button>}</article>}
 @empty{<div class="empty-state"><h3>Chưa có chương trình học</h3><p>Tạo chương trình để chuẩn bị mở khóa học.</p></div>}</div>
 } @else if (view() === 'classes') {
         @if (filteredClasses().length === 0) {
@@ -734,8 +712,8 @@
                 <input class="form-input" type="number" name="total" [ngModel]="courseForm.totalSessions" (ngModelChange)="resizeProgram($event)" required min="1" max="120">
               </div>
               <div class="form-field">
-                <label class="form-label">Thời lượng gợi ý cho buổi mới (phút) <span class="req">*</span></label>
-                <input class="form-input" type="number" name="duration" [(ngModel)]="courseForm.defaultDurationMinutes" required min="15" max="240">
+                <label class="form-label">Thời lượng mỗi buổi (phút) <span class="req">*</span></label>
+                <input class="form-input" type="number" name="duration" [(ngModel)]="courseForm.defaultDurationMinutes" (ngModelChange)="updateDefaultDuration($event)" required min="15" max="240">
               </div>
               <div class="form-field">
                 <label class="form-label">Học Phí Mặc Định (Đồng) <span class="req">*</span></label>
@@ -746,11 +724,10 @@
                 <textarea class="form-input form-textarea" name="description" [(ngModel)]="courseForm.description" maxlength="5000" rows="3" placeholder="Mô tả mục tiêu và nội dung khóa..."></textarea>
               </div>
             </div>
-          <section class="program-plan"><h3>Kế hoạch từng buổi học</h3><p>Nhập nội dung và thời lượng cho từng buổi. Ngày giờ, phòng và HLV được xếp khi mở khóa.</p>
+          <section class="program-plan"><h3>Kế hoạch từng buổi học</h3><p>Nhập nội dung cho từng buổi học (thời lượng áp dụng theo thời lượng chung ở trên). Ngày giờ, phòng và HLV được xếp khi mở khóa.</p>
             @for (session of courseForm.sessions; track $index) {
               <fieldset class="plan-session"><legend>Buổi {{ $index + 1 }}</legend>
-                <label>Tên buổi học<input class="form-input" [name]="'planTitle'+$index" [(ngModel)]="session.title" required maxlength="200" /></label>
-                <label>Thời lượng (phút)<input class="form-input" type="number" [name]="'planDuration'+$index" [(ngModel)]="session.durationMinutes" required min="15" max="240" step="1" /></label>
+                <label>Tên buổi học<input class="form-input" [name]="'planTitle'+$index" [(ngModel)]="session.title" required maxlength="200" placeholder="VD: Buổi {{ $index + 1 }} · Giới thiệu định tuyến" /></label>
                 <label class="plan-content">Nội dung học<textarea class="form-input" [name]="'planContent'+$index" [(ngModel)]="session.content" required maxlength="5000" rows="2" placeholder="Các nội dung, bài tập và mục tiêu của buổi học"></textarea></label>
               </fieldset>
             }

@@ -6,11 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ScheduleApi, BranchItem, RoomItem, InstructorItem, ClassTypeItem } from '@yoga/mod-schedule/data-access';
 import { PosApi } from '@yoga/mod-membership/data-access';
-import { QrCodeComponent } from '@yoga/platform/api';
+import { QrCodeComponent, ZenSelectComponent } from '@yoga/platform/api';
 import { CourseApi, Course, CourseClass, CourseSession, CourseEnrollment, CourseConflict, CourseStudent, CreateCourseClass } from '@yoga/mod-schedule/data-access';
 
 @Component({
-  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent],
+  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, ZenSelectComponent],
   templateUrl: './courses.component.html', styleUrl: './courses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -48,7 +48,17 @@ export class CoursesComponent implements OnInit {
       (e.branchName && e.branchName.toLowerCase().includes(q))
     );
   });
-  branchId=''; studentId=''; paymentMethod: 'CASH'|'POS_CARD'|'BANK_TRANSFER_QR'='CASH'; paymentReference='';
+  readonly branchFilterOptions = computed(() => {
+    const list = this.branches();
+    if (this.auth.isStudent() || this.auth.isSuperAdmin()) {
+      return [
+        { value: 'ALL', label: 'Tất cả cơ sở', sublabel: 'Toàn bộ hệ thống phòng tập' },
+        ...list.map(b => ({ value: b.id, label: b.name, sublabel: b.address }))
+      ];
+    }
+    return list.map(b => ({ value: b.id, label: b.name, sublabel: b.address }));
+  });
+  branchId='ALL'; studentId=''; paymentMethod: 'CASH'|'POS_CARD'|'BANK_TRANSFER_QR'='CASH'; paymentReference='';
   private paymentKeys=new Map<string,string>();
   courseForm: Omit<Course,'id'>={code:'',name:'',description:'',classTypeId:'',totalSessions:12,defaultDurationMinutes:60,defaultFee:0};
   classForm: CreateCourseClass={courseId:'',branchId:'',code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
@@ -62,33 +72,58 @@ export class CoursesComponent implements OnInit {
   ngOnInit() { void this.run(async()=>{
     const [courses,branches]=await Promise.all([firstValueFrom(this.api.courses()),firstValueFrom(this.schedule.getBranches())]);
     this.courses.set(courses); this.branches.set(branches.filter(b=>this.auth.isSuperAdmin()||this.auth.isStudent()||this.auth.branchIds().includes(b.id)||b.id===this.auth.userHomeBranchId()));
-    this.branchId=this.auth.isStudent()?'':this.auth.userHomeBranchId()||this.branches()[0]?.id||'';
+    this.branchId = (this.auth.isStudent() || this.auth.isSuperAdmin())
+      ? 'ALL'
+      : (this.auth.userHomeBranchId() || this.branches()[0]?.id || 'ALL');
     await this.reload();
     const id=this.route.snapshot.queryParamMap.get('classId'); if(id) await this.loadDetail(id);
   }); }
   private async reload() {
-    this.classes.set(await firstValueFrom(this.api.classes(this.branchId||undefined)));
+    const bId = this.branchId && this.branchId !== 'ALL' ? this.branchId : undefined;
+    this.classes.set(await firstValueFrom(this.api.classes(bId)));
     if(this.auth.isStudent()) this.mine.set(await firstValueFrom(this.api.mine()));
   }
   refresh() { void this.run(()=>this.reload()); }
-  filterBranch() { this.selected.set(null); this.enrollment.set(null); this.refresh(); }
+  filterBranch(id?: string) {
+    if (id !== undefined) this.branchId = id;
+    this.selected.set(null);
+    this.enrollment.set(null);
+    this.refresh();
+  }
   resizeProgram(count: number) {
     if (!Number.isInteger(count) || count < 1 || count > 120) return;
     this.courseForm.totalSessions = count;
     const previous = this.courseForm.sessions || [];
     this.courseForm.sessions = Array.from({length: count}, (_, i) => previous[i] || {title: 'Buổi ' + (i+1), content: '', durationMinutes: this.courseForm.defaultDurationMinutes});
   }
+  updateDefaultDuration(minutes: number) {
+    this.courseForm.defaultDurationMinutes = minutes;
+    if (this.courseForm.sessions) {
+      for (const s of this.courseForm.sessions) {
+        s.durationMinutes = minutes;
+      }
+    }
+  }
   openCourse() {
     this.courseForm = {code:'',name:'',description:'',classTypeId:'',totalSessions:12,defaultDurationMinutes:60,defaultFee:0,sessions:[]};
     this.resizeProgram(12); this.form.set('course'); void this.run(async()=>this.types.set(await firstValueFrom(this.api.classTypes()))); }
   saveCourse() {
     const plan = this.courseForm.sessions || [];
-    if (plan.length !== this.courseForm.totalSessions || plan.some(s => !s.title.trim() || !s.content.trim() || !Number.isInteger(s.durationMinutes) || s.durationMinutes < 15 || s.durationMinutes > 240)) { this.error.set('Vui lòng điền nội dung và thời lượng hợp lệ cho từng buổi học.'); return; }
-    this.courseForm.defaultDurationMinutes = plan[0].durationMinutes;
+    for (const s of plan) {
+      s.durationMinutes = this.courseForm.defaultDurationMinutes;
+    }
+    if (!this.courseForm.defaultDurationMinutes || this.courseForm.defaultDurationMinutes < 15 || this.courseForm.defaultDurationMinutes > 240) {
+      this.error.set('Thời lượng mỗi buổi học phải từ 15 đến 240 phút.');
+      return;
+    }
+    if (plan.length !== this.courseForm.totalSessions || plan.some(s => !s.title.trim() || !s.content.trim())) {
+      this.error.set('Vui lòng điền tiêu đề và nội dung cho từng buổi học.');
+      return;
+    }
     void this.run(async()=>{ await firstValueFrom(this.api.createCourse(this.courseForm)); this.courses.set(await firstValueFrom(this.api.courses())); this.form.set(null); this.success.set('Đã tạo chương trình khóa học.'); }); }
   openClassFor(courseId:string) {this.openClass();this.classForm.courseId=courseId;this.selectCourse();}
   openClass() {
-    this.form.set('class'); this.previewed.set(false); this.classForm={courseId:this.courses()[0]?.id||'',branchId:this.branchId||this.branches()[0]?.id||'',code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
+    this.form.set('class'); this.previewed.set(false); this.classForm={courseId:this.courses()[0]?.id||'',branchId:(this.branchId && this.branchId !== 'ALL') ? this.branchId : (this.branches()[0]?.id||''),code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
     this.selectCourse(); void this.run(()=>this.loadResources(this.classForm.branchId));
   }
   selectCourse() { const c=this.courses().find(c=>c.id===this.classForm.courseId); if(c) {this.classForm.name=c.name;this.classForm.tuitionFee=c.defaultFee;this.duration=c.defaultDurationMinutes;} this.invalidate(); }

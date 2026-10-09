@@ -35,10 +35,23 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </a>
             }
             @if (auth.canManageClasses()) {
-              <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">Bộ môn</a>
-              <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">Khóa học</a>
-              <a routerLink="/schedule/timetable" routerLinkActive="active" class="nav-tab">Lịch học</a>
+              <a routerLink="/schedule/timetable" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Lịch Học</span>
+              </a>
             }
+            <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
+              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
+              <span>Khóa Học</span>
+            </a>
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
               <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab">
                 <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -77,7 +90,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </a>
             }
 
-            @if (auth.canManageUsers() || auth.canManageClasses() || auth.isSuperAdmin() || auth.isBranchManager() || (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager())) {
+            @if (auth.canManageUsers() || auth.canManageClasses() || auth.isSuperAdmin() || auth.isBranchManager() || (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) || auth.isInstructor()) {
               <span class="nav-divider" aria-hidden="true"></span>
             }
 
@@ -97,7 +110,16 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <span>Lịch Sử Tập</span>
               </a>
             }
-            @if (!auth.canManageClasses()) {<a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">Khóa học</a>}
+            @if (auth.canManageClasses()) {
+              <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+                  <path d="M6 6h10"/>
+                  <path d="M6 10h10"/>
+                </svg>
+                <span>Bộ Môn</span>
+              </a>
+            }
             <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
               <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -105,6 +127,13 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <polyline points="2 12 12 17 22 12"/>
               </svg>
               <span>Gói Thẻ Tập</span>
+            </a>
+            <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
+              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>Chi Nhánh</span>
             </a>
             @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
               <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
@@ -117,13 +146,6 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <span>Lịch & Đặt Chỗ</span>
               </a>
             }
-            <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
-              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              <span>Chi Nhánh</span>
-            </a>
           </nav>
 
         <div class="user-profile-bar">
@@ -289,8 +311,24 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                         </a>
                       }
 
+                      @if (auth.canManageClasses()) {
+                        <a routerLink="/schedule/subjects" (click)="closeAllPopovers()" class="setting-link">
+                          <span>Quản lý bộ môn</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </a>
+                      }
+
                       <a routerLink="/membership/plans" (click)="closeAllPopovers()" class="setting-link">
                         <span>Danh mục gói thẻ tập</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </a>
+
+                      <a routerLink="/branches" (click)="closeAllPopovers()" class="setting-link">
+                        <span>Hệ thống cơ sở</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <polyline points="9 18 15 12 9 6"/>
                         </svg>
@@ -304,13 +342,6 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                           </svg>
                         </a>
                       }
-
-                      <a routerLink="/branches" (click)="closeAllPopovers()" class="setting-link">
-                        <span>Hệ thống cơ sở</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                      </a>
                     </div>
                   </div>
                 }
@@ -413,10 +444,24 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             }
 
             @if (auth.canManageClasses()) {
-              <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Bộ môn</a>
-              <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Khóa học</a>
-              <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Lịch học</a>
+              <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Lịch Học</span>
+              </a>
             }
+
+            <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
+              <span>Khóa Học</span>
+            </a>
 
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
               <a routerLink="/membership/orders" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
@@ -475,7 +520,17 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </a>
             }
 
-            @if (!auth.canManageClasses()) {<a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">Khóa học</a>}
+            @if (auth.canManageClasses()) {
+              <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+                  <path d="M6 6h10"/>
+                  <path d="M6 10h10"/>
+                </svg>
+                <span>Bộ Môn</span>
+              </a>
+            }
+
             <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -483,6 +538,14 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <polyline points="2 12 12 17 22 12"/>
               </svg>
               <span>Gói Thẻ Tập</span>
+            </a>
+
+            <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>Chi Nhánh</span>
             </a>
 
             @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
@@ -496,14 +559,6 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 <span>Lịch & Đặt Chỗ</span>
               </a>
             }
-
-            <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              <span>Hệ Thống Cơ Sở</span>
-            </a>
           </nav>
 
           <div class="drawer-footer">
