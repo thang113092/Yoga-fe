@@ -118,6 +118,27 @@ export class ClassManagementComponent implements OnInit {
   readonly attendeesList = signal<ScheduleAttendee[]>([]);
   readonly isLoadingAttendees = signal(false);
 
+  // Modal State: Chi tiết khung giờ phòng học
+  readonly slotDetailsModalData = signal<{
+    dateIso: string;
+    dateLabel: string;
+    cluster: {
+      id: string;
+      start: number;
+      end: number;
+      startTimeStr: string;
+      endTimeStr: string;
+      timeLabel: string;
+      minHeight: number;
+      rooms: Array<{
+        roomId: string;
+        roomName: string;
+        hasClass: boolean;
+        schedule?: ClassSchedule;
+      }>;
+    };
+  } | null>(null);
+
   // Branch lock for Branch Manager & Instructor
   readonly isBranchLocked = computed(() => this.auth.isBranchManager() || this.auth.isInstructor());
   readonly userRestrictedBranchId = computed(() => this.auth.userHomeBranchId() || this.auth.branchIds()[0] || null);
@@ -356,6 +377,10 @@ export class ClassManagementComponent implements OnInit {
   resetFilters(): void {
     this.searchQuery.set('');
     this.dateFilter.set(getTodayIsoDate());
+    const weekRange = this.getThisWeekRange();
+    this.dateRangeMode.set('week');
+    this.fromDate.set(weekRange.from);
+    this.toDate.set(weekRange.to);
     if (this.auth.isInstructor()) {
       const myId = this.auth.currentUserId();
       this.selectedInstructorId.set(myId || 'ALL');
@@ -434,7 +459,9 @@ export class ClassManagementComponent implements OnInit {
       list = list.filter(s => s.roomId === roomId);
     }
 
-    list = list.filter(s => this.weekDays().some(day => day.iso === this.getScheduleDateStr(s.startTime)));
+    if (this.dateFilter()) {
+      list = list.filter(s => this.weekDays().some(day => day.iso === this.getScheduleDateStr(s.startTime)));
+    }
 
     if (query) {
       list = list.filter(s =>
@@ -483,11 +510,13 @@ export class ClassManagementComponent implements OnInit {
     this.dateRangeMode.set('month');
     this.fromDate.set(range.from);
     this.toDate.set(range.to);
+    this.dateFilter.set(range.from);
   }
 
   onFromDateChange(val: string): void {
     this.dateRangeMode.set('custom');
     this.fromDate.set(val || '');
+    if (val) this.dateFilter.set(val);
   }
 
   onToDateChange(val: string): void {
@@ -827,6 +856,59 @@ export class ClassManagementComponent implements OnInit {
     this.selectedRoomId.set('ALL');
     this.loadSchedules();
     this.loadRooms(branchId);
+  }
+
+  getOccupiedRoomCount(rooms: Array<{ hasClass: boolean }>): number {
+    return rooms ? rooms.filter(r => r.hasClass).length : 0;
+  }
+
+  getSelectedBranchName(): string {
+    const bId = this.selectedBranchId();
+    if (!bId || bId === 'ALL') {
+      return 'Tất cả các cơ sở';
+    }
+    const found = this.branches().find(b => b.id === bId);
+    return found ? found.name : 'Cơ sở hiện tại';
+  }
+
+  openSlotDetailsModal(dateIso: string, cluster: any): void {
+    const dayLabels = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const d = new Date(dateIso + 'T00:00:00Z');
+    const dayName = !isNaN(d.getTime()) ? dayLabels[d.getUTCDay()] : '';
+    const dateFormatted = this.formatDisplayDate(dateIso);
+    const dateLabel = `${dayName}, ${dateFormatted}`;
+
+    this.slotDetailsModalData.set({
+      dateIso,
+      dateLabel,
+      cluster
+    });
+  }
+
+  closeSlotDetailsModal(): void {
+    this.slotDetailsModalData.set(null);
+  }
+
+  onSlotRoomViewAttendees(schedule: ClassSchedule): void {
+    this.closeSlotDetailsModal();
+    this.openAttendeesModal(schedule);
+  }
+
+  onSlotRoomCreateSchedule(dateIso: string, startTimeStr: string, roomId: string): void {
+    this.closeSlotDetailsModal();
+    this.openCreateScheduleForSlot(dateIso, startTimeStr, roomId);
+  }
+
+  async cancelScheduleFromSlotModal(schedule: ClassSchedule): Promise<void> {
+    this.closeSlotDetailsModal();
+    await this.cancelSchedule(schedule);
+  }
+
+  canCancelSchedule(schedule: ClassSchedule): boolean {
+    if (!schedule || schedule.status === 'CANCELLED') return false;
+    if (this.auth.isSuperAdmin() || this.auth.isBranchManager()) return true;
+    if (this.auth.isInstructor() && schedule.instructorId === this.auth.currentUserId()) return true;
+    return false;
   }
 
   openCreateScheduleForSlot(date: string, startTimeStr: string, roomId?: string): void {

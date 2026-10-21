@@ -364,4 +364,77 @@ describe('ClassManagementComponent', () => {
     expect(comp.selectedRoomId()).toBe('ALL');
     expect(comp.isSingleRoomSelected()).toBe(false);
   });
+
+  it('manages slot details modal: opens with room list, allows creating schedule for vacant room, and closes modal', () => {
+    TestBed.configureTestingModule({
+      imports: [ClassManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperAdmin: () => true,
+            isBranchManager: () => false,
+            isInstructor: () => false,
+            currentUserId: () => 'admin-1',
+            userHomeBranchId: () => null
+          }
+        },
+        { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: ZenConfirmService, useValue: confirmMock },
+        { provide: ZenToastService, useValue: toastMock }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ClassManagementComponent);
+    const comp = fixture.componentInstance;
+    comp.ngOnInit();
+
+    const mockCluster = {
+      startTimeStr: '08:00',
+      endTimeStr: '09:00',
+      rooms: [
+        {
+          roomId: 'room-1',
+          roomName: 'Studio Sen Vàng',
+          hasClass: true,
+          schedule: mockSchedules[0]
+        },
+        {
+          roomId: 'room-2',
+          roomName: 'Studio Trúc Xanh',
+          hasClass: false,
+          schedule: null
+        }
+      ]
+    };
+
+    expect(comp.slotDetailsModalData()).toBeNull();
+    expect(comp.getOccupiedRoomCount(mockCluster.rooms)).toBe(1);
+
+    // Open slot details modal
+    comp.openSlotDetailsModal('2026-10-10', mockCluster);
+    const modalData = comp.slotDetailsModalData();
+    expect(modalData).not.toBeNull();
+    expect(modalData?.dateIso).toBe('2026-10-10');
+    expect(modalData?.cluster.startTimeStr).toBe('08:00');
+    expect(modalData?.cluster.rooms.length).toBe(2);
+
+    // Cancel permission check
+    expect(comp.canCancelSchedule(mockSchedules[0] as any)).toBe(true);
+    expect(comp.canCancelSchedule({ ...mockSchedules[0], status: 'CANCELLED' } as any)).toBe(false);
+
+    // Click to add schedule on vacant room-2
+    comp.onSlotRoomCreateSchedule('2026-10-10', '08:00', 'room-2');
+    expect(comp.slotDetailsModalData()).toBeNull();
+    expect(comp.isCreateScheduleOpen()).toBe(true);
+    expect(comp.scheduleForm().date).toBe('2026-10-10');
+    expect(comp.scheduleForm().startTimeStr).toBe('08:00');
+    expect(comp.scheduleForm().roomId).toBe('room-2');
+
+    // Close create modal
+    comp.closeCreateScheduleModal();
+    expect(comp.isCreateScheduleOpen()).toBe(false);
+  });
 });

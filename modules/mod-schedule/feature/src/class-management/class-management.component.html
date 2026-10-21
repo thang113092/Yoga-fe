@@ -171,29 +171,32 @@
           </button>
         </div>
 
-        <div class="custom-date-range">
+        <div class="custom-date-range" role="group" aria-label="Tùy chọn khoảng ngày">
           <div class="date-field">
-          <label class="date-range-label" for="from-date-input">Từ ngày</label>
-          <input
-            id="from-date-input"
-            type="date"
-            class="date-range-input"
-            [ngModel]="fromDate()"
-            (ngModelChange)="onFromDateChange($event)"
-          />
+            <label class="date-range-label" for="from-date-input">Từ ngày</label>
+            <input
+              id="from-date-input"
+              type="date"
+              class="date-range-input zen-native-input"
+              [ngModel]="fromDate()"
+              (ngModelChange)="onFromDateChange($event)"
+              aria-label="Từ ngày"
+            />
           </div>
-          <svg class="date-range-separator" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M5 12h14m-5-5 5 5-5 5" />
+          <svg class="date-range-separator" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
           <div class="date-field">
-          <label class="date-range-label" for="to-date-input">Đến ngày</label>
-          <input
-            id="to-date-input"
-            type="date"
-            class="date-range-input"
-            [ngModel]="toDate()"
-            (ngModelChange)="onToDateChange($event)"
-          />
+            <label class="date-range-label" for="to-date-input">Đến ngày</label>
+            <input
+              id="to-date-input"
+              type="date"
+              class="date-range-input zen-native-input"
+              [ngModel]="toDate()"
+              (ngModelChange)="onToDateChange($event)"
+              aria-label="Đến ngày"
+            />
           </div>
         </div>
       </div>
@@ -210,37 +213,37 @@
 <div class="time-axis">@for(hour of hours;track hour){<span [style.top.px]="(hour-4)*72">{{hour<10?'0':''}}{{hour}}:00</span>}</div>
 @for(day of weekColumns();track day.iso){<div class="day-track" [class.is-today]="isTodayDate(day.iso)">
   @if (selectedRoomId() === 'ALL') {
-    <!-- Khi chọn tất cả các phòng: mỗi ô hiện tên tất cả các phòng (phòng có lớp thì xanh, phòng chưa có thì đỏ) -->
+    <!-- Khi chọn tất cả các phòng: một khung giờ của 1 ngày là một khối nút bấm, trong khối danh sách các phòng sát nhau -->
     @for(cluster of day.clusters; track cluster.id){
-      <div class="week-event all-rooms-slot"
-           [style.top.px]="(cluster.start-240)*1.2"
-           [style.height.px]="(cluster.end-cluster.start)*1.2"
-           [style.min-height.px]="cluster.minHeight"
-           style="left: 0; width: 100%;">
-        <div class="slot-rooms-container">
+      <button
+        type="button"
+        class="week-event all-rooms-slot"
+        [style.top.px]="(cluster.start-240)*1.2"
+        [style.height.px]="(cluster.end-cluster.start)*1.2"
+        [style.min-height.px]="cluster.minHeight"
+        style="left: 0; width: 100%;"
+        (click)="openSlotDetailsModal(day.iso, cluster)"
+        [title]="'Khung giờ ' + cluster.timeLabel + ' (' + getOccupiedRoomCount(cluster.rooms) + '/' + cluster.rooms.length + ' phòng có lớp) · Nhấp để xem chi tiết & xếp lịch'"
+      >
+        <div class="slot-header-compact">
+          <span class="slot-time-badge">{{ cluster.timeLabel }}</span>
+          <span class="slot-room-count">
+            <span class="dot-active"></span>
+            {{ getOccupiedRoomCount(cluster.rooms) }}/{{ cluster.rooms.length }}
+          </span>
+        </div>
+
+        <div class="slot-rooms-list">
           @for(r of cluster.rooms; track r.roomId){
-            @if(r.hasClass && r.schedule){
-              <!-- Phòng có lớp học: XANH, KHÔNG NỀN, CHỈ HIỆN TÊN PHÒNG -->
-              <button type="button"
-                      class="room-entry room-occupied"
-                      (click)="openAttendeesModal(r.schedule)"
-                      [title]="r.roomName + ' · Lớp: ' + r.schedule.className + ' · HLV: ' + r.schedule.instructorName + ' · Bấm để xem danh sách'">
-                <span class="room-bullet bullet-green"></span>
-                <span class="room-name">{{ r.roomName }}</span>
-              </button>
-            } @else {
-              <!-- Phòng chưa có lớp: ĐỎ, KHÔNG NỀN, CHỈ HIỆN TÊN PHÒNG -->
-              <button type="button"
-                      class="room-entry room-vacant"
-                      (click)="openCreateScheduleForSlot(day.iso, cluster.startTimeStr, r.roomId)"
-                      [title]="r.roomName + ' · Chưa có lớp học · Bấm để xếp lịch'">
-                <span class="room-bullet bullet-red"></span>
-                <span class="room-name">{{ r.roomName }}</span>
-              </button>
-            }
+            <div class="room-line" [class.is-occupied]="r.hasClass" [class.is-vacant]="!r.hasClass">
+              <span class="room-bullet" [class.bullet-green]="r.hasClass" [class.bullet-muted]="!r.hasClass"></span>
+              <span class="room-name" [title]="r.roomName + (r.hasClass && r.schedule ? ': ' + r.schedule.className : ' (Trống)')">
+                {{ r.roomName }}
+              </span>
+            </div>
           }
         </div>
-      </div>
+      </button>
     }
   } @else {
     <!-- Khi chọn một phòng học cụ thể: mỗi ô chỉ cần hiện tên của lớp học đó thôi -->
@@ -641,6 +644,158 @@
           } @else {
             <span>Lưu Bộ Môn Mới</span>
           }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL: CHI TIẾT KHUNG GIỜ VÀ DANH SÁCH PHÒNG HỌC                          -->
+<!-- ========================================================================= -->
+@if (slotDetailsModalData(); as modalData) {
+  <div class="modal-backdrop" (click)="closeSlotDetailsModal()">
+    <div class="modal-dialog modal-large slot-details-modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="pre-title">CHI TIẾT KHUNG GIỜ PHÒNG HỌC</div>
+          <h2 class="modal-title">{{ modalData.dateLabel }} · {{ modalData.cluster.timeLabel }}</h2>
+          <div class="modal-sub-meta">
+            <span>Cơ sở: <strong>{{ getSelectedBranchName() }}</strong></span>
+            <span class="meta-sep">•</span>
+            <span class="meta-stats">{{ getOccupiedRoomCount(modalData.cluster.rooms) }}/{{ modalData.cluster.rooms.length }} phòng đang có ca học</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeSlotDetailsModal()" aria-label="Đóng">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body slot-details-modal-body">
+        <div class="slot-rooms-details-list">
+          @for (roomItem of modalData.cluster.rooms; track roomItem.roomId) {
+            @if (roomItem.hasClass && roomItem.schedule; as sched) {
+              <!-- Phòng ĐÃ CÓ LỊCH: Hiện chi tiết lịch của phòng đó -->
+              <div class="room-detail-card room-card-occupied">
+                <div class="room-card-header">
+                  <div class="room-identity-group">
+                    <span class="room-status-indicator indicator-green"></span>
+                    <h4 class="room-card-title">{{ roomItem.roomName }}</h4>
+                  </div>
+                  <span class="room-status-badge badge-occupied">Đang có lịch</span>
+                </div>
+
+                <div class="room-card-content">
+                  <div class="class-main-info">
+                    <div class="class-title-and-course">
+                      <h3 class="class-name-text">{{ sched.className }}</h3>
+                      @if (sched.courseClassId) {
+                        <span class="class-course-tag">Khóa học · Buổi {{ sched.sessionNumber }}</span>
+                      }
+                    </div>
+
+                    <div class="class-info-chips">
+                      <div class="info-chip">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span>{{ formatTime(sched.startTime) }} – {{ formatTime(sched.endTime) }}</span>
+                      </div>
+
+                      <div class="info-chip">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>HLV: <strong>{{ sched.instructorName }}</strong></span>
+                      </div>
+
+                      <div class="info-chip">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                        </svg>
+                        <span>Sĩ số: <strong>{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
+                      </div>
+                    </div>
+
+                    @if (sched.sessionTitle) {
+                      <div class="session-lesson-topic">
+                        <span class="lesson-label">Nội dung bài học:</span>
+                        <span class="lesson-title">{{ sched.sessionTitle }}</span>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="room-card-actions">
+                    <button
+                      type="button"
+                      class="btn-attendees-action"
+                      (click)="onSlotRoomViewAttendees(sched)"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <polyline points="16 11 18 13 22 9"></polyline>
+                      </svg>
+                      <span>Danh Sách Học Viên & Điểm Danh</span>
+                    </button>
+
+                    @if (canCancelSchedule(sched)) {
+                      <button
+                        type="button"
+                        class="btn-cancel-action"
+                        (click)="cancelScheduleFromSlotModal(sched)"
+                        title="Hủy buổi học này"
+                      >
+                        Hủy Ca
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <!-- Phòng CHƯA CÓ LỊCH: Cho phép thêm lịch -->
+              <div class="room-detail-card room-card-vacant">
+                <div class="room-card-header">
+                  <div class="room-identity-group">
+                    <span class="room-status-indicator indicator-muted"></span>
+                    <h4 class="room-card-title">{{ roomItem.roomName }}</h4>
+                  </div>
+                  <span class="room-status-badge badge-vacant">Chưa có lịch</span>
+                </div>
+
+                <div class="vacant-card-content">
+                  <div class="vacant-text-group">
+                    <p class="vacant-main-text">Phòng học đang trống trong khung giờ {{ modalData.cluster.timeLabel }}.</p>
+                    <span class="vacant-sub-text">Bạn có thể xếp lịch ca học mới ngay cho phòng này.</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn-add-schedule-action"
+                    (click)="onSlotRoomCreateSchedule(modalData.dateIso, modalData.cluster.startTimeStr, roomItem.roomId)"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>+ Xếp Lớp / Thêm Lịch Cho Phòng Này</span>
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeSlotDetailsModal()">
+          Đóng
         </button>
       </div>
     </div>

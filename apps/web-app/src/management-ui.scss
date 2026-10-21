@@ -37,7 +37,7 @@
   }
 
   :is(
-    button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(.btn-delete-type):not(.btn-today-chip):not(.btn-icon):not([class*='btn-icon']):not(zen-input button):not(zen-search button),
+    button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(.btn-delete-type):not(.btn-today-chip):not(.btn-date-preset):not(.room-pill-btn):not(.all-rooms-slot):not(.btn-attendees-action):not(.btn-add-schedule-action):not(.btn-cancel-action):not(.btn-icon):not([class*='btn-icon']):not(zen-input button):not(zen-search button),
     a[class*='btn-']:not(.btn-icon):not([class*='btn-icon'])
   ) {
     min-height: 40px !important;
@@ -85,7 +85,7 @@
     &:hover { background: #deeee8 !important; }
   }
 
-  :is(button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(zen-input button):not(zen-search button), a):focus-visible {
+  :is(button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(.btn-date-preset):not(zen-input button):not(zen-search button), a):focus-visible {
     outline: none !important;
     box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.25) !important;
   }
