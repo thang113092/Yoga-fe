@@ -51,4 +51,33 @@ describe('Course schedules',()=>{
     expect(fixture.nativeElement.textContent).toContain('09/12/2026');
     expect(fixture.nativeElement.querySelector('progress').value).toBe(5);
   });
+  it('correctly cleans up redundant session topic prefixes',()=>{
+    expect(component.sessionTopic({sessionTitle:'Buổi 1: Thấu hiểu cột sống',sessionNumber:1})).toBe('Thấu hiểu cột sống');
+    expect(component.sessionTopic({title:'Buổi 2 - Mở khớp háng',sessionNumber:2})).toBe('Mở khớp háng');
+    expect(component.sessionTopic({sessionTitle:'Buổi 3 · Giới thiệu định tuyến',sessionNumber:3})).toBe('Giới thiệu định tuyến');
+    expect(component.sessionTopic({sessionTitle:'Buổi 1',sessionNumber:1})).toBe('');
+    expect(component.sessionTopic({sessionTitle:'Thực hành Chuông Xoay',sessionNumber:4})).toBe('Thực hành Chuông Xoay');
+    expect(component.sessionTopic(null)).toBe('');
+  });
+  it('renders class schedule table cleanly without squashed column or duplicated session label',async()=>{
+    const fixture=TestBed.createComponent(CoursesComponent);fixture.detectChanges();
+    await vi.waitFor(()=>expect(fixture.componentInstance.busy()).toBe(false));
+    fixture.componentInstance.selected.set({
+      id:'class-1',courseId:'course',code:'CLASS-01',name:'Khóa Trị Liệu',courseName:'Khóa Trị Liệu',description:'',
+      branchId:'b1',branchName:'Cơ sở 1',plannedSessions:1,maxCapacity:20,tuitionFee:3600000,status:'OPEN',
+      startTime:'2026-11-30T05:00:00+07:00',endTime:'2026-11-30T06:00:00+07:00',enrolledCount:0,heldSessions:0,
+      sessions:[{
+        id:'sess-1',sessionNumber:1,roomId:'r1',instructorId:'i1',roomName:'Studio Lotus',instructorName:'Trần Minh Tuấn',
+        startTime:'2026-11-30T05:00:00+07:00',endTime:'2026-11-30T06:00:00+07:00',status:'SCHEDULED',
+        sessionTitle:'Buổi 1: Thấu hiểu cấu trúc cột sống',plannedContent:'Chi tiết buổi 1'
+      }]
+    });
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.th-session')?.textContent).toContain('Buổi Học & Nội Dung');
+    expect(compiled.querySelector('.session-pill')?.textContent).toContain('Buổi 1');
+    expect(compiled.querySelector('.session-topic-title')?.textContent).toContain('Thấu hiểu cấu trúc cột sống');
+    expect(compiled.querySelector('.session-plan-desc')?.textContent).toContain('Chi tiết buổi 1');
+    expect(compiled.querySelector('.time-primary')?.textContent).toContain('05:00 – 06:00');
+  });
 });

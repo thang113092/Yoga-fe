@@ -181,6 +181,14 @@ export class CoursesComponent implements OnInit {
     this.error.set('');s[key]=date.toISOString();
   }
   future(s:CourseSession) {return new Date(s.startTime).getTime()>Date.now();}
+  sessionTopic(s?: { sessionTitle?: string; title?: string; sessionNumber?: number } | null): string {
+    if (!s) return '';
+    const raw = (s.sessionTitle || s.title || '').trim();
+    if (!raw) return '';
+    if (/^Buổi\s*\d+$/i.test(raw)) return '';
+    const cleaned = raw.replace(/^Buổi\s*\d+\s*[:\-·\.]\s*/i, '').trim();
+    return cleaned || raw;
+  }
   nextSession(e:CourseEnrollment) {return e.sessions?.find(s=>s.status!=='CANCELLED'&&this.future(s));}
   label(status:string) {return ({OPEN:'Mở đăng ký',IN_PROGRESS:'Đang học',COMPLETED:'Hoàn thành',CANCELLED:'Đã hủy',ACTIVE:'Đang theo học',PENDING_PAYMENT:'Chờ thanh toán',SCHEDULED:'Sắp diễn ra',ATTENDED:'Đã tham dự',ABSENT:'Vắng',UPCOMING:'Chưa điểm danh',PAID:'Đã thanh toán',PENDING:'Chờ thanh toán'} as Record<string,string>)[status]||status;}
 }

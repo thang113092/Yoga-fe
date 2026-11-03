@@ -451,7 +451,7 @@
         <table class="zen-table">
           <thead>
             <tr>
-              <th style="width: 80px;">Buổi</th>
+              <th class="th-session">Buổi Học & Nội Dung</th>
               <th>Thời Gian Ca Học</th>
               <th>Phòng Tập</th>
               <th>Huấn Luyện Viên</th>
@@ -462,22 +462,42 @@
           <tbody>
             @for (s of c.sessions; track s.id) {
               <tr>
-                <td class="font-medium">Buổi {{ s.sessionNumber }}<br><strong>{{ s.sessionTitle || s.title }}</strong>@if(s.plannedContent){<p>{{s.plannedContent}}</p>}</td>
-                <td>
-                  <div class="time-primary">{{ s.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
-                  <div class="date-secondary">đến {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                <td class="cell-session-info">
+                  <div class="session-index-row">
+                    <span class="session-pill">Buổi {{ s.sessionNumber }}</span>
+                    @if (sessionTopic(s)) {
+                      <strong class="session-topic-title">{{ sessionTopic(s) }}</strong>
+                    }
+                  </div>
+                  @if (s.plannedContent) {
+                    <div class="session-plan-desc">{{ s.plannedContent }}</div>
+                  }
                 </td>
-                <td><span class="room-name">{{ s.roomName }}</span></td>
-                <td>
+                <td class="cell-time">
+                  <div class="time-primary">{{ s.startTime | date:'HH:mm':'+0700' }} – {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                  <div class="date-secondary">{{ s.startTime | date:'dd/MM/yyyy':'+0700' }}</div>
+                </td>
+                <td class="cell-room">
+                  <span class="room-name">{{ s.roomName }}</span>
+                </td>
+                <td class="cell-instructor">
                   <div class="instructor-badge">
                     <span class="avatar-dot"></span>
                     <span>{{ s.instructorName }}</span>
                   </div>
                 </td>
-                <td><span class="status-pill" [class]="'status-' + (s.status | lowercase)">{{ label(s.status || '') }}</span></td>
-                <td class="text-right">
+                <td class="cell-status">
+                  <span class="status-pill" [class]="'status-' + (s.status | lowercase)">{{ label(s.status || '') }}</span>
+                </td>
+                <td class="text-right cell-action">
                   @if (canCreateClass() && future(s) && s.status !== 'CANCELLED') {
-                    <button class="btn-row-action" (click)="editSession(s)" [disabled]="busy()">Đổi Lịch</button>
+                    <button class="btn-row-action" (click)="editSession(s)" [disabled]="busy()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      <span>Đổi Lịch</span>
+                    </button>
                   }
                 </td>
               </tr>
@@ -637,7 +657,7 @@
         <table class="zen-table">
           <thead>
             <tr>
-              <th style="width: 80px;">Buổi</th>
+              <th class="th-session">Buổi Học & Nội Dung</th>
               <th>Thời Gian Ca Học</th>
               <th>Phòng · Huấn Luyện Viên</th>
               <th>Điểm Danh</th>
@@ -647,16 +667,28 @@
           <tbody>
             @for (s of e.sessions; track s.id) {
               <tr>
-                <td class="font-medium">Buổi {{ s.sessionNumber }}<br><strong>{{ s.sessionTitle || s.title }}</strong>@if(s.plannedContent){<p>{{s.plannedContent}}</p>}</td>
-                <td>
-                  <div class="time-primary">{{ s.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
-                  <div class="date-secondary">đến {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                <td class="cell-session-info">
+                  <div class="session-index-row">
+                    <span class="session-pill">Buổi {{ s.sessionNumber }}</span>
+                    @if (sessionTopic(s)) {
+                      <strong class="session-topic-title">{{ sessionTopic(s) }}</strong>
+                    }
+                  </div>
+                  @if (s.plannedContent) {
+                    <div class="session-plan-desc">{{ s.plannedContent }}</div>
+                  }
+                </td>
+                <td class="cell-time">
+                  <div class="time-primary">{{ s.startTime | date:'HH:mm':'+0700' }} – {{ s.endTime | date:'HH:mm':'+0700' }}</div>
+                  <div class="date-secondary">{{ s.startTime | date:'dd/MM/yyyy':'+0700' }}</div>
                 </td>
                 <td>
                   <div class="class-title">{{ s.roomName }}</div>
                   <div class="date-secondary">{{ s.instructorName }}</div>
                 </td>
-                <td><span class="status-pill" [class]="'status-' + (s.attendanceState | lowercase)">{{ label(s.attendanceState || '') }}</span></td>
+                <td class="cell-status">
+                  <span class="status-pill" [class]="'status-' + (s.attendanceState | lowercase)">{{ label(s.attendanceState || '') }}</span>
+                </td>
                 <td class="text-right">
                   @if (e.status === 'ACTIVE' && s.status !== 'CANCELLED') {
                     <span class="code-badge">{{ s.bookingCode }}</span>
@@ -851,7 +883,7 @@
                 <table class="zen-table">
                   <thead>
                     <tr>
-                      <th style="width: 70px;">Buổi</th>
+                      <th class="th-session">Buổi Học & Nội Dung</th>
                       <th>Bắt Đầu</th>
                       <th>Kết Thúc</th>
                       <th>Phòng Tập</th>
@@ -861,7 +893,17 @@
                   <tbody>
                     @for (s of classForm.sessions; track $index) {
                       <tr>
-                        <td class="font-medium">Buổi {{ $index + 1 }}<br><strong>{{s.title}}</strong><small>{{s.plannedContent}}</small></td>
+                        <td class="cell-session-info">
+                          <div class="session-index-row">
+                            <span class="session-pill">Buổi {{ $index + 1 }}</span>
+                            @if (sessionTopic(s)) {
+                              <strong class="session-topic-title">{{ sessionTopic(s) }}</strong>
+                            }
+                          </div>
+                          @if (s.plannedContent) {
+                            <div class="session-plan-desc">{{ s.plannedContent }}</div>
+                          }
+                        </td>
                         <td><input class="form-input input-compact" type="datetime-local" [attr.aria-label]="'Bắt đầu buổi ' + ($index + 1)" [value]="localTime(s.startTime)" (change)="setTime(s, 'startTime', $any($event.target).value)"></td>
                         <td><input class="form-input input-compact" type="datetime-local" [attr.aria-label]="'Kết thúc buổi ' + ($index + 1)" [value]="localTime(s.endTime)" (change)="setTime(s, 'endTime', $any($event.target).value)"></td>
                         <td>

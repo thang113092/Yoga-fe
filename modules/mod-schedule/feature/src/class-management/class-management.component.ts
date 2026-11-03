@@ -339,6 +339,76 @@ export class ClassManagementComponent implements OnInit {
     this.dateFilter.set(newDate || '');
   }
 
+  formatDayNumber(iso: string): string {
+    if (!iso) return '';
+    try {
+      const parts = iso.split('-');
+      return parts[2] ? String(Number(parts[2])) : '';
+    } catch {
+      return '';
+    }
+  }
+
+  getCleanRoomName(name: string): string {
+    if (!name) return '';
+    const cleaned = name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    return cleaned || name;
+  }
+
+  getShortDayName(label: string): string {
+    if (!label) return '';
+    const map: Record<string, string> = {
+      'Thứ Hai': 'T2',
+      'Thứ Ba': 'T3',
+      'Thứ Tư': 'T4',
+      'Thứ Năm': 'T5',
+      'Thứ Sáu': 'T6',
+      'Thứ Bảy': 'T7',
+      'Chủ Nhật': 'CN'
+    };
+    return map[label] || label.slice(0, 3);
+  }
+
+  getWeekRangeDisplay(): string {
+    const days = this.weekDays();
+    if (!days || days.length === 0) return '';
+    const first = days[0];
+    const last = days[days.length - 1];
+    return `${this.formatDisplayDate(first.iso)} – ${this.formatDisplayDate(last.iso)}`;
+  }
+
+  goToPrevDay(): void {
+    const cur = new Date((this.dateFilter() || getTodayIsoDate()) + 'T00:00:00Z');
+    cur.setUTCDate(cur.getUTCDate() - 1);
+    this.dateFilter.set(cur.toISOString().slice(0, 10));
+  }
+
+  goToNextDay(): void {
+    const cur = new Date((this.dateFilter() || getTodayIsoDate()) + 'T00:00:00Z');
+    cur.setUTCDate(cur.getUTCDate() + 1);
+    this.dateFilter.set(cur.toISOString().slice(0, 10));
+  }
+
+  onDayDateChange(newDate: string): void {
+    this.dateFilter.set(newDate || getTodayIsoDate());
+  }
+
+  onRoomTrackClick(event: MouseEvent, roomId: string): void {
+    const target = event.target as HTMLElement;
+    if (!target || !target.classList.contains('room-track')) return;
+
+    const rect = target.getBoundingClientRect();
+    const offsetY = event.clientY - rect.top;
+    const minutesFrom4am = offsetY / 1.2;
+    const rawMinutes = 240 + minutesFrom4am;
+    const snappedMinutes = Math.max(240, Math.min(1320, Math.floor(rawMinutes / 30) * 30));
+    const h = Math.floor(snappedMinutes / 60);
+    const m = snappedMinutes % 60;
+    const startTimeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+    this.openCreateScheduleForSlot(this.activeDayIso(), startTimeStr, roomId);
+  }
+
   getBranchName(schedule: ClassSchedule): string {
     if (schedule.branchName) return schedule.branchName;
     const b = this.branches().find(item => item.id === schedule.branchId);
@@ -691,6 +761,72 @@ export class ClassManagementComponent implements OnInit {
 
     return { ...day, items, clusters };
   }));
+
+  readonly activeDayIso = computed(() => this.dateFilter() || getTodayIsoDate());
+
+  readonly dayRoomColumns = computed(() => {
+    const dayIso = this.activeDayIso();
+    const contextRooms = this.currentContextRooms();
+    const daySchedules = this.filteredSchedules().filter(s => this.getScheduleDateStr(s.startTime) === dayIso);
+
+    const roomsList = contextRooms.length > 0
+      ? contextRooms
+      : Array.from(new Set(daySchedules.map(s => s.roomId))).map(rId => {
+          const found = daySchedules.find(s => s.roomId === rId);
+          return {
+            id: rId,
+            name: found?.roomName || 'Phòng học',
+            branchId: found?.branchId || '',
+            maxCapacity: found?.maxCapacity || 20,
+            floor: undefined,
+            isActive: true
+          };
+        });
+
+    return roomsList.map(room => {
+      const roomSchedules = daySchedules.filter(s => s.roomId === room.id);
+
+      const items = roomSchedules.map(schedule => ({
+        schedule,
+        start: Math.max(240, this.minutes(schedule.startTime)),
+        end: Math.min(1320, this.getScheduleDateStr(schedule.endTime) > dayIso ? 1440 : this.minutes(schedule.endTime)),
+        lane: 0,
+        lanes: 1
+      })).filter(s => s.end > s.start).sort((a, b) => a.start - b.start || a.end - b.end);
+
+      let group: typeof items = [];
+      let groupEnd = 0;
+      const finish = () => {
+        const ends: number[] = [];
+        for (const item of group) {
+          let lane = ends.findIndex(end => end <= item.start);
+          if (lane < 0) lane = ends.length;
+          item.lane = lane;
+          ends[lane] = item.end;
+        }
+        group.forEach(item => item.lanes = ends.length);
+      };
+      for (const item of items) {
+        if (group.length && item.start >= groupEnd) {
+          finish();
+          group = [];
+          groupEnd = 0;
+        }
+        group.push(item);
+        groupEnd = Math.max(groupEnd, item.end);
+      }
+      finish();
+
+      return {
+        roomId: room.id,
+        roomName: room.name,
+        floor: (room as any).floor,
+        maxCapacity: room.maxCapacity,
+        items,
+        classCount: items.length
+      };
+    });
+  });
   ngOnInit(): void {
     const weekRange = this.getThisWeekRange();
     this.fromDate.set(weekRange.from);
@@ -927,6 +1063,33 @@ export class ClassManagementComponent implements OnInit {
       startTimeStr: startTimeStr || f.startTimeStr,
       roomId: roomId || f.roomId
     }));
+  }
+
+  getRoomThemeIndex(roomId?: string): number {
+    if (!roomId) return 0;
+    const contextRooms = this.currentContextRooms();
+    const idx = contextRooms.findIndex(r => r.id === roomId);
+    if (idx >= 0) return idx % 4;
+    const allRooms = this.rooms();
+    const allIdx = allRooms.findIndex(r => r.id === roomId);
+    return allIdx >= 0 ? allIdx % 4 : 0;
+  }
+
+  onDayTrackClick(event: MouseEvent, dateIso: string): void {
+    const target = event.target as HTMLElement;
+    if (!target || !target.classList.contains('day-track')) return;
+
+    const rect = target.getBoundingClientRect();
+    const offsetY = event.clientY - rect.top;
+    const minutesFrom4am = offsetY / 1.2;
+    const rawMinutes = 240 + minutesFrom4am;
+    const snappedMinutes = Math.max(240, Math.min(1320, Math.floor(rawMinutes / 30) * 30));
+    const h = Math.floor(snappedMinutes / 60);
+    const m = snappedMinutes % 60;
+    const startTimeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+    const targetRoomId = this.selectedRoomId() !== 'ALL' ? this.selectedRoomId() : undefined;
+    this.openCreateScheduleForSlot(dateIso, startTimeStr, targetRoomId);
   }
 
   // --- Modal Openers ---

@@ -437,4 +437,230 @@ describe('ClassManagementComponent', () => {
     comp.closeCreateScheduleModal();
     expect(comp.isCreateScheduleOpen()).toBe(false);
   });
+
+  it('Solution 1 Multi-lane: handles overlapping classes with different durations in ALL rooms view', () => {
+    // Room 1: 08:00 - 09:00 (60 mins)
+    // Room 2: 08:00 - 09:30 (90 mins, different duration!)
+    const variableDurationSchedules = [
+      {
+        id: 's-room1-60m',
+        branchId: 'branch-1',
+        roomId: 'room-1',
+        className: 'Hatha Yoga 60p',
+        instructorName: 'HLV 1',
+        roomName: 'Studio Sen Vàng',
+        startTime: '2026-10-10T08:00:00Z',
+        endTime: '2026-10-10T09:00:00Z',
+        status: 'SCHEDULED',
+        maxCapacity: 20,
+        bookedCount: 5,
+        availableSlots: 15
+      },
+      {
+        id: 's-room2-90m',
+        branchId: 'branch-1',
+        roomId: 'room-2',
+        className: 'Ashtanga Advanced 90p',
+        instructorName: 'HLV 2',
+        roomName: 'Studio Trúc Xanh',
+        startTime: '2026-10-10T08:00:00Z',
+        endTime: '2026-10-10T09:30:00Z',
+        status: 'SCHEDULED',
+        maxCapacity: 15,
+        bookedCount: 12,
+        availableSlots: 3
+      }
+    ];
+
+    scheduleApiMock.getSchedules = vi.fn().mockReturnValue(of(variableDurationSchedules));
+
+    TestBed.configureTestingModule({
+      imports: [ClassManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperAdmin: () => true,
+            isBranchManager: () => false,
+            isInstructor: () => false,
+            currentUserId: () => 'admin-1',
+            userHomeBranchId: () => null
+          }
+        },
+        { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: ZenConfirmService, useValue: confirmMock },
+        { provide: ZenToastService, useValue: toastMock }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ClassManagementComponent);
+    const comp = fixture.componentInstance;
+    comp.ngOnInit();
+    comp.dateFilter.set('2026-10-10');
+
+    const dayColumn = comp.weekColumns().find(day => day.iso === '2026-10-10')!;
+    expect(dayColumn).toBeDefined();
+
+    // Verify both items are calculated in parallel lanes (lanes === 2)
+    expect(dayColumn.items.length).toBe(2);
+    expect(dayColumn.items[0].lanes).toBe(2);
+    expect(dayColumn.items[1].lanes).toBe(2);
+    expect(dayColumn.items[0].lane).not.toBe(dayColumn.items[1].lane);
+
+    // Verify independent start and end durations:
+    const item60 = dayColumn.items.find(i => i.schedule.id === 's-room1-60m')!;
+    const item90 = dayColumn.items.find(i => i.schedule.id === 's-room2-90m')!;
+    expect(item60).toBeDefined();
+    expect(item90).toBeDefined();
+    // 60 mins vs 90 mins
+    expect(item60.end - item60.start).toBe(60);
+    expect(item90.end - item90.start).toBe(90);
+
+    // Verify room theme assignment
+    expect(comp.getRoomThemeIndex('room-1')).toBe(0);
+    expect(comp.getRoomThemeIndex('room-2')).toBe(1);
+
+    // Verify day-track click opens create schedule for that slot
+    const mockTarget = document.createElement('div');
+    mockTarget.className = 'day-track';
+    vi.spyOn(mockTarget, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      left: 0,
+      bottom: 1320,
+      right: 200,
+      width: 200,
+      height: 1320,
+      x: 0,
+      y: 0,
+      toJSON: () => {}
+    });
+
+    const mockEvent = {
+      target: mockTarget,
+      clientY: 288 // 288 / 1.2 = 240 mins from 4am -> 480 mins total = 08:00
+    } as unknown as MouseEvent;
+
+    comp.onDayTrackClick(mockEvent, '2026-10-10');
+    expect(comp.isCreateScheduleOpen()).toBe(true);
+    expect(comp.scheduleForm().date).toBe('2026-10-10');
+    expect(comp.scheduleForm().startTimeStr).toBe('08:00');
+  });
+
+  it('Solution 2 Day-Resource View: separates rooms into individual columns for the active day', () => {
+    // Room 1: 08:00 - 09:00 (60 mins)
+    // Room 2: 08:00 - 09:30 (90 mins, different duration!)
+    const variableDurationSchedules = [
+      {
+        id: 's-room1-60m',
+        branchId: 'branch-1',
+        roomId: 'room-1',
+        className: 'Hatha Yoga 60p',
+        instructorName: 'HLV 1',
+        roomName: 'Studio Sen Vàng',
+        startTime: '2026-10-10T08:00:00Z',
+        endTime: '2026-10-10T09:00:00Z',
+        status: 'SCHEDULED',
+        maxCapacity: 20,
+        bookedCount: 5,
+        availableSlots: 15
+      },
+      {
+        id: 's-room2-90m',
+        branchId: 'branch-1',
+        roomId: 'room-2',
+        className: 'Ashtanga Advanced 90p',
+        instructorName: 'HLV 2',
+        roomName: 'Studio Trúc Xanh',
+        startTime: '2026-10-10T08:00:00Z',
+        endTime: '2026-10-10T09:30:00Z',
+        status: 'SCHEDULED',
+        maxCapacity: 15,
+        bookedCount: 12,
+        availableSlots: 3
+      }
+    ];
+
+    scheduleApiMock.getSchedules = vi.fn().mockReturnValue(of(variableDurationSchedules));
+
+    TestBed.configureTestingModule({
+      imports: [ClassManagementComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperAdmin: () => true,
+            isBranchManager: () => false,
+            isInstructor: () => false,
+            currentUserId: () => 'admin-1',
+            userHomeBranchId: () => null
+          }
+        },
+        { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: ZenConfirmService, useValue: confirmMock },
+        { provide: ZenToastService, useValue: toastMock }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ClassManagementComponent);
+    const comp = fixture.componentInstance;
+    comp.ngOnInit();
+    comp.dateFilter.set('2026-10-10');
+
+    // Day-Resource View computed property: dayRoomColumns
+    expect(comp.activeDayIso()).toBe('2026-10-10');
+    const roomCols = comp.dayRoomColumns();
+    expect(roomCols.length).toBe(2);
+
+    const room1Col = roomCols.find(r => r.roomId === 'room-1')!;
+    const room2Col = roomCols.find(r => r.roomId === 'room-2')!;
+    expect(room1Col).toBeDefined();
+    expect(room2Col).toBeDefined();
+
+    // Room 1 has only room 1's class (60 mins)
+    expect(room1Col.items.length).toBe(1);
+    expect(room1Col.items[0].schedule.className).toBe('Hatha Yoga 60p');
+    expect(room1Col.items[0].end - room1Col.items[0].start).toBe(60);
+
+    // Room 2 has only room 2's class (90 mins)
+    expect(room2Col.items.length).toBe(1);
+    expect(room2Col.items[0].schedule.className).toBe('Ashtanga Advanced 90p');
+    expect(room2Col.items[0].end - room2Col.items[0].start).toBe(90);
+
+    // Day navigation
+    expect(comp.formatDayNumber('2026-10-10')).toBe('10');
+    comp.goToNextDay();
+    expect(comp.activeDayIso()).toBe('2026-10-11');
+    comp.goToPrevDay();
+    expect(comp.activeDayIso()).toBe('2026-10-10');
+
+    // Click on room track opens create schedule modal with room pre-filled
+    const mockRoomTrack = document.createElement('div');
+    mockRoomTrack.className = 'room-track';
+    vi.spyOn(mockRoomTrack, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      left: 0,
+      bottom: 1320,
+      right: 200,
+      width: 200,
+      height: 1320,
+      x: 0,
+      y: 0,
+      toJSON: () => {}
+    });
+
+    const mockEvent = {
+      target: mockRoomTrack,
+      clientY: 288 // 08:00
+    } as unknown as MouseEvent;
+
+    comp.onRoomTrackClick(mockEvent, 'room-2');
+    expect(comp.isCreateScheduleOpen()).toBe(true);
+    expect(comp.scheduleForm().date).toBe('2026-10-10');
+    expect(comp.scheduleForm().startTimeStr).toBe('08:00');
+    expect(comp.scheduleForm().roomId).toBe('room-2');
+  });
 });

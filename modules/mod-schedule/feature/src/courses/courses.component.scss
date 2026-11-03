@@ -861,6 +861,10 @@
         &.text-right {
           text-align: right;
         }
+
+        &.th-session {
+          min-width: 260px;
+        }
       }
     }
 
@@ -891,6 +895,70 @@
         }
       }
 
+      .cell-session-info {
+        min-width: 260px;
+        max-width: 440px;
+
+        .session-index-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+
+          .session-pill {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #144634;
+            background: rgba(20, 70, 52, 0.08);
+            padding: 2px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+
+          .session-topic-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.4;
+          }
+        }
+
+        .session-plan-desc {
+          margin: 6px 0 0 0;
+          font-size: 0.8125rem;
+          line-height: 1.5;
+          color: #64748b;
+          word-break: break-word;
+        }
+      }
+
+      .cell-time {
+        white-space: nowrap;
+
+        .time-primary {
+          font-weight: 700;
+          color: #144634;
+          font-size: 0.9rem;
+        }
+
+        .date-secondary {
+          font-size: 0.75rem;
+          color: #688377;
+          margin-top: 2px;
+        }
+      }
+
+      .cell-room {
+        .room-name {
+          color: #475569;
+          font-weight: 500;
+        }
+      }
+
       .room-name {
         color: #475569;
         font-weight: 500;
@@ -908,6 +976,34 @@
           height: 8px;
           border-radius: 50%;
           background: #0f766e;
+        }
+      }
+
+      .cell-action {
+        .btn-row-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          border: 1px solid rgba(20, 70, 52, 0.15);
+          background: #ffffff;
+          color: #144634;
+          cursor: pointer;
+          transition: all 0.15s ease;
+
+          svg {
+            color: #0f766e;
+            flex-shrink: 0;
+          }
+
+          &:hover:not(:disabled) {
+            background: #f0fdf9;
+            border-color: #0f766e;
+            color: #0f766e;
+          }
         }
       }
 
@@ -1207,6 +1303,92 @@
 
       .generator-action-row {
         margin: 1.25rem 0 0.5rem;
+      }
+
+      .table-responsive {
+        overflow-x: auto;
+        border: 1px solid rgba(20, 70, 52, 0.08);
+        border-radius: 12px;
+        margin-top: 0.75rem;
+      }
+
+      .zen-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+
+        thead tr {
+          background: #fafcfb;
+          border-bottom: 1px solid rgba(20, 70, 52, 0.08);
+
+          th {
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #688377;
+            letter-spacing: 0.05em;
+
+            &.th-session {
+              min-width: 220px;
+            }
+          }
+        }
+
+        tbody tr {
+          border-bottom: 1px solid rgba(20, 70, 52, 0.05);
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          td {
+            padding: 10px 14px;
+            vertical-align: middle;
+            font-size: 0.85rem;
+          }
+
+          .cell-session-info {
+            min-width: 220px;
+            max-width: 380px;
+
+            .session-index-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+
+              .session-pill {
+                display: inline-flex;
+                align-items: center;
+                font-size: 0.75rem;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                color: #144634;
+                background: rgba(20, 70, 52, 0.08);
+                padding: 2px 8px;
+                border-radius: 6px;
+                white-space: nowrap;
+                flex-shrink: 0;
+              }
+
+              .session-topic-title {
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #1e293b;
+                line-height: 1.4;
+              }
+            }
+
+            .session-plan-desc {
+              margin: 4px 0 0 0;
+              font-size: 0.75rem;
+              line-height: 1.45;
+              color: #64748b;
+              word-break: break-word;
+            }
+          }
+        }
       }
 
       .schedule-actions-row {

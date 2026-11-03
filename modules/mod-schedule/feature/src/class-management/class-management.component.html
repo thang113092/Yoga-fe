@@ -53,6 +53,15 @@
               </svg>
               <span>Làm Mới</span>
             </button>
+            @if (!auth.isReceptionist() && !auth.isInstructor()) {
+              <button type="button" class="btn-primary btn-create-schedule" (click)="openCreateScheduleModal()" title="Mở form xếp ca học mới">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Xếp Lịch Mới</span>
+              </button>
+            }
           </div>
         </div>
       } @else {
@@ -115,157 +124,333 @@
 
   <!-- TAB 1: SCHEDULES MANAGEMENT -->
   @if (activeTab() === 'schedules') {
-    <!-- Timetable Sub-Toolbar: Rooms List (Left) & Date Range Controls (Right) -->
-    <div class="timetable-sub-toolbar">
-      <!-- Left: Danh sách phòng học dạng tabs / pills -->
-      <div class="room-pills-bar" role="tablist" aria-label="Danh sách phòng học">
-        <button
-          type="button"
-          class="room-pill-btn"
-          [class.active]="selectedRoomId() === 'ALL'"
-          (click)="onRoomFilterChange('ALL')"
-          role="tab"
-          [attr.aria-selected]="selectedRoomId() === 'ALL'"
-        >
-          <span class="pill-dot"></span>
-          <span>Tất cả các phòng</span>
-        </button>
-
-        @for (room of currentContextRooms(); track room.id) {
+    <!-- UNIFIED CONTROL CARD: PHÒNG HỌC & ĐIỀU HƯỚNG THỜI GIAN THEO NGỮ CẢNH -->
+    <div class="schedule-control-card">
+      <!-- Tầng 1: Chọn phòng học dạng Zen Pills -->
+      <div class="room-selector-row">
+        <div class="room-pills-scroll" role="tablist" aria-label="Danh sách phòng học">
           <button
             type="button"
-            class="room-pill-btn"
-            [class.active]="selectedRoomId() === room.id"
-            (click)="onRoomFilterChange(room.id)"
+            class="room-tab-pill"
+            [class.active]="selectedRoomId() === 'ALL'"
+            (click)="onRoomFilterChange('ALL')"
             role="tab"
-            [attr.aria-selected]="selectedRoomId() === room.id"
+            [attr.aria-selected]="selectedRoomId() === 'ALL'"
           >
-            <span>{{ room.name }}</span>
-            @if (room.floor) {
-              <small class="pill-floor">({{ room.floor }})</small>
-            }
+            <span class="pill-dot"></span>
+            <span class="pill-name">Tất cả các phòng</span>
+            <span class="room-count-badge">{{ currentContextRooms().length }}</span>
           </button>
-        }
+
+          @for (room of currentContextRooms(); track room.id) {
+            <button
+              type="button"
+              class="room-tab-pill"
+              [class.active]="selectedRoomId() === room.id"
+              (click)="onRoomFilterChange(room.id)"
+              role="tab"
+              [attr.aria-selected]="selectedRoomId() === room.id"
+              [title]="room.name + (room.floor ? ' · ' + room.floor : '') + ' · ' + room.maxCapacity + ' thảm'"
+            >
+              <span class="pill-name">{{ getCleanRoomName(room.name) }}</span>
+              @if (room.floor) {
+                <span class="pill-floor-tag">{{ room.floor }}</span>
+              }
+            </button>
+          }
+        </div>
       </div>
 
-      <!-- Right: Bộ lọc ngày (Tuần này, Tháng này, Từ ngày – Đến ngày) -->
-      <div class="date-controls-bar">
-        <div class="date-preset-group" role="group" aria-label="Chọn nhanh khoảng ngày">
-          <button
-            type="button"
-            class="btn-date-preset"
-            [class.active]="dateRangeMode() === 'week'"
-            [attr.aria-pressed]="dateRangeMode() === 'week'"
-            (click)="selectThisWeek()"
-          >
-            Tuần này
-          </button>
-          <button
-            type="button"
-            class="btn-date-preset"
-            [class.active]="dateRangeMode() === 'month'"
-            [attr.aria-pressed]="dateRangeMode() === 'month'"
-            (click)="selectThisMonth()"
-          >
-            Tháng này
-          </button>
-        </div>
+      <!-- Tầng 2: Điều hướng thời gian thông minh theo ngữ cảnh -->
+      <div class="date-navigator-row">
+        @if (selectedRoomId() === 'ALL') {
+          <!-- Ngữ cảnh 1: Chế độ Xem Theo Ngày (Mỗi phòng là một cột) -->
+          <div class="day-nav-wrapper">
+            <!-- Left: Cụm chuyển ngày & Nhãn ngày nổi bật -->
+            <div class="day-identity-group">
+              <div class="day-step-arrows" role="group" aria-label="Chuyển ngày">
+                <button type="button" class="btn-step-arrow" (click)="goToPrevDay()" title="Hôm trước">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button type="button" class="btn-step-today" [class.is-today-active]="isTodayDate(activeDayIso())" (click)="setDateToToday()" title="Về hôm nay">
+                  Hôm nay
+                </button>
+                <button type="button" class="btn-step-arrow" (click)="goToNextDay()" title="Hôm sau">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
 
-        <div class="custom-date-range" role="group" aria-label="Tùy chọn khoảng ngày">
-          <div class="date-field">
-            <label class="date-range-label" for="from-date-input">Từ ngày</label>
-            <input
-              id="from-date-input"
-              type="date"
-              class="date-range-input zen-native-input"
-              [ngModel]="fromDate()"
-              (ngModelChange)="onFromDateChange($event)"
-              aria-label="Từ ngày"
-            />
+              <div class="active-date-display">
+                <span class="day-weekday">{{ getWeekdayDisplay(activeDayIso()) }},</span>
+                <span class="day-date-text">{{ formatDisplayDate(activeDayIso()) }}</span>
+                @if (isTodayDate(activeDayIso())) {
+                  <span class="today-dot-pill">Hôm nay</span>
+                }
+                <label class="btn-calendar-trigger" title="Nhấp chọn ngày bất kỳ trên lịch">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <input
+                    type="date"
+                    class="hidden-native-date-input"
+                    [ngModel]="activeDayIso()"
+                    (ngModelChange)="onDayDateChange($event)"
+                    aria-label="Chọn ngày xem lịch"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <!-- Right: Dải 7 ngày mini trong tuần -->
+            <div class="week-strip-wrapper">
+              <button type="button" class="btn-week-step-arrow" (click)="moveWeek(-1)" title="Tuần trước">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+
+              <div class="week-strip-days" role="tablist" aria-label="Các ngày trong tuần">
+                @for (day of weekDays(); track day.iso) {
+                  <button
+                    type="button"
+                    class="strip-day-card"
+                    [class.active]="activeDayIso() === day.iso"
+                    [class.is-today]="isTodayDate(day.iso)"
+                    (click)="onDateSelect(day.iso)"
+                    role="tab"
+                    [attr.aria-selected]="activeDayIso() === day.iso"
+                    [title]="day.label + ', ' + formatDisplayDate(day.iso)"
+                  >
+                    <span class="strip-day-name">{{ getShortDayName(day.label) }}</span>
+                    <span class="strip-day-num">{{ formatDayNumber(day.iso) }}</span>
+                    @if (isTodayDate(day.iso)) {
+                      <span class="strip-today-dot"></span>
+                    }
+                  </button>
+                }
+              </div>
+
+              <button type="button" class="btn-week-step-arrow" (click)="moveWeek(1)" title="Tuần sau">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
           </div>
-          <svg class="date-range-separator" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-          <div class="date-field">
-            <label class="date-range-label" for="to-date-input">Đến ngày</label>
-            <input
-              id="to-date-input"
-              type="date"
-              class="date-range-input zen-native-input"
-              [ngModel]="toDate()"
-              (ngModelChange)="onToDateChange($event)"
-              aria-label="Đến ngày"
-            />
+        } @else {
+          <!-- Ngữ cảnh 2: Chế độ Xem Tuần (Khi chọn 1 phòng cụ thể) -->
+          <div class="week-nav-wrapper">
+            <div class="week-identity-group">
+              <div class="day-step-arrows" role="group" aria-label="Chuyển tuần">
+                <button type="button" class="btn-step-arrow" (click)="moveWeek(-1)" title="Tuần trước">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button type="button" class="btn-step-today" (click)="setDateToToday()" title="Về tuần này">
+                  Tuần này
+                </button>
+                <button type="button" class="btn-step-arrow" (click)="moveWeek(1)" title="Tuần sau">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="active-date-display">
+                <span class="week-range-label">{{ getWeekRangeDisplay() }}</span>
+              </div>
+            </div>
+
+            <div class="week-presets-group">
+              <button
+                type="button"
+                class="btn-date-preset"
+                [class.active]="dateRangeMode() === 'week'"
+                (click)="selectThisWeek()"
+              >
+                Tuần này
+              </button>
+              <button
+                type="button"
+                class="btn-date-preset"
+                [class.active]="dateRangeMode() === 'month'"
+                (click)="selectThisMonth()"
+              >
+                Tháng này
+              </button>
+
+              <div class="custom-range-mini">
+                <input
+                  type="date"
+                  class="mini-date-input"
+                  [ngModel]="fromDate()"
+                  (ngModelChange)="onFromDateChange($event)"
+                  title="Từ ngày"
+                  aria-label="Từ ngày"
+                />
+                <span class="range-arrow">→</span>
+                <input
+                  type="date"
+                  class="mini-date-input"
+                  [ngModel]="toDate()"
+                  (ngModelChange)="onToDateChange($event)"
+                  title="Đến ngày"
+                  aria-label="Đến ngày"
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        }
       </div>
     </div>
 
     @if (isLoading()) {<p role="status">Đang tải lịch học…</p>} @else {
     @if (!filteredSchedules().length) {<p role="status">Chưa có buổi học phù hợp trong thời gian này.</p>}
-    <div class="week-scroll" aria-label="Lịch học theo tuần">
-      <div class="week-grid"
-           [style.gridTemplateColumns]="'64px repeat(' + weekDays().length + ', minmax(145px, 1fr))'"
-           [style.minWidth.px]="64 + weekDays().length * 150">
-        <div class="week-heading">Giờ</div>
-        @for(day of weekColumns();track day.iso){<div class="week-heading" [class.is-today]="isTodayDate(day.iso)"><strong>{{day.label}}</strong><span>{{formatDisplayDate(day.iso)}}</span></div>}
-<div class="time-axis">@for(hour of hours;track hour){<span [style.top.px]="(hour-4)*72">{{hour<10?'0':''}}{{hour}}:00</span>}</div>
-@for(day of weekColumns();track day.iso){<div class="day-track" [class.is-today]="isTodayDate(day.iso)">
-  @if (selectedRoomId() === 'ALL') {
-    <!-- Khi chọn tất cả các phòng: một khung giờ của 1 ngày là một khối nút bấm, trong khối danh sách các phòng sát nhau -->
-    @for(cluster of day.clusters; track cluster.id){
-      <button
-        type="button"
-        class="week-event all-rooms-slot"
-        [style.top.px]="(cluster.start-240)*1.2"
-        [style.height.px]="(cluster.end-cluster.start)*1.2"
-        [style.min-height.px]="cluster.minHeight"
-        style="left: 0; width: 100%;"
-        (click)="openSlotDetailsModal(day.iso, cluster)"
-        [title]="'Khung giờ ' + cluster.timeLabel + ' (' + getOccupiedRoomCount(cluster.rooms) + '/' + cluster.rooms.length + ' phòng có lớp) · Nhấp để xem chi tiết & xếp lịch'"
-      >
-        <div class="slot-header-compact">
-          <span class="slot-time-badge">{{ cluster.timeLabel }}</span>
-          <span class="slot-room-count">
-            <span class="dot-active"></span>
-            {{ getOccupiedRoomCount(cluster.rooms) }}/{{ cluster.rooms.length }}
-          </span>
-        </div>
+    @if (selectedRoomId() === 'ALL') {
 
-        <div class="slot-rooms-list">
-          @for(r of cluster.rooms; track r.roomId){
-            <div class="room-line" [class.is-occupied]="r.hasClass" [class.is-vacant]="!r.hasClass">
-              <span class="room-bullet" [class.bullet-green]="r.hasClass" [class.bullet-muted]="!r.hasClass"></span>
-              <span class="room-name" [title]="r.roomName + (r.hasClass && r.schedule ? ': ' + r.schedule.className : ' (Trống)')">
-                {{ r.roomName }}
-              </span>
+      <!-- Day-Resource Timetable Grid (Mỗi phòng là một cột) -->
+      <div class="day-resource-scroll" aria-label="Lịch phòng theo ngày">
+        <div class="day-resource-grid"
+             [style.gridTemplateColumns]="'64px repeat(' + dayRoomColumns().length + ', minmax(210px, 1fr))'"
+             [style.minWidth.px]="64 + dayRoomColumns().length * 220">
+          
+          <div class="room-col-heading time-heading">Giờ</div>
+
+          @for (col of dayRoomColumns(); track col.roomId) {
+            <div class="room-col-heading" [class]="'room-col-theme-' + getRoomThemeIndex(col.roomId)">
+              <div class="room-col-title-wrap">
+                <span class="room-theme-dot"></span>
+                <strong class="room-col-name">{{ col.roomName }}</strong>
+              </div>
+              <div class="room-col-meta">
+                @if (col.floor) {
+                  <span class="room-col-floor">{{ col.floor }} · </span>
+                }
+                <span class="room-col-cap">{{ col.maxCapacity }} thảm</span>
+                <span class="room-col-classes-count" [class.has-classes]="col.classCount > 0">
+                  {{ col.classCount }} lớp
+                </span>
+              </div>
+            </div>
+          }
+
+          <!-- Time axis column -->
+          <div class="time-axis">
+            @for (hour of hours; track hour) {
+              <span [style.top.px]="(hour - 4) * 72">{{ hour < 10 ? '0' : '' }}{{ hour }}:00</span>
+            }
+          </div>
+
+          <!-- Room tracks -->
+          @for (col of dayRoomColumns(); track col.roomId) {
+            <div class="room-track"
+                 [class]="'room-track-theme-' + getRoomThemeIndex(col.roomId)"
+                 (click)="onRoomTrackClick($event, col.roomId)"
+                 [title]="'Nhấp vào vùng trống để xếp lịch mới cho phòng ' + col.roomName">
+              
+              @for (item of col.items; track item.schedule.id) {
+                <div class="week-event schedule-card-event day-resource-card"
+                     [class]="'room-theme-' + getRoomThemeIndex(item.schedule.roomId)"
+                     [class.course-event]="!!item.schedule.courseClassId"
+                     [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
+                     [style.top.px]="(item.start - 240) * 1.2"
+                     [style.height.px]="(item.end - item.start) * 1.2"
+                     [style.left.%]="item.lane * 100 / item.lanes"
+                     [style.width.%]="100 / item.lanes"
+                     (click)="$event.stopPropagation()">
+                  <button type="button"
+                          class="event-card-btn"
+                          (click)="openAttendeesModal(item.schedule)"
+                          [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
+                    
+                    <div class="card-top-row">
+                      <span class="card-time-badge">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
+                      <span class="card-duration-badge">{{ item.end - item.start }}p</span>
+                      @if (item.schedule.courseClassId) {
+                        <span class="card-course-badge" title="Buổi học thuộc khóa đào tạo">Khóa</span>
+                      }
+                    </div>
+
+                    <strong class="card-class-title">{{ item.schedule.className }}</strong>
+
+                    <div class="card-meta-row">
+                      <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">
+                        {{ item.schedule.instructorName }}
+                      </span>
+                      <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                        {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              }
             </div>
           }
         </div>
-      </button>
-    }
-  } @else {
-    <!-- Khi chọn một phòng học cụ thể: mỗi ô chỉ cần hiện tên của lớp học đó thôi -->
-    @for(item of day.items;track item.schedule.id){
-      <div class="week-event single-room-event"
-           [class.course-event]="!!item.schedule.courseClassId"
-           [class.cancelled-event]="item.schedule.status==='CANCELLED'"
-           [style.top.px]="(item.start-240)*1.2"
-           [style.height.px]="(item.end-item.start)*1.2"
-           [style.left.%]="item.lane*100/item.lanes"
-           [style.width.%]="100/item.lanes">
-        <button type="button"
-                class="event-main event-title-only"
-                (click)="openAttendeesModal(item.schedule)"
-                [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ') · HLV: ' + item.schedule.instructorName">
-          <strong class="only-class-name">{{ item.schedule.className }}</strong>
-        </button>
+      </div>
+    } @else {
+      <!-- ================================================================= -->
+      <!-- CHẾ ĐỘ XEM TUẦN CHO MỘT PHÒNG CỤ THỂ                              -->
+      <!-- ================================================================= -->
+      <div class="week-scroll" aria-label="Lịch học theo tuần">
+        <div class="week-grid"
+             [style.gridTemplateColumns]="'64px repeat(' + weekDays().length + ', minmax(145px, 1fr))'"
+             [style.minWidth.px]="64 + weekDays().length * 150">
+          <div class="week-heading">Giờ</div>
+          @for(day of weekColumns();track day.iso){<div class="week-heading" [class.is-today]="isTodayDate(day.iso)"><strong>{{day.label}}</strong><span>{{formatDisplayDate(day.iso)}}</span></div>}
+          <div class="time-axis">@for(hour of hours;track hour){<span [style.top.px]="(hour-4)*72">{{hour<10?'0':''}}{{hour}}:00</span>}</div>
+          @for(day of weekColumns();track day.iso){
+            <div class="day-track"
+                 [class.is-today]="isTodayDate(day.iso)"
+                 (click)="onDayTrackClick($event, day.iso)"
+                 [title]="'Nhấp vào vùng trống để xếp lịch cho ngày ' + formatDisplayDate(day.iso)">
+              @for(item of day.items; track item.schedule.id){
+                <div class="week-event schedule-card-event single-room-mode"
+                     [class]="'room-theme-' + getRoomThemeIndex(item.schedule.roomId)"
+                     [class.course-event]="!!item.schedule.courseClassId"
+                     [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
+                     [style.top.px]="(item.start - 240) * 1.2"
+                     [style.height.px]="(item.end - item.start) * 1.2"
+                     [style.left.%]="item.lane * 100 / item.lanes"
+                     [style.width.%]="100 / item.lanes"
+                     (click)="$event.stopPropagation()">
+                  <button type="button"
+                          class="event-card-btn"
+                          (click)="openAttendeesModal(item.schedule)"
+                          [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
+                    
+                    <strong class="card-class-title">{{ item.schedule.className }}</strong>
+
+                    <div class="card-time-row">
+                      <span class="card-time">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
+                      <span class="card-duration">({{ item.end - item.start }}p)</span>
+                    </div>
+
+                    <div class="card-meta-row">
+                      <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">
+                        {{ item.schedule.instructorName }}
+                      </span>
+                      <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                        {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
       </div>
     }
   }
-</div>}
-</div></div>}
 }
 
   <!-- TAB 2: CLASS TYPES (BỘ MÔN) -->

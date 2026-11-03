@@ -37,7 +37,7 @@
   }
 
   :is(
-    button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(.btn-delete-type):not(.btn-today-chip):not(.btn-date-preset):not(.room-pill-btn):not(.all-rooms-slot):not(.btn-attendees-action):not(.btn-add-schedule-action):not(.btn-cancel-action):not(.btn-icon):not([class*='btn-icon']):not(zen-input button):not(zen-search button),
+    button:not(.btn-clear):not(.btn-toggle-password):not(.btn-search-clear):not(.btn-delete-type):not(.btn-today-chip):not(.btn-date-preset):not(.room-pill-btn):not(.room-tab-pill):not(.btn-step-arrow):not(.btn-step-today):not(.btn-week-step-arrow):not(.strip-day-card):not(.btn-day-nav):not(.btn-day-today):not(.week-strip-day-btn):not(.all-rooms-slot):not(.event-card-btn):not(.event-main):not(.btn-attendees-action):not(.btn-add-schedule-action):not(.btn-cancel-action):not(.btn-icon):not([class*='btn-icon']):not(zen-input button):not(zen-search button),
     a[class*='btn-']:not(.btn-icon):not([class*='btn-icon'])
   ) {
     min-height: 40px !important;
