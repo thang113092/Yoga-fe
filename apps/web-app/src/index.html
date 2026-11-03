@@ -4,11 +4,23 @@
   <meta charset="utf-8">
   <title>An Yên Yoga - Chuỗi Phòng Tập & Trung Tâm Trị Liệu Thân - Tâm - Trí</title>
   <base href="/">
+  <script>
+    /* Áp chế độ sáng/tối trước lần vẽ đầu để không nháy màn hình (đồng bộ với ZenThemeService). */
+    (function () {
+      try {
+        var path = location.pathname;
+        if (path === '/' || path.indexOf('/auth/') === 0) return;
+        var mode = localStorage.getItem('an-yen-theme') || 'system';
+        var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="/branding/an-yen-logo-v1.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <yoga-root></yoga-root>

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
-import { ZenSelectComponent, ZenConfirmService, ZenToastService } from '@yoga/platform/api';
+import { ZEN_UI, ZenConfirmService, ZenToastService } from '@yoga/platform/ui';
 import {
   BranchItem,
   ClassSchedule,
@@ -37,7 +37,7 @@ function getTodayIsoDate(): string {
 @Component({
   selector: 'yoga-class-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ZenSelectComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ...ZEN_UI],
   templateUrl: './class-management.component.html',
   styleUrls: ['./class-management.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

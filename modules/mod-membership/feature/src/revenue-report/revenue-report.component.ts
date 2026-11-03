@@ -6,13 +6,7 @@ import { forkJoin } from 'rxjs';
 import { RevenueApi, RevenueReportResponse } from '@yoga/mod-membership/data-access';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { AuthService } from '@yoga/platform/auth';
-import {
-  ZenButtonComponent,
-  ZenInputComponent,
-  ZenSearchComponent,
-  ZenSelectComponent,
-  ZenSelectOption
-} from '@yoga/platform/ui';
+import { ZEN_UI, ZenSelectOption } from '@yoga/platform/ui';
 
 type DatePreset = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'CUSTOM';
 
@@ -23,10 +17,7 @@ type DatePreset = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'CUS
     CommonModule,
     FormsModule,
     RouterModule,
-    ZenButtonComponent,
-    ZenInputComponent,
-    ZenSearchComponent,
-    ZenSelectComponent
+    ...ZEN_UI
   ],
   templateUrl: './revenue-report.component.html',
   styleUrl: './revenue-report.component.scss',

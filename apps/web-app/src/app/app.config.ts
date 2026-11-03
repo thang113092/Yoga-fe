@@ -1,4 +1,4 @@
-import { ApplicationConfig, inject, provideAppInitializer, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, LOCALE_ID, inject, provideAppInitializer, provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -11,6 +11,7 @@ import { API_BASE_URL } from '@yoga/platform/api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: LOCALE_ID, useValue: 'vi' },
     provideAppInitializer(() => inject(AuthService).restoreSession()),
     provideExperimentalZonelessChangeDetection(),
     provideAnimationsAsync(),

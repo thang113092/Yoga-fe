@@ -176,32 +176,32 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
       display: flex;
       align-items: center;
       width: 100%;
-      min-height: 42px;
-      background: #ffffff;
-      border: 1px solid rgba(20, 70, 52, 0.18);
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+      min-height: var(--control-height-md);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xs);
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
       box-sizing: border-box;
 
       &:hover:not(.is-disabled):not(.is-focused) {
-        border-color: #0f766e;
-        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-xs);
       }
 
       &.is-focused {
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
       }
 
       &.is-disabled {
-        background: #f1f4f3;
+        background: var(--color-surface-variant);
         border-color: rgba(20, 70, 52, 0.08);
         cursor: not-allowed;
         opacity: 0.7;
 
         .zen-native-input {
-          color: #8da499;
+          color: var(--color-text-subtle);
           cursor: not-allowed;
         }
       }
@@ -212,7 +212,7 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
         justify-content: center;
         padding-left: 14px;
         padding-right: 0;
-        color: #0f766e;
+        color: var(--color-primary);
         flex-shrink: 0;
       }
 
@@ -228,7 +228,7 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
         flex: 1;
         min-width: 0;
         height: 100%;
-        min-height: 40px;
+        min-height: var(--control-height-md);
         padding: 8px 14px;
         background: transparent !important;
         border: none !important;
@@ -236,9 +236,9 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
         box-shadow: none !important;
         border-radius: 0 !important;
         font-family: var(--font-sans);
-        font-size: 14px;
+        font-size: var(--text-base);
         line-height: 1.5;
-        color: #144634;
+        color: var(--color-primary);
 
         &:focus,
         &:focus-visible,
@@ -250,7 +250,7 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
         }
 
         &::placeholder {
-          color: #8da499;
+          color: var(--color-text-subtle);
           font-weight: 400;
         }
       }
@@ -267,16 +267,16 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
         }
 
         .suffix-text {
-          font-size: 0.8125rem;
+          font-size: var(--text-sm);
           font-weight: 600;
-          color: #688377;
+          color: var(--color-text-muted);
         }
 
         .btn-clear,
         .btn-toggle-password {
           background: transparent;
           border: none;
-          color: #8da499;
+          color: var(--color-text-subtle);
           padding: 3px;
           border-radius: 4px;
           cursor: pointer;
@@ -286,8 +286,8 @@ export type ZenInputIcon = 'phone' | 'mail' | 'user' | 'lock' | 'calendar' | 'se
           transition: all 0.15s ease;
 
           &:hover {
-            color: #0f766e;
-            background: #f0fdfa;
+            color: var(--color-primary);
+            background: var(--color-surface-hover);
           }
         }
       }

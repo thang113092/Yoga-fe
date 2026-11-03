@@ -6,11 +6,12 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ScheduleApi, BranchItem, RoomItem, InstructorItem, ClassTypeItem } from '@yoga/mod-schedule/data-access';
 import { PosApi } from '@yoga/mod-membership/data-access';
-import { QrCodeComponent, ZenSelectComponent } from '@yoga/platform/api';
+import { QrCodeComponent } from '@yoga/platform/api';
+import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
 import { CourseApi, Course, CourseClass, CourseSession, CourseEnrollment, CourseConflict, CourseStudent, CreateCourseClass } from '@yoga/mod-schedule/data-access';
 
 @Component({
-  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, ZenSelectComponent],
+  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, ...ZEN_UI],
   templateUrl: './courses.component.html', styleUrl: './courses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -29,6 +30,11 @@ export class CoursesComponent implements OnInit {
   readonly form=signal<'course'|'class'|null>(null); readonly editing=signal<CourseSession|null>(null);
   readonly canCreateClass=computed(()=>this.auth.isSuperAdmin()||this.auth.isBranchManager());
   readonly canEnroll=computed(()=>this.auth.canAccessPos()||this.auth.isStudent());
+  readonly tabs=computed<ZenTabItem[]>(()=>[
+    ...(this.auth.isStudent()?[]:[{key:'programs',label:'Chương trình học',icon:'book' as const,count:this.courses().length}]),
+    {key:'classes',label:'Khóa học',icon:'calendar' as const,count:this.classes().length},
+    ...(this.auth.isStudent()?[{key:'mine',label:'Khóa học của tôi',icon:'graduation-cap' as const,count:this.mine().length}]:[])
+  ]);
   readonly searchQuery = signal('');
   readonly filteredClasses = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
@@ -190,5 +196,8 @@ export class CoursesComponent implements OnInit {
     return cleaned || raw;
   }
   nextSession(e:CourseEnrollment) {return e.sessions?.find(s=>s.status!=='CANCELLED'&&this.future(s));}
+  switchView(key:string) {this.view.set(key as 'classes'|'mine'|'programs');this.selected.set(null);this.enrollment.set(null);}
+  tone(status?:string|null):ZenTone {return ({OPEN:'success',IN_PROGRESS:'info',COMPLETED:'neutral',CANCELLED:'neutral',ACTIVE:'success',PENDING_PAYMENT:'warning',SCHEDULED:'info',ATTENDED:'success',ABSENT:'danger',UPCOMING:'neutral',PAID:'success',PENDING:'warning'} as Record<string,ZenTone>)[status||'']||'neutral';}
+  percent(part:number,total:number) {return total?Math.min(100,(part/total)*100):0;}
   label(status:string) {return ({OPEN:'Mở đăng ký',IN_PROGRESS:'Đang học',COMPLETED:'Hoàn thành',CANCELLED:'Đã hủy',ACTIVE:'Đang theo học',PENDING_PAYMENT:'Chờ thanh toán',SCHEDULED:'Sắp diễn ra',ATTENDED:'Đã tham dự',ABSENT:'Vắng',UPCOMING:'Chưa điểm danh',PAID:'Đã thanh toán',PENDING:'Chờ thanh toán'} as Record<string,string>)[status]||status;}
 }

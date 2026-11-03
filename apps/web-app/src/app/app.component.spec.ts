@@ -75,7 +75,7 @@ describe('AppComponent Header Menu', () => {
     const navTabs = compiled.querySelectorAll('.desktop-nav .nav-tab');
     expect(navTabs.length).toBeGreaterThan(0);
 
-    const firstTabIcon = navTabs[0].querySelector('svg.nav-icon');
+    const firstTabIcon = navTabs[0].querySelector('.nav-icon svg');
     expect(firstTabIcon).toBeTruthy();
   });
 

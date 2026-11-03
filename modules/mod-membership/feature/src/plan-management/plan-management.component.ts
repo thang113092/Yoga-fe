@@ -3,13 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@yoga/platform/auth';
-import {
-  ZenSelectComponent,
-  ZenInputComponent,
-  ZenSearchComponent,
-  ZenConfirmService,
-  ZenToastService
-} from '@yoga/platform/ui';
+import { ZEN_UI, ZenConfirmService, ZenToastService } from '@yoga/platform/ui';
 import {
   CreatePlanReq,
   MembershipApi,
@@ -25,9 +19,7 @@ import {
     CommonModule,
     FormsModule,
     RouterModule,
-    ZenSelectComponent,
-    ZenInputComponent,
-    ZenSearchComponent
+    ...ZEN_UI
   ],
   templateUrl: './plan-management.component.html',
   styleUrl: './plan-management.component.scss',

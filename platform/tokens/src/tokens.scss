@@ -1,43 +1,110 @@
+/* ==========================================================================
+   An Yên Design Tokens — nguồn sự thật duy nhất cho màu, chữ, khoảng cách.
+   Không hard-code mã màu / cỡ chữ trong component: luôn dùng biến bên dưới.
+   ========================================================================== */
 :root {
-  /* Typography */
+  /* ---------- Typography ---------- */
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
-  --font-numeric: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: var(--font-serif);
+  --font-numeric: var(--font-sans);
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
 
-  /* Semantic Colors - Zen & Wellness Palette */
-  --color-primary: #0f766e;         /* Deep Teal / Sage Emerald */
-  --color-primary-hover: #115e59;
-  --color-primary-light: #ccfbf1;
-  --color-primary-glow: rgba(13, 148, 136, 0.2);
+  /* Thang cỡ chữ (dùng thống nhất, không tự đặt 13.5px / 0.72rem ...) */
+  --text-2xs: 11px;   /* eyebrow, nhãn cột bảng */
+  --text-xs: 12px;    /* chú thích, badge */
+  --text-sm: 13px;    /* chữ phụ, ô bảng */
+  --text-base: 14px;  /* chữ chính */
+  --text-md: 15px;    /* tiêu đề card */
+  --text-lg: 18px;    /* tiêu đề section / modal */
+  --text-xl: 22px;    /* tiêu đề trang (mobile) */
+  --text-2xl: 26px;   /* tiêu đề trang */
+  --text-3xl: 30px;   /* số liệu thống kê */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --tracking-eyebrow: 0.08em;
+
+  /* ---------- Brand ---------- */
+  --color-primary: #144634;          /* Forest Green */
+  --color-primary-hover: #0d2f23;
+  --color-primary-soft: #eaf2ee;     /* nền nhạt cho trạng thái chọn */
+  --color-primary-soft-hover: #dcebe3;
+  --color-primary-light: var(--color-primary-soft);
+  --color-primary-glow: rgba(20, 70, 52, 0.16);
   --color-primary-contrast: #ffffff;
 
-  --color-accent: #d97706;          /* Warm Amber / Terracotta */
-  --color-accent-light: #fef3c7;
+  --color-secondary: #0f766e;        /* Deep Teal */
+  --color-secondary-soft: #e6f4f2;
+
+  --color-accent: #b7791f;           /* Warm Amber */
+  --color-accent-light: #fdf6e7;
   --color-accent-contrast: #ffffff;
 
+  /* ---------- Surfaces ---------- */
+  --color-background: #f6f5f1;       /* nền trang: sand rất nhạt */
   --color-surface: #ffffff;
-  --color-surface-variant: #f8fafc;
-  --color-surface-sand: #faf8f5;     /* Warm Ivory / Sand */
-  --color-background: #f4f6f5;
+  --color-surface-variant: #f9faf8;  /* header bảng, vùng phụ */
+  --color-surface-sand: #fbf9f5;
+  --color-surface-hover: #f3f7f5;
 
-  --color-text-main: #132a24;        /* Deep Forest Charcoal */
+  /* ---------- Text ---------- */
+  --color-text-main: #16241f;
+  --color-text-secondary: #3f524b;
+  --color-text-muted: #6a7c75;
+  --color-text-subtle: #97a6a0;
+  --color-text-inverse: #ffffff;
+
+  /* Nền thương hiệu xanh đậm (thẻ hội viên, thẻ POS) — giữ tông đậm ở cả hai chế độ */
+  --color-brand-surface: #144634;
+  --color-brand-surface-end: #0d2f23;
+  --color-on-brand: #ffffff;
   --color-on-surface: var(--color-text-main);
   --color-on-surface-variant: var(--color-text-muted);
   --color-primary-variant: var(--color-primary-hover);
-  --color-text-muted: #526b62;       /* Calming Sage Slate */
-  --color-border: #e2e8f0;
-  --color-border-subtle: rgba(13, 148, 136, 0.12);
 
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
+  /* ---------- Borders ---------- */
+  --color-border: #e4e8e5;
+  --color-border-strong: #cfd8d3;
+  --color-border-subtle: #eef1ef;
+  --color-focus-ring: rgba(20, 70, 52, 0.18);
 
-  /* Glassmorphism Tokens */
-  --glass-bg: rgba(255, 255, 255, 0.82);
+  /* ---------- Status (fg / bg / border) ---------- */
+  --color-success: #15803d;
+  --color-success-bg: #effaf3;
+  --color-success-border: #c6ead3;
+
+  --color-warning: #b45309;
+  --color-warning-bg: #fff8eb;
+  --color-warning-border: #f6deb0;
+
+  --color-error: #b91c1c;
+  --color-danger: var(--color-error);
+  --color-error-solid: #dc2626;
+  --color-error-bg: #fdf2f2;
+  --color-error-border: #f5cccc;
+
+  --color-info: #1d5fa8;
+  --color-info-bg: #eff5fc;
+  --color-info-border: #cbdcf0;
+
+  --color-neutral: #4b5a55;
+  --color-neutral-bg: #f1f3f2;
+  --color-neutral-border: #e0e5e2;
+
+  /* ---------- Glass ---------- */
+  --glass-bg: rgba(255, 255, 255, 0.86);
   --glass-border: rgba(255, 255, 255, 0.6);
-  --backdrop-blur: blur(16px);
+  --backdrop-blur: blur(14px);
 
-  /* Spacings */
+  /* ---------- Spacing (thang 4px) ---------- */
+  --spacing-2xs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
@@ -47,22 +114,121 @@
   --spacing-3xl: 64px;
   --spacing-4xl: 96px;
 
-  /* Border Radii */
+  /* ---------- Radius ---------- */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  --radius-md: 8px;      /* nút, input */
+  --radius-lg: 12px;     /* card */
+  --radius-xl: 16px;     /* modal */
+  --radius-full: 9999px; /* pill, avatar */
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-lg: 0 12px 24px -4px rgb(13 148 136 / 0.08), 0 4px 6px -2px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 30px -10px rgb(13 148 136 / 0.12);
+  /* ---------- Elevation ---------- */
+  --shadow-xs: 0 1px 2px rgba(22, 36, 31, 0.04);
+  --shadow-sm: 0 1px 3px rgba(22, 36, 31, 0.06), 0 1px 2px rgba(22, 36, 31, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(22, 36, 31, 0.08), 0 2px 4px -2px rgba(22, 36, 31, 0.04);
+  --shadow-lg: 0 12px 28px -6px rgba(22, 36, 31, 0.12), 0 4px 8px -4px rgba(22, 36, 31, 0.05);
+  --shadow-xl: 0 24px 48px -12px rgba(22, 36, 31, 0.22);
 
-  /* Easing & Motion */
+  /* ---------- Control sizes ---------- */
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 46px;
+
+  color-scheme: light;
+
+  /* ---------- Layout ---------- */
+  --page-padding-x: 28px;
+  --page-padding-y: 20px;
+  --header-height: 64px;
+
+  /* ---------- Motion ---------- */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-snappy: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
+
+  /* ---------- Z-index ---------- */
+  --z-dropdown: 50;
+  --z-header: 100;
+  --z-modal: 1000;
+  --z-toast: 1100;
 }
 
+@media (max-width: 768px) {
+  :root {
+    --page-padding-x: 16px;
+    --page-padding-y: 20px;
+  }
+}
+
+/* ==========================================================================
+   Chế độ tối — bật bằng <html data-theme="dark"> (ZenThemeService).
+   Chỉ ghi đè màu & bóng; kích thước, chữ, khoảng cách dùng chung.
+   ========================================================================== */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-primary: #5cbf96;
+  --color-primary-hover: #7fd0ad;
+  --color-primary-soft: rgba(92, 191, 150, 0.14);
+  --color-primary-soft-hover: rgba(92, 191, 150, 0.22);
+  --color-primary-glow: rgba(92, 191, 150, 0.2);
+  --color-primary-contrast: #0b1f17;
+
+  --color-secondary: #4fc1b5;
+  --color-secondary-soft: rgba(79, 193, 181, 0.14);
+
+  --color-accent: #e0a84a;
+  --color-accent-light: rgba(224, 168, 74, 0.14);
+
+  --color-background: #0e1412;
+  --color-surface: #151d1a;
+  --color-surface-variant: #1a2420;
+  --color-surface-sand: #18211e;
+  --color-surface-hover: #1e2925;
+
+  --color-text-main: #e6ece9;
+  --color-text-secondary: #bac6c1;
+  --color-text-muted: #8d9d97;
+  --color-text-subtle: #64746e;
+  --color-text-inverse: #0e1412;
+
+  --color-brand-surface: #1c5641;
+  --color-brand-surface-end: #12392b;
+  --color-on-brand: #f1f7f4;
+
+  --color-border: #26332e;
+  --color-border-strong: #35453f;
+  --color-border-subtle: #1e2925;
+  --color-focus-ring: rgba(92, 191, 150, 0.32);
+
+  --color-success: #5dd39a;
+  --color-success-bg: rgba(93, 211, 154, 0.12);
+  --color-success-border: rgba(93, 211, 154, 0.28);
+
+  --color-warning: #f2b95a;
+  --color-warning-bg: rgba(242, 185, 90, 0.12);
+  --color-warning-border: rgba(242, 185, 90, 0.3);
+
+  --color-error: #f08a8a;
+  --color-error-solid: #d83b3b;
+  --color-error-bg: rgba(240, 138, 138, 0.12);
+  --color-error-border: rgba(240, 138, 138, 0.3);
+
+  --color-info: #7fb4ee;
+  --color-info-bg: rgba(127, 180, 238, 0.12);
+  --color-info-border: rgba(127, 180, 238, 0.3);
+
+  --color-neutral: #a9b6b1;
+  --color-neutral-bg: rgba(169, 182, 177, 0.1);
+  --color-neutral-border: rgba(169, 182, 177, 0.22);
+
+  --glass-bg: rgba(21, 29, 26, 0.86);
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 4px 8px -4px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 24px 48px -12px rgba(0, 0, 0, 0.65);
+}

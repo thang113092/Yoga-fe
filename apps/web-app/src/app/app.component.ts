@@ -1,19 +1,26 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '@yoga/platform/auth';
-import { ZenConfirmModalComponent } from '@yoga/platform/ui';
+import {
+  ZenAvatarComponent,
+  ZenConfirmModalComponent,
+  ZenIconComponent,
+  ZenIconName,
+  ZenThemeMode,
+  ZenThemeService
+} from '@yoga/platform/ui';
 
 @Component({
   selector: 'yoga-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet, ZenConfirmModalComponent],
+  imports: [CommonModule, RouterModule, RouterOutlet, ZenConfirmModalComponent, ZenIconComponent, ZenAvatarComponent],
   template: `
     @if (!isStandalonePage()) {
       <header class="app-header">
         <div class="brand">
           <a routerLink="/" class="brand-link" title="Về trang chủ An Yên Yoga">
-            <img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="brand-logo-img" width="38" height="38" />
+            <img src="/branding/an-yen-logo-v1.png" alt="An Yên Yoga & Wellness" class="brand-logo-img" width="36" height="36" />
             <div class="brand-text">
               <span class="brand-title">AN YÊN</span>
               <span class="brand-sub">YOGA & WELLNESS</span>
@@ -21,71 +28,43 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           </a>
         </div>
 
-        <!-- DESKTOP NAVIGATION MENU (CENTERED) -->
+        <!-- DESKTOP NAVIGATION MENU -->
         <nav class="desktop-nav" aria-label="Menu điều hướng chính">
             @if (auth.canManageUsers() || auth.isReceptionist()) {
               <a routerLink="/users" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
+                <zen-icon class="nav-icon" name="users" />
                 <span>{{ auth.isReceptionist() ? 'Học Viên' : 'Người Dùng' }}</span>
               </a>
             }
             @if (auth.canManageClasses()) {
               <a routerLink="/schedule/timetable" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <zen-icon class="nav-icon" name="calendar" />
                 <span>Lịch Học</span>
               </a>
             }
             <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
-              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-              </svg>
+              <zen-icon class="nav-icon" name="graduation-cap" />
               <span>Khóa Học</span>
             </a>
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
               <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 0 1-8 0"/>
-                </svg>
+                <zen-icon class="nav-icon" name="shopping-bag" />
                 <span>Đơn Hàng</span>
               </a>
               <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="20" x2="18" y2="10"/>
-                  <line x1="12" y1="20" x2="12" y2="4"/>
-                  <line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
+                <zen-icon class="nav-icon" name="bar-chart" />
                 <span>Doanh Thu</span>
               </a>
             }
             @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
               <a routerLink="/membership/pos" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                  <line x1="6" y1="15" x2="10" y2="15"/>
-                </svg>
+                <zen-icon class="nav-icon" name="credit-card" />
                 <span>Bán Thẻ POS</span>
               </a>
             }
             @if (auth.isInstructor()) {
               <a routerLink="/schedule/check-in" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
+                <zen-icon class="nav-icon" name="check-square" />
                 <span>Điểm Danh</span>
               </a>
             }
@@ -96,53 +75,31 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
             @if (auth.canAccessStudentPortal()) {
               <a routerLink="/membership/my-passes" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
+                <zen-icon class="nav-icon" name="shield-check" />
                 <span>Thẻ Của Tôi</span>
               </a>
               <a routerLink="/membership/history" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
+                <zen-icon class="nav-icon" name="clock" />
                 <span>Lịch Sử Tập</span>
               </a>
             }
             @if (auth.canManageClasses()) {
               <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-                  <path d="M6 6h10"/>
-                  <path d="M6 10h10"/>
-                </svg>
+                <zen-icon class="nav-icon" name="book" />
                 <span>Bộ Môn</span>
               </a>
             }
             <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
-              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                <polyline points="2 17 12 22 22 17"/>
-                <polyline points="2 12 12 17 22 12"/>
-              </svg>
+              <zen-icon class="nav-icon" name="layers" />
               <span>Gói Thẻ Tập</span>
             </a>
             <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
-              <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
+              <zen-icon class="nav-icon" name="map-pin" />
               <span>Chi Nhánh</span>
             </a>
             @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
               <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
-                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <zen-icon class="nav-icon" name="calendar" />
                 <span>Lịch & Đặt Chỗ</span>
               </a>
             }
@@ -150,9 +107,19 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
         <div class="user-profile-bar">
           @if (auth.isAuthenticated()) {
-            <!-- Nút Tiện ích: Thông báo & Cài đặt -->
             <div class="utility-actions">
-              <!-- Nút Thông báo -->
+              <!-- Chế độ sáng / tối -->
+              <button
+                type="button"
+                class="btn-icon-utility"
+                (click)="theme.toggle()"
+                [title]="theme.isDark() ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'"
+                [attr.aria-label]="theme.isDark() ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'"
+              >
+                <zen-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
+              </button>
+
+              <!-- Thông báo -->
               <div class="popover-wrapper">
                 <button
                   type="button"
@@ -162,16 +129,12 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                   title="Thông báo"
                   aria-label="Xem thông báo"
                 >
-                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                  </svg>
+                  <zen-icon name="bell" [size]="18" />
                   @if (unreadNotificationsCount() > 0) {
                     <span class="notification-badge">{{ unreadNotificationsCount() }}</span>
                   }
                 </button>
 
-                <!-- Dropdown Thông Báo -->
                 @if (isNotificationsOpen()) {
                   <div class="popover-panel notifications-panel" (click)="$event.stopPropagation()">
                     <div class="popover-header">
@@ -186,12 +149,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
                     <div class="notifications-list">
                       <div class="notif-item unread">
-                        <div class="notif-icon class-icon">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                          </svg>
-                        </div>
+                        <div class="notif-icon class-icon"><zen-icon name="clock" [size]="15" /></div>
                         <div class="notif-content">
                           <p class="notif-title">Nhắc nhở ca học hôm nay</p>
                           <p class="notif-desc">Lớp Hatha Yoga Cơ Bản sẽ bắt đầu lúc 18:30 tại CS Quận 1.</p>
@@ -200,12 +158,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                       </div>
 
                       <div class="notif-item unread">
-                        <div class="notif-icon pass-icon">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                          </svg>
-                        </div>
+                        <div class="notif-icon pass-icon"><zen-icon name="check-circle" [size]="15" /></div>
                         <div class="notif-content">
                           <p class="notif-title">Thẻ tập đã sẵn sàng</p>
                           <p class="notif-desc">Hệ thống đã đồng bộ quyền truy cập đa cơ sở cho bạn.</p>
@@ -214,13 +167,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                       </div>
 
                       <div class="notif-item">
-                        <div class="notif-icon info-icon">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="16" x2="12" y2="12"/>
-                            <line x1="12" y1="8" x2="12.01" y2="8"/>
-                          </svg>
-                        </div>
+                        <div class="notif-icon info-icon"><zen-icon name="info" [size]="15" /></div>
                         <div class="notif-content">
                           <p class="notif-title">Chào mừng đến với An Yên</p>
                           <p class="notif-desc">Chúc bạn có những giờ phút rèn luyện an nhiên và tràn đầy năng lượng.</p>
@@ -232,7 +179,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                 }
               </div>
 
-              <!-- Nút Cài đặt -->
+              <!-- Cài đặt -->
               <div class="popover-wrapper">
                 <button
                   type="button"
@@ -242,13 +189,9 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                   title="Cài đặt & Tùy chọn"
                   aria-label="Cài đặt tài khoản"
                 >
-                  <svg class="utility-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                  </svg>
+                  <zen-icon name="settings" [size]="18" />
                 </button>
 
-                <!-- Dropdown Cài Đặt -->
                 @if (isSettingsOpen()) {
                   <div class="popover-panel settings-panel" (click)="$event.stopPropagation()">
                     <div class="popover-header">
@@ -269,77 +212,71 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
                         />
                       </label>
 
-                      <label class="setting-row">
+                      <div class="setting-row setting-row--stacked">
                         <div class="setting-info">
-                          <span class="setting-title">Giao diện Zen (Êm dịu)</span>
-                          <span class="setting-desc">Tối ưu sắc độ thư giãn thị giác</span>
+                          <span class="setting-title">Giao diện</span>
+                          <span class="setting-desc">Chế độ sáng, tối hoặc theo thiết bị</span>
                         </div>
-                        <input
-                          type="checkbox"
-                          class="toggle-checkbox"
-                          [checked]="zenMode()"
-                          (change)="zenMode.set(!zenMode())"
-                        />
-                      </label>
+                        <div class="zen-segmented theme-segmented" role="radiogroup" aria-label="Chế độ giao diện">
+                          @for (opt of themeOptions; track opt.value) {
+                            <button
+                              type="button"
+                              role="radio"
+                              [class.is-active]="theme.mode() === opt.value"
+                              [attr.aria-checked]="theme.mode() === opt.value"
+                              (click)="theme.setMode(opt.value)"
+                            >
+                              <zen-icon [name]="opt.icon" [size]="14" />
+                              <span>{{ opt.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
 
                       <div class="setting-divider"></div>
 
                       @if (auth.canManageClasses()) {
                         <a routerLink="/schedule/manage" (click)="closeAllPopovers()" class="setting-link">
                           <span>{{ (auth.isReceptionist() || auth.isInstructor()) ? 'Danh sách lớp học' : 'Quản lý lớp học' }}</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
+                          <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
 
                       @if (auth.isReceptionist()) {
                         <a routerLink="/users" (click)="closeAllPopovers()" class="setting-link">
                           <span>Danh sách học viên</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
+                          <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
 
                       @if (auth.isSuperAdmin() || auth.isBranchManager()) {
                         <a routerLink="/membership/revenue" (click)="closeAllPopovers()" class="setting-link">
                           <span>Báo cáo doanh thu</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
+                          <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
 
                       @if (auth.canManageClasses()) {
                         <a routerLink="/schedule/subjects" (click)="closeAllPopovers()" class="setting-link">
                           <span>Quản lý bộ môn</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
+                          <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
 
                       <a routerLink="/membership/plans" (click)="closeAllPopovers()" class="setting-link">
                         <span>Danh mục gói thẻ tập</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="9 18 15 12 9 6"/>
-                        </svg>
+                        <zen-icon name="chevron-right" [size]="15" />
                       </a>
 
                       <a routerLink="/branches" (click)="closeAllPopovers()" class="setting-link">
                         <span>Hệ thống cơ sở</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="9 18 15 12 9 6"/>
-                        </svg>
+                        <zen-icon name="chevron-right" [size]="15" />
                       </a>
 
                       @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
                         <a routerLink="/schedule/calendar" (click)="closeAllPopovers()" class="setting-link">
                           <span>Lịch tập & Đặt chỗ</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
+                          <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
                     </div>
@@ -357,7 +294,7 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             <!-- Khối người dùng -->
             <div class="user-pill" [title]="auth.userFullName()">
               <div class="avatar-wrapper">
-                <span class="avatar-letter">{{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'U' }}</span>
+                <zen-avatar [name]="auth.userFullName() || 'U'" size="sm" />
                 <span class="online-dot" title="Đang trực tuyến"></span>
               </div>
               <div class="user-details">
@@ -367,17 +304,13 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
             </div>
 
             <button type="button" class="btn-logout" (click)="onLogout()" title="Đăng xuất tài khoản">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
+              <zen-icon name="log-out" />
               <span class="logout-text">Đăng xuất</span>
             </button>
           } @else {
             <div class="guest-actions">
-              <a routerLink="/auth/login" class="btn-login-sm">Đăng Nhập</a>
-              <a routerLink="/auth/register" class="btn-register-sm">Đăng Ký Học Viên</a>
+              <a routerLink="/auth/login" class="zen-btn zen-btn--outline zen-btn--sm btn-login-sm">Đăng Nhập</a>
+              <a routerLink="/auth/register" class="zen-btn zen-btn--primary zen-btn--sm btn-register-sm">Đăng Ký Học Viên</a>
             </div>
           }
 
@@ -409,18 +342,13 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
               </div>
             </div>
             <button type="button" class="btn-close-drawer" (click)="closeMobileMenu()" aria-label="Đóng menu">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+              <zen-icon name="close" [size]="18" />
             </button>
           </div>
 
           @if (auth.isAuthenticated()) {
             <div class="drawer-user-card">
-              <div class="drawer-avatar">
-                {{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'U' }}
-              </div>
+              <zen-avatar [name]="auth.userFullName() || 'U'" />
               <div class="drawer-user-meta">
                 <span class="drawer-user-name">{{ auth.userFullName() }}</span>
                 <span class="drawer-user-role">{{ getRoleLabel(auth.userRole()) }}</span>
@@ -429,133 +357,83 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
           }
 
           <nav class="drawer-nav">
-            <div class="drawer-section-title">ĐIỀU HƯỚNG CHÍNH</div>
+            <div class="drawer-section-title">Điều hướng chính</div>
 
             @if (auth.canManageUsers() || auth.isReceptionist()) {
               <a routerLink="/users" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
+                <zen-icon name="users" />
                 <span>{{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Người Dùng' }}</span>
               </a>
             }
 
             @if (auth.canManageClasses()) {
               <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <zen-icon name="calendar" />
                 <span>Lịch Học</span>
               </a>
             }
 
             <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-              </svg>
+              <zen-icon name="graduation-cap" />
               <span>Khóa Học</span>
             </a>
 
             @if (auth.isSuperAdmin() || auth.isBranchManager()) {
               <a routerLink="/membership/orders" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 0 1-8 0"/>
-                </svg>
+                <zen-icon name="shopping-bag" />
                 <span>Danh Sách Đơn Hàng</span>
               </a>
               <a routerLink="/membership/revenue" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="20" x2="18" y2="10"/>
-                  <line x1="12" y1="20" x2="12" y2="4"/>
-                  <line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
+                <zen-icon name="bar-chart" />
                 <span>Báo Cáo Doanh Thu</span>
               </a>
             }
 
             @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
               <a routerLink="/membership/pos" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                  <line x1="6" y1="15" x2="10" y2="15"/>
-                </svg>
+                <zen-icon name="credit-card" />
                 <span>Quầy Bán Thẻ (POS)</span>
               </a>
             }
 
             @if (auth.isInstructor()) {
               <a routerLink="/schedule/check-in" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
+                <zen-icon name="check-square" />
                 <span>Điểm Danh</span>
               </a>
             }
 
             @if (auth.canAccessStudentPortal()) {
               <a routerLink="/membership/my-passes" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
+                <zen-icon name="shield-check" />
                 <span>Thẻ Của Tôi</span>
               </a>
               <a routerLink="/membership/history" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
+                <zen-icon name="clock" />
                 <span>Lịch Sử Tập</span>
               </a>
             }
 
             @if (auth.canManageClasses()) {
               <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-                  <path d="M6 6h10"/>
-                  <path d="M6 10h10"/>
-                </svg>
+                <zen-icon name="book" />
                 <span>Bộ Môn</span>
               </a>
             }
 
             <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                <polyline points="2 17 12 22 22 17"/>
-                <polyline points="2 12 12 17 22 12"/>
-              </svg>
+              <zen-icon name="layers" />
               <span>Gói Thẻ Tập</span>
             </a>
 
             <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
+              <zen-icon name="map-pin" />
               <span>Chi Nhánh</span>
             </a>
 
             @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
               <a routerLink="/schedule/calendar" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <zen-icon name="calendar" />
                 <span>Lịch & Đặt Chỗ</span>
               </a>
             }
@@ -563,18 +441,14 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
 
           <div class="drawer-footer">
             @if (auth.isAuthenticated()) {
-              <button type="button" class="drawer-btn-logout" (click)="onLogout()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
+              <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--block drawer-btn-logout" (click)="onLogout()">
+                <zen-icon name="log-out" />
                 <span>Đăng Xuất</span>
               </button>
             } @else {
               <div class="drawer-auth-actions">
-                <a routerLink="/auth/login" (click)="closeMobileMenu()" class="drawer-btn-login">Đăng Nhập</a>
-                <a routerLink="/auth/register" (click)="closeMobileMenu()" class="drawer-btn-register">Đăng Ký Học Viên</a>
+                <a routerLink="/auth/login" (click)="closeMobileMenu()" class="zen-btn zen-btn--outline zen-btn--block drawer-btn-login">Đăng Nhập</a>
+                <a routerLink="/auth/register" (click)="closeMobileMenu()" class="zen-btn zen-btn--primary zen-btn--block drawer-btn-register">Đăng Ký Học Viên</a>
               </div>
             }
           </div>
@@ -589,614 +463,458 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
     <zen-confirm-modal />
   `,
   styles: [`
+    /* ---------- Header ---------- */
     .app-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.65rem 2rem;
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(20, 70, 52, 0.08);
-      box-shadow: 0 2px 14px -3px rgba(20, 70, 52, 0.05);
       position: sticky;
       top: 0;
-      z-index: 100;
-      min-height: 64px;
-      gap: 1.5rem;
+      z-index: var(--z-header);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-lg);
+      height: var(--header-height);
+      padding: 0 var(--page-padding-x);
+      background: var(--glass-bg);
+      backdrop-filter: var(--backdrop-blur);
+      -webkit-backdrop-filter: var(--backdrop-blur);
+      border-bottom: 1px solid var(--color-border);
+      font-family: var(--font-sans);
+    }
 
-      .brand {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        flex: 1;
-        min-width: 0;
+    .brand { display: flex; align-items: center; flex-shrink: 0; }
 
-        .brand-link {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      border-radius: var(--radius-md);
+      transition: opacity var(--duration-fast) ease;
+      &:hover { opacity: 0.85; }
+    }
 
-          &:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-          }
-        }
+    .brand-logo-img {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      object-fit: contain;
+    }
 
-        .brand-logo-img {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          object-fit: contain;
-          box-shadow: 0 2px 6px rgba(20, 70, 52, 0.08);
-        }
+    .brand-text { display: flex; flex-direction: column; }
 
-        .brand-text {
-          display: flex;
-          flex-direction: column;
-        }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: var(--weight-bold);
+      line-height: 1.1;
+      letter-spacing: 0.04em;
+      color: var(--color-primary);
+    }
 
-        .brand-title {
-          font-family: var(--font-serif, 'Playfair Display', Georgia, serif);
-          font-size: 1.125rem;
-          font-weight: 700;
-          color: #144634;
-          letter-spacing: 0.05em;
-          line-height: 1.1;
-        }
+    .brand-sub {
+      margin-top: 2px;
+      font-size: var(--text-2xs);
+      font-weight: var(--weight-semibold);
+      letter-spacing: var(--tracking-eyebrow);
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+    }
 
-        .brand-sub {
-          font-family: var(--font-sans);
-          font-size: 0.53rem;
-          font-weight: 700;
-          letter-spacing: 0.12em;
-          color: #536961;
-          text-transform: uppercase;
-          margin-top: 2px;
-        }
+    /* ---------- Desktop nav ---------- */
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .nav-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: var(--radius-md);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+
+      .nav-icon { color: var(--color-text-muted); transition: color var(--duration-fast) ease; }
+
+      &:hover:not(.active) {
+        color: var(--color-text-main);
+        background: var(--color-surface-hover);
       }
 
-      /* Desktop Navigation - Center Aligned & Minimalist Zen (No Active Background) */
-      .desktop-nav {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        flex-shrink: 0;
-        background: transparent;
-        border: none;
-        padding: 0;
-        box-shadow: none;
-
-        .nav-tab {
-          font-size: 0.84rem;
-          font-weight: 500;
-          color: #4e675d;
-          text-decoration: none;
-          padding: 8px 14px;
-          border-radius: 8px;
-          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-          white-space: nowrap;
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          position: relative;
-          background: transparent;
-
-          .nav-icon {
-            width: 15px;
-            height: 15px;
-            color: #728c80;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-          }
-
-          &:hover:not(.active) {
-            color: #144634;
-            background: rgba(20, 70, 52, 0.035);
-            transform: translateY(-1px);
-
-            .nav-icon {
-              color: #0f766e;
-            }
-          }
-
-          &.active {
-            color: #144634;
-            font-weight: 600;
-            background: transparent !important;
-            box-shadow: none !important;
-
-            .nav-icon {
-              color: #0f766e;
-            }
-
-            &::after {
-              content: '';
-              position: absolute;
-              bottom: 0px;
-              left: 10px;
-              right: 10px;
-              height: 2.5px;
-              background: #0f766e;
-              border-radius: 9999px;
-              box-shadow: 0 1.5px 4px rgba(15, 118, 110, 0.35);
-            }
-          }
-        }
-
-        .nav-divider {
-          width: 1px;
-          height: 18px;
-          background: rgba(20, 70, 52, 0.12);
-          margin: 0 4px;
-          flex-shrink: 0;
-        }
-      }
-
-      .user-profile-bar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        flex: 1;
-        min-width: 0;
-        gap: 0.75rem;
-        position: relative;
-        flex-shrink: 0;
-
-        .utility-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-
-          .popover-wrapper {
-            position: relative;
-
-            .btn-icon-utility {
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              border: 1px solid rgba(20, 70, 52, 0.12);
-              background: #ffffff;
-              color: #4b6358;
-              display: grid;
-              place-items: center;
-              cursor: pointer;
-              position: relative;
-              transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-
-              &:hover, &.active {
-                background: #f0fdfa;
-                color: #0f766e;
-                border-color: rgba(15, 118, 110, 0.3);
-                box-shadow: 0 2px 8px rgba(15, 118, 110, 0.12);
-              }
-
-              .notification-badge {
-                position: absolute;
-                top: -2px;
-                right: -2px;
-                min-width: 16px;
-                height: 16px;
-                background: #e11d48;
-                color: #ffffff;
-                font-size: 0.6rem;
-                font-weight: 700;
-                border-radius: 9999px;
-                display: grid;
-                place-items: center;
-                border: 2px solid #ffffff;
-                padding: 0 3px;
-              }
-            }
-
-            .popover-panel {
-              position: absolute;
-              top: calc(100% + 12px);
-              right: -30px;
-              width: 320px;
-              background: #ffffff;
-              border: 1px solid rgba(20, 70, 52, 0.1);
-              border-radius: 16px;
-              box-shadow: 0 16px 36px -6px rgba(20, 70, 52, 0.14), 0 4px 12px rgba(0, 0, 0, 0.04);
-              z-index: 1000;
-              animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-              overflow: hidden;
-
-              &.settings-panel {
-                right: -10px;
-                width: 290px;
-              }
-
-              .popover-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 12px 16px;
-                background: #fafcfb;
-                border-bottom: 1px solid rgba(20, 70, 52, 0.07);
-
-                h4 {
-                  margin: 0;
-                  font-size: 0.875rem;
-                  font-weight: 700;
-                  color: #144634;
-                }
-
-                .header-left-title {
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-
-                  .new-pill {
-                    font-size: 0.65rem;
-                    font-weight: 700;
-                    color: #0f766e;
-                    background: rgba(15, 118, 110, 0.1);
-                    padding: 1px 7px;
-                    border-radius: 9999px;
-                  }
-                }
-
-                .btn-text-sm {
-                  background: none;
-                  border: none;
-                  font-size: 0.72rem;
-                  font-weight: 600;
-                  color: #0f766e;
-                  cursor: pointer;
-                  padding: 2px 4px;
-
-                  &:hover {
-                    text-decoration: underline;
-                  }
-                }
-              }
-
-              .notifications-list {
-                max-height: 300px;
-                overflow-y: auto;
-
-                .notif-item {
-                  display: flex;
-                  gap: 12px;
-                  padding: 12px 16px;
-                  border-bottom: 1px solid rgba(20, 70, 52, 0.05);
-                  transition: background 0.18s ease;
-
-                  &:last-child {
-                    border-bottom: none;
-                  }
-
-                  &:hover {
-                    background: #fbfdfc;
-                  }
-
-                  &.unread {
-                    background: #f0fdf9;
-
-                    .notif-title {
-                      font-weight: 700;
-                      color: #144634;
-                    }
-                  }
-
-                  .notif-icon {
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 50%;
-                    display: grid;
-                    place-items: center;
-                    flex-shrink: 0;
-
-                    &.class-icon {
-                      background: #e0f2fe;
-                      color: #0284c7;
-                    }
-
-                    &.pass-icon {
-                      background: #dcfce7;
-                      color: #16a34a;
-                    }
-
-                    &.info-icon {
-                      background: #fef3c7;
-                      color: #d97706;
-                    }
-                  }
-
-                  .notif-content {
-                    flex: 1;
-
-                    .notif-title {
-                      font-size: 0.8rem;
-                      font-weight: 600;
-                      color: #1e293b;
-                      margin: 0 0 2px;
-                    }
-
-                    .notif-desc {
-                      font-size: 0.75rem;
-                      color: #64748b;
-                      margin: 0 0 4px;
-                      line-height: 1.35;
-                    }
-
-                    .notif-time {
-                      font-size: 0.68rem;
-                      color: #94a3b8;
-                    }
-                  }
-                }
-              }
-
-              .settings-body {
-                padding: 14px 16px;
-
-                .setting-row {
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  gap: 12px;
-                  padding: 8px 0;
-                  cursor: pointer;
-
-                  .setting-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1px;
-
-                    .setting-title {
-                      font-size: 0.8125rem;
-                      font-weight: 600;
-                      color: #144634;
-                    }
-
-                    .setting-desc {
-                      font-size: 0.72rem;
-                      color: #64748b;
-                    }
-                  }
-
-                  .toggle-checkbox {
-                    width: 17px;
-                    height: 17px;
-                    accent-color: #0f766e;
-                    cursor: pointer;
-                  }
-                }
-
-                .setting-divider {
-                  height: 1px;
-                  background: rgba(20, 70, 52, 0.08);
-                  margin: 10px 0;
-                }
-
-                .setting-link {
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  padding: 8px 0;
-                  color: #334155;
-                  font-size: 0.8125rem;
-                  font-weight: 500;
-                  text-decoration: none;
-                  transition: color 0.18s ease;
-
-                  &:hover {
-                    color: #0f766e;
-                  }
-
-                  svg {
-                    color: #94a3b8;
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        .popover-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 999;
-          background: transparent;
-        }
-
-        .header-divider {
-          width: 1px;
-          height: 22px;
-          background: rgba(20, 70, 52, 0.12);
-        }
-
-        .user-pill {
-          display: flex;
-          align-items: center;
-          gap: 0.65rem;
-          padding: 3px 12px 3px 4px;
-          border-radius: 9999px;
-          background: rgba(20, 70, 52, 0.03);
-          border: 1px solid rgba(20, 70, 52, 0.08);
-          box-shadow: 0 1px 2px rgba(20, 70, 52, 0.02);
-          transition: background-color 0.2s ease, border-color 0.2s ease;
-
-          &:hover {
-            background: rgba(20, 70, 52, 0.05);
-            border-color: rgba(20, 70, 52, 0.12);
-          }
-
-          .avatar-wrapper {
-            position: relative;
-            display: inline-flex;
-
-            .avatar-letter {
-              width: 32px;
-              height: 32px;
-              border-radius: 50%;
-              background: linear-gradient(135deg, #144634 0%, #0d9488 100%);
-              color: #ffffff;
-              display: grid;
-              place-items: center;
-              font-size: 0.84rem;
-              font-weight: 700;
-              flex-shrink: 0;
-              box-shadow: 0 2px 6px rgba(13, 148, 136, 0.2);
-            }
-
-            .online-dot {
-              position: absolute;
-              bottom: 0;
-              right: 0;
-              width: 8px;
-              height: 8px;
-              border-radius: 50%;
-              background: #22c55e;
-              border: 1.5px solid #ffffff;
-            }
-          }
-
-          .user-details {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 1px;
-
-            .user-name {
-              font-size: 0.84rem;
-              font-weight: 600;
-              color: #144634;
-              max-width: 140px;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.2;
-              letter-spacing: -0.01em;
-            }
-
-            .role-badge {
-              font-size: 0.625rem;
-              font-weight: 500;
-              color: #0f766e;
-              line-height: 1.15;
-              letter-spacing: 0.02em;
-              white-space: nowrap;
-            }
-          }
-        }
-
-        .btn-logout {
-          background: transparent;
-          border: 1px solid rgba(20, 70, 52, 0.14);
-          color: #536961;
-          padding: 6px 12px;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-
-          &:hover {
-            background: #fef2f2;
-            color: #dc2626;
-            border-color: #fecaca;
-            transform: translateY(-1px);
-          }
-        }
-
-        .guest-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-
-          .btn-login-sm {
-            padding: 7px 14px;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            color: #475569;
-            text-decoration: none;
-            border-radius: 9999px;
-            border: 1px solid #cbd5e1;
-            transition: all 0.2s ease;
-
-            &:hover {
-              background: var(--color-background);
-              color: #0f172a;
-            }
-          }
-
-          .btn-register-sm {
-            padding: 7px 14px;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            color: #ffffff;
-            background: #144634;
-            text-decoration: none;
-            border-radius: 9999px;
-            transition: all 0.2s ease;
-
-            &:hover {
-              background: #0d2f23;
-              box-shadow: 0 2px 8px rgba(20, 70, 52, 0.25);
-            }
-          }
-        }
-
-        /* Nút Hamburger Mobile */
-        .btn-mobile-toggle {
-          display: none;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          width: 36px;
-          height: 36px;
-          background: rgba(20, 70, 52, 0.05);
-          border: 1px solid rgba(20, 70, 52, 0.1);
-          border-radius: 8px;
-          cursor: pointer;
-          gap: 4px;
-          padding: 0;
-          transition: all 0.2s ease;
-
-          &:hover {
-            background: rgba(20, 70, 52, 0.09);
-          }
-
-          .bar {
-            width: 18px;
-            height: 2px;
-            background: #144634;
-            border-radius: 2px;
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-
-            &.open-1 {
-              transform: translateY(6px) rotate(45deg);
-            }
-            &.open-2 {
-              opacity: 0;
-              transform: scale(0);
-            }
-            &.open-3 {
-              transform: translateY(-6px) rotate(-45deg);
-            }
-          }
-        }
+      &.active {
+        color: var(--color-primary);
+        background: var(--color-primary-soft);
+        font-weight: var(--weight-semibold);
+        .nav-icon { color: var(--color-primary); }
       }
     }
 
-    /* Mobile Drawer */
+    .nav-divider {
+      width: 1px;
+      height: 20px;
+      margin: 0 6px;
+      background: var(--color-border);
+      flex-shrink: 0;
+    }
+
+    /* ---------- Right side ---------- */
+    .user-profile-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+      flex-shrink: 0;
+    }
+
+    .utility-actions { display: flex; align-items: center; gap: 4px; }
+
+    .popover-wrapper { position: relative; }
+
+    .btn-icon-utility {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+
+      &:hover { background: var(--color-surface-hover); color: var(--color-primary); }
+      &.active { background: var(--color-primary-soft); color: var(--color-primary); }
+    }
+
+    /* Chấm đếm nằm ở góc trên-phải, không che icon chuông. */
+    .notification-badge {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      transform: translate(40%, -40%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      box-sizing: border-box;
+      border: 2px solid var(--color-surface);
+      border-radius: var(--radius-full);
+      background: var(--color-error-solid);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: var(--weight-bold);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    /* ---------- Popovers ---------- */
+    .popover-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: var(--z-modal);
+      width: 340px;
+      max-width: calc(100vw - 32px);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      animation: popoverFadeIn var(--duration-base) var(--ease-spring);
+    }
+    .settings-panel { width: 300px; }
+
+    .popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-sm);
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-border);
+
+      h4 {
+        margin: 0;
+        font-size: var(--text-base);
+        font-weight: var(--weight-semibold);
+        color: var(--color-text-main);
+      }
+    }
+
+    .header-left-title { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+    .new-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: var(--radius-full);
+      background: var(--color-error-bg);
+      color: var(--color-error);
+      font-size: var(--text-2xs);
+      font-weight: var(--weight-semibold);
+    }
+
+    .btn-text-sm {
+      padding: 4px 6px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-secondary);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      cursor: pointer;
+      &:hover { background: var(--color-surface-hover); color: var(--color-primary); }
+    }
+
+    .notifications-list { max-height: 360px; overflow-y: auto; }
+
+    .notif-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      transition: background-color var(--duration-fast) ease;
+
+      &:last-child { border-bottom: none; }
+      &:hover { background: var(--color-surface-hover); }
+      &.unread { background: var(--color-surface-sand); }
+      &.unread .notif-title::after {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-left: 6px;
+        border-radius: 50%;
+        background: var(--color-secondary);
+        vertical-align: middle;
+      }
+    }
+
+    .notif-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+
+      &.class-icon { background: var(--color-warning-bg); color: var(--color-warning); }
+      &.pass-icon { background: var(--color-success-bg); color: var(--color-success); }
+      &.info-icon { background: var(--color-info-bg); color: var(--color-info); }
+    }
+
+    .notif-content { min-width: 0; }
+    .notif-title { margin: 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--color-text-main); }
+    .notif-desc { margin: 2px 0 4px; font-size: var(--text-xs); line-height: var(--leading-normal); color: var(--color-text-muted); }
+    .notif-time { font-size: var(--text-2xs); color: var(--color-text-subtle); }
+
+    .settings-body { padding: 6px; }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      &:hover { background: var(--color-surface-hover); }
+    }
+
+    .setting-row--stacked {
+      flex-direction: column;
+      align-items: stretch;
+      cursor: default;
+      &:hover { background: transparent; }
+    }
+    .theme-segmented {
+      display: flex;
+      button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    }
+
+    .setting-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .setting-title { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--color-text-main); }
+    .setting-desc { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Switch */
+    .toggle-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      position: relative;
+      width: 34px;
+      height: 20px;
+      margin: 0;
+      border-radius: var(--radius-full);
+      background: var(--color-border-strong);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color var(--duration-fast) ease;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--color-surface);
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--duration-base) var(--ease-spring);
+      }
+
+      &:checked { background: var(--color-primary); }
+      &:checked::after { transform: translateX(14px); }
+      &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus-ring); }
+    }
+
+    .setting-divider { height: 1px; margin: 6px 4px; background: var(--color-border); }
+
+    .setting-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: var(--radius-md);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
+      text-decoration: none;
+      transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+
+      zen-icon { color: var(--color-text-subtle); }
+      &:hover { background: var(--color-surface-hover); color: var(--color-primary); }
+      &:hover zen-icon { color: var(--color-primary); }
+    }
+
+    .popover-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: calc(var(--z-header) - 1);
+      background: transparent;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 24px;
+      margin: 0 4px;
+      background: var(--color-border);
+    }
+
+    /* ---------- User pill ---------- */
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 2px 4px;
+    }
+
+    .avatar-wrapper { position: relative; display: inline-flex; }
+
+    .online-dot {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--color-surface);
+      border-radius: 50%;
+      background: var(--color-success);
+    }
+
+    .user-details { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+
+    .user-name {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text-main);
+    }
+
+    .role-badge { font-size: var(--text-2xs); font-weight: var(--weight-medium); color: var(--color-text-muted); }
+
+    .btn-logout {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-family: var(--font-sans);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      cursor: pointer;
+      transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+
+      &:hover { background: var(--color-error-bg); border-color: var(--color-error-border); color: var(--color-error); }
+    }
+
+    .guest-actions { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+    /* ---------- Hamburger ---------- */
+    .btn-mobile-toggle {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      cursor: pointer;
+
+      &:hover { background: var(--color-surface-hover); }
+
+      .bar {
+        display: block;
+        width: 16px;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--color-text-main);
+        transition: transform var(--duration-base) ease, opacity var(--duration-fast) ease;
+
+        &.open-1 { transform: translateY(6px) rotate(45deg); }
+        &.open-2 { opacity: 0; }
+        &.open-3 { transform: translateY(-6px) rotate(-45deg); }
+      }
+    }
+
+    /* ---------- Mobile drawer ---------- */
     .mobile-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(19, 42, 36, 0.45);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
+      z-index: calc(var(--z-modal) - 1);
+      background: rgba(16, 28, 24, 0.4);
+      backdrop-filter: blur(2px);
+      animation: fadeIn var(--duration-base) ease;
     }
 
     .mobile-drawer {
@@ -1204,287 +922,162 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
       top: 0;
       right: 0;
       bottom: 0;
-      width: min(340px, 86vw);
-      background: #ffffff;
-      z-index: 1001;
-      box-shadow: -8px 0 32px rgba(20, 70, 52, 0.16);
+      z-index: var(--z-modal);
       display: flex;
       flex-direction: column;
-      animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 300px;
+      max-width: 86vw;
+      background: var(--color-surface);
+      border-left: 1px solid var(--color-border);
+      box-shadow: var(--shadow-xl);
+      font-family: var(--font-sans);
+      animation: slideInRight var(--duration-base) var(--ease-spring);
+    }
 
-      .drawer-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid rgba(20, 70, 52, 0.08);
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: var(--header-height);
+      padding: 0 var(--spacing-md);
+      border-bottom: 1px solid var(--color-border);
+    }
 
-        .drawer-brand {
-          display: flex;
-          align-items: center;
-          gap: 10px;
+    .drawer-brand { display: flex; align-items: center; gap: 10px; }
+    .drawer-logo-img { width: 32px; height: 32px; border-radius: var(--radius-sm); object-fit: contain; }
+    .drawer-brand-text { display: flex; flex-direction: column; }
+    .drawer-brand-title {
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      font-weight: var(--weight-bold);
+      letter-spacing: 0.04em;
+      color: var(--color-primary);
+    }
+    .drawer-brand-sub {
+      font-size: var(--text-2xs);
+      font-weight: var(--weight-semibold);
+      letter-spacing: var(--tracking-eyebrow);
+      color: var(--color-text-muted);
+    }
 
-          .drawer-logo-img {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-          }
+    .btn-close-drawer {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+    }
 
-          .drawer-brand-text {
-            display: flex;
-            flex-direction: column;
+    .drawer-user-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: var(--spacing-md);
+      padding: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface-variant);
+    }
 
-            .drawer-brand-title {
-              font-family: var(--font-serif, 'Playfair Display', Georgia, serif);
-              font-size: 1rem;
-              font-weight: 700;
-              color: #144634;
-              letter-spacing: 0.05em;
-            }
+    .drawer-user-meta { display: flex; flex-direction: column; min-width: 0; }
+    .drawer-user-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: var(--text-base);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text-main);
+    }
+    .drawer-user-role { font-size: var(--text-xs); color: var(--color-text-muted); }
 
-            .drawer-brand-sub {
-              font-size: 0.5rem;
-              font-weight: 700;
-              letter-spacing: 0.1em;
-              color: #536961;
-            }
-          }
-        }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
 
-        .btn-close-drawer {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          border: 1px solid rgba(20, 70, 52, 0.1);
-          background: #fafcfb;
-          color: #4b6358;
-          display: grid;
-          place-items: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
+    .drawer-section-title {
+      padding: 8px 10px;
+      font-size: var(--text-2xs);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-eyebrow);
+      text-transform: uppercase;
+      color: var(--color-text-subtle);
+    }
 
-          &:hover {
-            background: #f1f4f3;
-            color: #144634;
-          }
-        }
-      }
+    .drawer-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: var(--radius-md);
+      color: var(--color-text-secondary);
+      font-size: var(--text-base);
+      font-weight: var(--weight-medium);
+      text-decoration: none;
+      transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
 
-      .drawer-user-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 1rem 1.5rem;
-        background: rgba(20, 70, 52, 0.03);
-        border-bottom: 1px solid rgba(20, 70, 52, 0.06);
-
-        .drawer-avatar {
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #144634 0%, #0d9488 100%);
-          color: #ffffff;
-          display: grid;
-          place-items: center;
-          font-weight: 700;
-          font-size: 0.95rem;
-          box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
-        }
-
-        .drawer-user-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-
-          .drawer-user-name {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #144634;
-          }
-
-          .drawer-user-role {
-            font-size: 0.7rem;
-            color: #0f766e;
-            font-weight: 500;
-          }
-        }
-      }
-
-      .drawer-nav {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-
-        .drawer-section-title {
-          font-size: 0.65rem;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          color: #8da499;
-          padding: 8px 12px 4px;
-        }
-
-        .drawer-nav-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 14px;
-          border-radius: 10px;
-          text-decoration: none;
-          color: #4b6358;
-          font-size: 0.85rem;
-          font-weight: 500;
-          transition: all 0.18s ease;
-
-          svg {
-            color: #688377;
-            transition: color 0.18s ease;
-          }
-
-          &:hover {
-            background: rgba(20, 70, 52, 0.04);
-            color: #144634;
-
-            svg {
-              color: #0f766e;
-            }
-          }
-
-          &.active {
-            background: rgba(15, 118, 110, 0.09);
-            color: #0f766e;
-            font-weight: 600;
-
-            svg {
-              color: #0f766e;
-            }
-          }
-        }
-      }
-
-      .drawer-footer {
-        padding: 1.25rem 1.5rem;
-        border-top: 1px solid rgba(20, 70, 52, 0.08);
-        background: #fafcfb;
-
-        .drawer-btn-logout {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 10px;
-          border-radius: 10px;
-          border: 1px solid #fecaca;
-          background: #fef2f2;
-          color: #dc2626;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.18s ease;
-
-          &:hover {
-            background: #fee2e2;
-          }
-        }
-
-        .drawer-auth-actions {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-
-          .drawer-btn-login {
-            display: block;
-            text-align: center;
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            color: #334155;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-          }
-
-          .drawer-btn-register {
-            display: block;
-            text-align: center;
-            padding: 10px;
-            border-radius: 10px;
-            background: #144634;
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-          }
-        }
+      zen-icon { color: var(--color-text-muted); }
+      &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+      &.active {
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
+        font-weight: var(--weight-semibold);
+        zen-icon { color: var(--color-primary); }
       }
     }
 
-    /* Breakpoints */
-    @media (max-width: 1120px) {
-      .app-header {
-        padding: 0.65rem 1.25rem;
+    .drawer-footer {
+      padding: var(--spacing-md);
+      border-top: 1px solid var(--color-border);
+    }
 
-        .desktop-nav {
-          display: none;
-        }
+    .drawer-auth-actions { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 
-        .user-profile-bar {
-          .btn-logout .logout-text {
-            display: none;
-          }
+    /* ---------- Breakpoints ---------- */
+    /* Màn vừa: thu gọn khối người dùng để menu không tràn (Ban Giám Đốc có nhiều mục) */
+    @media (max-width: 1535px) {
+      .app-header { gap: var(--spacing-md); padding: 0 var(--spacing-md); }
+      .user-details, .header-divider { display: none; }
+      .btn-logout { width: 36px; padding: 0; justify-content: center; }
+      .btn-logout .logout-text { display: none; }
+      .nav-tab { padding: 0 10px; }
+      .brand-sub { display: none; }
+    }
 
-          .btn-mobile-toggle {
-            display: flex;
-          }
-        }
-      }
+    @media (max-width: 1279px) {
+      .desktop-nav { display: none; }
+      .btn-mobile-toggle { display: inline-flex; }
+      .user-details, .header-divider { display: flex; }
+      .brand-sub { display: block; }
     }
 
     @media (max-width: 640px) {
-      .app-header {
-        padding: 0.5rem 1rem;
-
-        .brand-sub {
-          display: none;
-        }
-
-        .user-profile-bar {
-          .user-details {
-            display: none;
-          }
-
-          .header-divider {
-            display: none;
-          }
-
-          .btn-logout {
-            display: none;
-          }
-        }
-      }
+      .app-header { padding: 0 var(--spacing-md); }
+      .brand-sub, .user-details, .header-divider, .btn-logout { display: none; }
+      .guest-actions .btn-register-sm { display: none; }
     }
 
     .main-content {
-      min-height: calc(100vh - 65px);
+      min-height: calc(100vh - var(--header-height));
       background: var(--color-background);
 
-      &.no-header {
-        min-height: 100vh;
-      }
+      &.no-header { min-height: 100vh; }
     }
 
     @keyframes popoverFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-6px) scale(0.98);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes fadeIn {
@@ -1493,12 +1086,8 @@ import { ZenConfirmModalComponent } from '@yoga/platform/ui';
     }
 
     @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-      }
-      to {
-        transform: translateX(0);
-      }
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1518,9 +1107,17 @@ export class AppComponent {
   protected readonly isSettingsOpen = signal(false);
   protected readonly unreadNotificationsCount = signal(2);
   protected readonly reminderEnabled = signal(true);
-  protected readonly zenMode = signal(false);
+  protected readonly theme = inject(ZenThemeService);
+  protected readonly themeOptions: { value: ZenThemeMode; label: string; icon: ZenIconName }[] = [
+    { value: 'light', label: 'Sáng', icon: 'sun' },
+    { value: 'dark', label: 'Tối', icon: 'moon' },
+    { value: 'system', label: 'Hệ thống', icon: 'monitor' }
+  ];
 
   constructor() {
+    // Chế độ tối chỉ áp dụng cho khu vực quản lý; trang chủ & đăng nhập luôn sáng.
+    effect(() => this.theme.apply(!this.isStandalonePage()));
+
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentUrl.set(event.urlAfterRedirects);

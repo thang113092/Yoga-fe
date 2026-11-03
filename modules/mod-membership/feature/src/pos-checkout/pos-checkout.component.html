@@ -1,249 +1,131 @@
-<div class="pos-container">
-  <!-- POS Header -->
-  <div class="pos-topbar">
-    <div class="topbar-brand">
-      <div class="topbar-icon-box">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2"/>
-          <line x1="2" y1="10" x2="22" y2="10"/>
-        </svg>
-      </div>
-      <div>
-        <div class="pre-title">QUẦY DỊCH VỤ & THU NGÂN</div>
-        <h1 class="pos-title">Cấp & Đổi Thẻ Tập</h1>
-        <p class="pos-subtitle">Hệ thống kích hoạt thẻ tập điện tử tức thì trên toàn chuỗi An Yên</p>
-      </div>
+<div class="zen-page pos-page">
+  <zen-page-header
+    class="no-print"
+    eyebrow="Quầy dịch vụ & thu ngân"
+    heading="Cấp & Đổi Thẻ Tập"
+    subtitle="Hệ thống kích hoạt thẻ tập điện tử tức thì trên toàn chuỗi An Yên"
+  >
+    <div actions class="branch-selector">
+      <label class="zen-label" for="branch-select">Cơ sở phục vụ</label>
+      <zen-select
+        class="branch-select-box"
+        id="branch-select"
+        [options]="branches()"
+        valueKey="id"
+        labelKey="name"
+        [(ngModel)]="selectedBranchId"
+        [disabled]="isProcessing() || !!pendingCheckout()"
+        placeholder="Chọn cơ sở phục vụ"
+      />
     </div>
-
-    <div class="branch-selector">
-      <label for="branch-select">Cơ sở phục vụ:</label>
-      <div class="branch-select-box">
-        <zen-select
-          id="branch-select"
-          [options]="branches()"
-          valueKey="id"
-          labelKey="name"
-          [(ngModel)]="selectedBranchId"
-          [disabled]="isProcessing() || !!pendingCheckout()"
-          placeholder="Chọn cơ sở phục vụ"
-        />
-      </div>
-    </div>
-  </div>
+  </zen-page-header>
 
   @if (errorMessage()) {
-    <div class="alert alert-error" role="alert">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span>{{ errorMessage() }}</span>
-    </div>
+    <zen-alert class="no-print" tone="danger">{{ errorMessage() }}</zen-alert>
   }
 
-  <!-- SUCCESS RECEIPT MODAL / OVERLAY -->
+  <!-- SUCCESS RECEIPT -->
   @if (successReceipt()) {
-    <div class="receipt-card-wrapper">
-      <div class="receipt-card">
-        <!-- Top decorative brand accent line -->
-        <div class="receipt-accent-bar"></div>
-
-        <!-- Header -->
-        <div class="receipt-header">
-          <div class="success-icon-badge">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-          </div>
-          <div class="pre-title">KÍCH HOẠT THÀNH CÔNG</div>
-          <h2 class="receipt-title">Biên Lai Thu Tiền & Hợp Đồng Thẻ</h2>
-          
-          <div class="receipt-meta-chips">
-            <span class="meta-chip">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              <span>Mã HĐ: <strong>{{ successReceipt()?.order?.orderCode }}</strong></span>
-            </span>
-            <span class="meta-chip">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <span>{{ successReceipt()?.payment?.paymentTime | date:'dd/MM/yyyy HH:mm' }}</span>
-            </span>
-          </div>
+    <zen-card class="receipt-card" padding="none">
+      <div class="receipt-header">
+        <span class="success-icon-badge"><zen-icon name="check-circle" [size]="26" /></span>
+        <span class="zen-eyebrow">Kích hoạt thành công</span>
+        <h2 class="receipt-title">Biên Lai Thu Tiền & Hợp Đồng Thẻ</h2>
+        <div class="zen-row receipt-meta">
+          <zen-badge><zen-icon name="receipt" [size]="13" />Mã HĐ: <strong class="zen-mono">{{ successReceipt()?.order?.orderCode }}</strong></zen-badge>
+          <zen-badge><zen-icon name="clock" [size]="13" />{{ successReceipt()?.payment?.paymentTime | date:'dd/MM/yyyy HH:mm' }}</zen-badge>
         </div>
+      </div>
 
-        <!-- DIGITAL PASS HERO CARD -->
+      <div class="receipt-body">
+        <!-- Digital pass -->
         <div class="digital-pass-card">
           <div class="pass-header">
-            <div class="pass-brand">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="16" rx="3"/>
-                <line x1="7" y1="8" x2="17" y2="8"/>
-                <line x1="7" y1="12" x2="13" y2="12"/>
-              </svg>
-              <span>AN YÊN • THẺ TẬP ĐIỆN TỬ</span>
-            </div>
-            <div class="pass-status-pill">
-              <span class="live-dot"></span>
-              <span>Đang hoạt động</span>
-            </div>
+            <span class="pass-brand"><zen-icon name="ticket" [size]="15" />AN YÊN • THẺ TẬP ĐIỆN TỬ</span>
+            <zen-badge tone="success" size="sm" dot>Đang hoạt động</zen-badge>
           </div>
-
           <div class="pass-plan-name">{{ successReceipt()?.order?.planName }}</div>
-          
           <div class="pass-member-row">
-            <div class="pass-member-info">
-              <span class="pass-sublabel">CHỦ THẺ</span>
+            <div>
+              <span class="pass-sublabel">Chủ thẻ</span>
               <span class="pass-member-name">{{ studentName }}</span>
             </div>
             @if (selectedBranch()?.name) {
-              <div class="pass-branch-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <span>{{ selectedBranch()?.name }}</span>
-              </div>
+              <span class="pass-branch"><zen-icon name="map-pin" [size]="14" />{{ selectedBranch()?.name }}</span>
             }
           </div>
-
           <div class="pass-code-container">
             <div class="pass-code-block">
-              <span class="code-label">MÃ THẺ TẬP (DIGITAL PASS)</span>
+              <span class="pass-sublabel">Mã thẻ tập (Digital Pass)</span>
               <code class="code-value">{{ successReceipt()?.payment?.activatedMembershipCode }}</code>
             </div>
             <button
               type="button"
-              class="btn-copy-code"
+              class="zen-btn zen-btn--secondary zen-btn--sm btn-copy-code no-print"
               (click)="copyPassCode(successReceipt()?.payment?.activatedMembershipCode)"
-              [title]="copiedCode() ? 'Đã sao chép' : 'Sao chép mã thẻ'"
+              [attr.aria-label]="copiedCode() ? 'Đã sao chép' : 'Sao chép mã thẻ'"
             >
               @if (copiedCode()) {
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span>Đã chép</span>
+                <zen-icon name="check" /><span>Đã chép</span>
               } @else {
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-                <span>Sao chép</span>
+                <zen-icon name="copy" /><span>Sao chép</span>
               }
             </button>
           </div>
         </div>
 
-        <!-- DETAILS BREAKDOWN TABLE -->
-        <div class="receipt-section-title">Thông Tin Chi Tiết Giao Dịch</div>
-        
-        <div class="receipt-details-list">
-          <div class="detail-row">
-            <span class="detail-label">Học viên</span>
-            <span class="detail-value text-right">
-              <span class="detail-primary-text">{{ studentName }}</span>
-              <small class="detail-sub-text">{{ studentPhone }}{{ studentEmail ? ' • ' + studentEmail : '' }}</small>
-            </span>
-          </div>
-
-          <div class="detail-row">
-            <span class="detail-label">Gói thẻ đăng ký</span>
-            <span class="detail-value text-right">
-              {{ successReceipt()?.order?.planName }}
-            </span>
-          </div>
-
+        <h3 class="zen-section-title">Thông Tin Chi Tiết Giao Dịch</h3>
+        <dl class="zen-dl receipt-details">
+          <dt>Học viên</dt>
+          <dd>
+            <span>{{ studentName }}</span>
+            <span class="detail-sub">{{ studentPhone }}{{ studentEmail ? ' • ' + studentEmail : '' }}</span>
+          </dd>
+          <dt>Gói thẻ đăng ký</dt>
+          <dd>{{ successReceipt()?.order?.planName }}</dd>
           @if (selectedBranch()?.name) {
-            <div class="detail-row">
-              <span class="detail-label">Cơ sở đăng ký</span>
-              <span class="detail-value text-right">{{ selectedBranch()?.name }}</span>
-            </div>
+            <dt>Cơ sở đăng ký</dt>
+            <dd>{{ selectedBranch()?.name }}</dd>
           }
-
-          <div class="detail-row">
-            <span class="detail-label">Hình thức thanh toán</span>
-            <span class="detail-value text-right payment-badge-val">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                <line x1="1" y1="10" x2="23" y2="10"/>
-              </svg>
-              <span>{{ paymentMethodLabel(successReceipt()?.payment?.paymentMethod) }}</span>
-            </span>
-          </div>
-
+          <dt>Hình thức thanh toán</dt>
+          <dd><span class="zen-row payment-val"><zen-icon name="wallet" [size]="14" />{{ paymentMethodLabel(successReceipt()?.payment?.paymentMethod) }}</span></dd>
           @if (successReceipt()?.payment?.paymentCode) {
-            <div class="detail-row">
-              <span class="detail-label">Mã thanh toán</span>
-              <span class="detail-value text-right code-font">{{ successReceipt()?.payment?.paymentCode }}</span>
-            </div>
+            <dt>Mã thanh toán</dt>
+            <dd class="zen-mono">{{ successReceipt()?.payment?.paymentCode }}</dd>
           }
-        </div>
+        </dl>
 
-        <!-- PERFORATED DIVIDER -->
-        <div class="receipt-perforated-divider">
-          <div class="notch left"></div>
-          <div class="dashed-line"></div>
-          <div class="notch right"></div>
-        </div>
-
-        <!-- TOTAL AMOUNT SUMMARY -->
-        <div class="receipt-total-card">
-          <div class="total-text-group">
-            <span class="total-label">Tổng tiền thực thu</span>
-            <span class="total-status-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              <span>Đã thanh toán đủ</span>
-            </span>
+        <div class="receipt-total">
+          <div class="zen-stack zen-stack--sm">
+            <span class="zen-label">Tổng tiền thực thu</span>
+            <zen-badge tone="success"><zen-icon name="check" [size]="13" />Đã thanh toán đủ</zen-badge>
           </div>
-          <div class="total-amount-display">
-            {{ successReceipt()?.order?.totalAmount | number:'1.0-0' }} <span class="currency">VNĐ</span>
+          <div class="total-amount">
+            {{ successReceipt()?.order?.totalAmount | number:'1.0-0' }} <span class="currency">₫</span>
           </div>
-        </div>
-
-        <!-- FOOTER ACTIONS -->
-        <div class="receipt-footer no-print">
-          <button type="button" class="btn-receipt-secondary" (click)="printReceipt()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9"/>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-              <rect x="6" y="14" width="12" height="8"/>
-            </svg>
-            <span>In biên lai</span>
-          </button>
-
-          <button type="button" class="btn-receipt-primary" (click)="resetForm()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            <span>Giao dịch tiếp theo</span>
-          </button>
         </div>
       </div>
-    </div>
+
+      <div card-footer class="zen-row zen-row--end no-print">
+        <button type="button" class="zen-btn zen-btn--outline" (click)="printReceipt()">
+          <zen-icon name="printer" /><span>In biên lai</span>
+        </button>
+        <button type="button" class="zen-btn zen-btn--primary" (click)="resetForm()">
+          <zen-icon name="plus" /><span>Giao dịch tiếp theo</span>
+        </button>
+      </div>
+    </zen-card>
   } @else {
     <!-- MAIN POS WORKSPACE -->
     <div class="pos-layout">
-      <!-- LEFT COLUMN: Student & Plan Selection -->
-      <div class="pos-main">
-        <!-- 1. Student Lookup -->
-        <div class="pos-card">
-          <div class="card-head">
-            <span class="card-badge">BƯỚC 1</span>
-            <h2 class="card-title">Thông Tin Học Viên</h2>
+      <div class="zen-stack zen-stack--lg">
+        <!-- 1. Student lookup -->
+        <zen-card>
+          <div class="step-head">
+            <zen-badge tone="primary" size="sm">Bước 1</zen-badge>
+            <h2 class="zen-section-title">Thông Tin Học Viên</h2>
           </div>
 
-          <!-- Ô tìm kiếm nhanh chung (gọn gàng, thanh thoát) -->
           <div class="student-quick-search">
             <zen-input
               id="pos-student-search"
@@ -257,72 +139,46 @@
               [clearable]="true"
             />
 
-            <!-- DROPDOWN SUGGESTIONS -->
             @if (isSearchDropdownOpen()) {
               <div class="search-dropdown-menu">
                 @if (isSearchingDropdown()) {
-                  <div class="dropdown-item state-info">
-                    <span class="loading-spinner"></span>
-                    <span>Đang tìm kiếm học viên phù hợp...</span>
+                  <div class="dropdown-state">
+                    <zen-loading inline message="Đang tìm kiếm học viên phù hợp..." />
                   </div>
                 } @else if (searchResults().length > 0) {
-                  <div class="dropdown-header">
-                    <span>Tìm thấy {{ searchResults().length }} học viên phù hợp:</span>
-                  </div>
+                  <div class="dropdown-header">Tìm thấy {{ searchResults().length }} học viên phù hợp:</div>
                   <div class="dropdown-list">
                     @for (item of searchResults(); track item.id) {
                       <div
-                        class="dropdown-item student-item"
+                        class="dropdown-item"
                         role="button" tabindex="0"
                         (keydown.enter)="selectStudentFromSearch(item)"
                         (keydown.space)="$event.preventDefault(); selectStudentFromSearch(item)"
                         [class.active]="resolvedStudent()?.id === item.id"
                         (click)="selectStudentFromSearch(item)"
                       >
-                        <div class="student-avatar">
-                          {{ item.fullName.charAt(0).toUpperCase() }}
-                        </div>
+                        <zen-avatar [name]="item.fullName" size="sm" />
                         <div class="student-info-col">
-                          <div class="student-item-top">
-                            <span class="student-name">{{ item.fullName }}</span>
+                          <div class="zen-row">
+                            <span class="zen-strong">{{ item.fullName }}</span>
                             @if (item.branchName) {
-                              <span class="branch-tag">{{ item.branchName }}</span>
+                              <zen-badge size="sm">{{ item.branchName }}</zen-badge>
                             }
                           </div>
-                          <div class="student-item-bottom">
-                            <span class="student-meta-item">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                              </svg>
-                              {{ item.phone }}
-                            </span>
+                          <div class="zen-row zen-text-xs zen-text-muted">
+                            <span class="meta-item"><zen-icon name="phone" [size]="12" />{{ item.phone }}</span>
                             @if (item.email) {
-                              <span class="student-meta-item">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                  <polyline points="22,6 12,13 2,6"/>
-                                </svg>
-                                {{ item.email }}
-                              </span>
+                              <span class="meta-item"><zen-icon name="mail" [size]="12" />{{ item.email }}</span>
                             }
                           </div>
                         </div>
-                        <div class="select-action-badge">
-                          <span>Chọn</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
-                        </div>
+                        <span class="select-action">Chọn <zen-icon name="chevron-right" [size]="14" /></span>
                       </div>
                     }
                   </div>
                 } @else {
-                  <div class="dropdown-item state-empty">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
+                  <div class="dropdown-state zen-row zen-text-muted">
+                    <zen-icon name="search" />
                     <span>Không tìm thấy học viên phù hợp với từ khóa "{{ searchQuery }}".</span>
                   </div>
                 }
@@ -332,73 +188,68 @@
 
           @if (resolvedStudent(); as student) {
             <div class="student-summary" aria-live="polite">
-              <div class="student-summary-info">
-                <div class="student-summary-identity">
-                  <span class="student-summary-name">{{ student.fullName }}</span>
-                  <span class="student-summary-divider">·</span>
-                  <span class="student-summary-contact">{{ student.phone || 'Chưa có SĐT' }}</span>
-                  @if (student.email) {
-                    <span class="student-summary-divider">·</span>
-                    <span class="student-summary-contact">{{ student.email }}</span>
-                  }
+              <div class="zen-cell-user">
+                <zen-avatar [name]="student.fullName" />
+                <div>
+                  <span class="zen-strong">{{ student.fullName }}</span>
+                  <span class="cell-sub-line zen-text-sm zen-text-muted">
+                    {{ student.phone || 'Chưa có SĐT' }}{{ student.email ? ' · ' + student.email : '' }}
+                  </span>
                 </div>
-
-                @if (isLoadingQuote()) {
-                  <div class="quote-loading-hint" role="status">
-                    <span class="loading-spinner"></span>
-                    <span>Đang tải thông tin thẻ và giá trị quy đổi...</span>
-                  </div>
-                } @else {
-                  @if (currentMembership(); as membership) {
-                    <dl class="membership-details">
-                      <div><dt>Thẻ hiện tại</dt><dd>{{ membership.membershipCode }}</dd></div>
-                      <div><dt>Gói thẻ</dt><dd>{{ currentPlanName() }}</dd></div>
-                      <div><dt>Trạng thái</dt><dd>{{ membershipStatusLabel(membership.status) }}</dd></div>
-                      <div><dt>Buổi chưa đặt</dt><dd>{{ membership.remainingSessions ?? 'Không giới hạn' }}</dd></div>
-                      <div><dt>Hiệu lực</dt><dd>{{ membership.startDate | date:'dd/MM/yyyy' }} – {{ membership.endDate ? (membership.endDate | date:'dd/MM/yyyy') : 'Không giới hạn' }}</dd></div>
-                    </dl>
-                    <div class="membership-status-row">
-                      <span>Học viên đã có thẻ. Giao dịch này sẽ đổi thẻ hiện tại sang gói mới.</span>
-                      <button type="button" class="btn-link-action" (click)="refreshQuote()" [disabled]="isProcessing() || !!pendingCheckout()">
-                        Tải lại thông tin thẻ
-                      </button>
-                    </div>
-                  } @else if (quote()) {
-                    <div class="membership-status-row">
-                      <span>Học viên chưa có thẻ hiện tại. Có thể cấp thẻ mới.</span>
-                      <button type="button" class="btn-link-action" (click)="refreshQuote()" [disabled]="isProcessing() || !!pendingCheckout()">
-                        Tải lại thông tin thẻ
-                      </button>
-                    </div>
-                  }
-
-                  @if (quote()?.issue) {
-                    <p class="exchange-issue" role="alert">{{ quote()?.issue }}</p>
-                  }
-
-                  @if (pendingMembership() && !pendingCheckout()) {
-                    <div class="pending-membership-row">
-                      <span>Thẻ chờ: <strong>{{ pendingMembership()?.membershipCode }}</strong></span>
-                      <button type="button" class="btn-link-cancel" (click)="cancelPendingCheckout()" [disabled]="isProcessing()">
-                        Hủy đơn chưa thanh toán
-                      </button>
-                    </div>
-                  }
-                }
               </div>
+
+              @if (isLoadingQuote()) {
+                <zen-loading inline message="Đang tải thông tin thẻ và giá trị quy đổi..." />
+              } @else {
+                @if (currentMembership(); as membership) {
+                  <dl class="zen-dl">
+                    <dt>Thẻ hiện tại</dt><dd class="zen-mono">{{ membership.membershipCode }}</dd>
+                    <dt>Gói thẻ</dt><dd>{{ currentPlanName() }}</dd>
+                    <dt>Trạng thái</dt><dd>{{ membershipStatusLabel(membership.status) }}</dd>
+                    <dt>Buổi chưa đặt</dt><dd>{{ membership.remainingSessions ?? 'Không giới hạn' }}</dd>
+                    <dt>Hiệu lực</dt><dd>{{ membership.startDate | date:'dd/MM/yyyy' }} – {{ membership.endDate ? (membership.endDate | date:'dd/MM/yyyy') : 'Không giới hạn' }}</dd>
+                  </dl>
+                  <div class="zen-row zen-row--between summary-note">
+                    <span>Học viên đã có thẻ. Giao dịch này sẽ đổi thẻ hiện tại sang gói mới.</span>
+                    <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="refreshQuote()" [disabled]="isProcessing() || !!pendingCheckout()">
+                      <zen-icon name="refresh" />Tải lại thông tin thẻ
+                    </button>
+                  </div>
+                } @else if (quote()) {
+                  <div class="zen-row zen-row--between summary-note">
+                    <span>Học viên chưa có thẻ hiện tại. Có thể cấp thẻ mới.</span>
+                    <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="refreshQuote()" [disabled]="isProcessing() || !!pendingCheckout()">
+                      <zen-icon name="refresh" />Tải lại thông tin thẻ
+                    </button>
+                  </div>
+                }
+
+                @if (quote()?.issue) {
+                  <zen-alert tone="warning">{{ quote()?.issue }}</zen-alert>
+                }
+
+                @if (pendingMembership() && !pendingCheckout()) {
+                  <div class="zen-row zen-row--between summary-note">
+                    <span>Thẻ chờ: <strong class="zen-mono">{{ pendingMembership()?.membershipCode }}</strong></span>
+                    <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelPendingCheckout()" [disabled]="isProcessing()">
+                      Hủy đơn chưa thanh toán
+                    </button>
+                  </div>
+                }
+              }
             </div>
           }
-        </div>
+        </zen-card>
 
-        <!-- 2. Membership Plan Picker -->
-        <div class="pos-card">
-          <div class="card-head">
-            <span class="card-badge">BƯỚC 2</span>
-            <h2 class="card-title">Chọn Gói Thẻ Tập</h2>
+        <!-- 2. Plan picker -->
+        <zen-card>
+          <div class="step-head">
+            <zen-badge tone="primary" size="sm">Bước 2</zen-badge>
+            <h2 class="zen-section-title">Chọn Gói Thẻ Tập</h2>
           </div>
 
           @if (isLoadingPlans()) {
-            <div class="loading-state">Đang tải danh mục gói tập...</div>
+            <zen-loading message="Đang tải danh mục gói tập..." />
           } @else {
             <div class="plan-grid">
               @for (plan of plans(); track plan.id) {
@@ -410,168 +261,133 @@
                   [class.selected]="selectedPlanId() === plan.id"
                   (click)="selectPlan(plan.id)"
                 >
-                  <div class="plan-top">
-                    <span class="plan-scope" [class.all-branches]="plan.isAllBranches">
+                  <div class="zen-row zen-row--between">
+                    <zen-badge size="sm" [tone]="plan.isAllBranches ? 'primary' : 'neutral'">
                       {{ plan.isAllBranches ? 'Toàn hệ thống' : 'Cơ sở hiện tại' }}
-                    </span>
-                    <span class="plan-type">
+                    </zen-badge>
+                    <span class="zen-text-xs zen-text-secondary zen-strong">
                       {{ plan.planType === 'SESSION_BASED' ? (plan.totalSessions + ' buổi') : (plan.durationDays + ' ngày') }}
                     </span>
                   </div>
-
                   <h3 class="plan-title">{{ plan.name }}</h3>
                   <p class="plan-desc">{{ plan.description }}</p>
-
                   <div class="plan-price-row">
-                    <span class="plan-price">{{ plan.price | number:'1.0-0' }}</span>
-                    <span class="plan-curr">VNĐ</span>
+                    <span class="zen-price plan-price">{{ plan.price | number:'1.0-0' }}</span>
+                    <span class="zen-text-xs zen-text-muted">₫</span>
                   </div>
                 </div>
               }
             </div>
           }
-        </div>
+        </zen-card>
       </div>
 
-      <!-- RIGHT COLUMN: Order Summary & Payment Gateway -->
+      <!-- 3. Payment -->
       <div class="pos-sidebar">
-        <div class="pos-card summary-card">
-          <div class="card-head">
-            <span class="card-badge">BƯỚC 3</span>
-            <h2 class="card-title">Thanh Toán & Kích Hoạt</h2>
+        <zen-card>
+          <div class="step-head">
+            <zen-badge tone="primary" size="sm">Bước 3</zen-badge>
+            <h2 class="zen-section-title">Thanh Toán & Kích Hoạt</h2>
           </div>
 
-          <!-- Order Breakdown -->
-          <div class="order-breakdown">
-            <div class="breakdown-row">
-              <span class="label">Gói đã chọn:</span>
-              <span class="value">{{ selectedPlan()?.name || 'Chưa chọn gói' }}</span>
-            </div>
-            <div class="breakdown-row">
-              <span class="label">Phạm vi cơ sở:</span>
-              <span class="value">{{ selectedPlan()?.isAllBranches ? 'Toàn bộ các chi nhánh' : 'Cơ sở hiện tại' }}</span>
-            </div>
-            @if (quote()?.currentMembership) {
-              <div class="breakdown-row"><span class="label">Giá gói mới:</span><span class="value">{{ selectedPlan()?.price | number:'1.0-0' }} VNĐ</span></div>
-              <div class="breakdown-row"><span class="label">Giá trị thẻ cũ:</span><span class="value">{{ effectiveCredit() | number:'1.0-0' }} VNĐ</span></div>
-            }
-            <div class="breakdown-row"><span class="label">Quyền lợi gói mới:</span><span class="value">{{ selectedPlan()?.totalSessions ?? 'Không giới hạn' }} buổi · {{ selectedPlan()?.durationDays ?? 'Không giới hạn' }} ngày</span></div>
-            <div class="breakdown-row total">
-              <span class="label">Cần thanh toán:</span>
-              <span class="price">{{ amountDue() | number:'1.0-0' }} VNĐ</span>
-            </div>
-          </div>
-
-          @if (currentMembership() && quote() && !quote()?.issue && (auth.isSuperAdmin() || auth.isBranchManager())) {
-            <div class="credit-adjustment">
-              <label><input type="checkbox" [ngModel]="useCreditAdjustment()" (ngModelChange)="useCreditAdjustment.set($event); adjustedCredit.set(quote()?.credit ?? 0)" [disabled]="isProcessing() || !!pendingCheckout()" /> Quản lý điều chỉnh giá trị quy đổi</label>
-              @if (useCreditAdjustment()) {
-                <label for="adjusted-credit">Giá trị được phê duyệt (VNĐ)</label>
-                <input id="adjusted-credit" type="number" min="0" step="1" [ngModel]="adjustedCredit()" (ngModelChange)="adjustedCredit.set($event)" [disabled]="isProcessing() || !!pendingCheckout()" />
-                <p>Giá trị theo công thức: {{ quote()?.credit | number:'1.0-0' }} VNĐ. Không vượt giá trị thẻ đã mua hoặc giá gói mới.</p>
-                <label for="adjustment-reason">Lý do phê duyệt</label>
-                <textarea id="adjustment-reason" [(ngModel)]="adjustmentReason" [disabled]="isProcessing() || !!pendingCheckout()" required></textarea>
-                @if (adjustmentInvalid()) { <p role="alert">Giá trị điều chỉnh nằm ngoài phạm vi cho phép.</p> }
+          <div class="zen-stack">
+            <dl class="order-breakdown">
+              <div class="breakdown-row"><dt>Gói đã chọn</dt><dd>{{ selectedPlan()?.name || 'Chưa chọn gói' }}</dd></div>
+              <div class="breakdown-row"><dt>Phạm vi cơ sở</dt><dd>{{ selectedPlan()?.isAllBranches ? 'Toàn bộ các chi nhánh' : 'Cơ sở hiện tại' }}</dd></div>
+              @if (quote()?.currentMembership) {
+                <div class="breakdown-row"><dt>Giá gói mới</dt><dd class="zen-num">{{ selectedPlan()?.price | number:'1.0-0' }} ₫</dd></div>
+                <div class="breakdown-row"><dt>Giá trị thẻ cũ</dt><dd class="zen-num">{{ effectiveCredit() | number:'1.0-0' }} ₫</dd></div>
               }
-            </div>
-          }
-          <!-- Payment Method Options -->
-          <div class="payment-methods">
-            <label class="section-label">Phương thức thanh toán:</label>
-            <div class="method-options">
-              <button
-                type="button"
-                class="method-btn"
-                [class.active]="paymentMethod() === 'BANK_TRANSFER_QR'"
-                (click)="setPaymentMethod('BANK_TRANSFER_QR')"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="7" height="7"/>
-                  <rect x="14" y="3" width="7" height="7"/>
-                  <rect x="14" y="14" width="7" height="7"/>
-                  <rect x="3" y="14" width="7" height="7"/>
-                </svg>
-                <span>Chuyển khoản QR</span>
-              </button>
-              <button
-                type="button"
-                class="method-btn"
-                [class.active]="paymentMethod() === 'CASH'"
-                (click)="setPaymentMethod('CASH')"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="6" width="20" height="12" rx="2"/>
-                  <circle cx="12" cy="12" r="2"/>
-                  <path d="M6 12h.01M18 12h.01"/>
-                </svg>
-                <span>Tiền mặt</span>
-              </button>
-              <button
-                type="button"
-                class="method-btn"
-                [class.active]="paymentMethod() === 'POS_CARD'"
-                (click)="setPaymentMethod('POS_CARD')"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                </svg>
-                <span>Quẹt thẻ POS</span>
-              </button>
-            </div>
-          </div>
+              <div class="breakdown-row"><dt>Quyền lợi gói mới</dt><dd>{{ selectedPlan()?.totalSessions ?? 'Không giới hạn' }} buổi · {{ selectedPlan()?.durationDays ?? 'Không giới hạn' }} ngày</dd></div>
+              <div class="breakdown-row total"><dt>Cần thanh toán</dt><dd class="zen-price">{{ amountDue() | number:'1.0-0' }} ₫</dd></div>
+            </dl>
 
-          <!-- Dynamic QR Static Generator for Bank Transfer -->
-          @if (paymentMethod() === 'BANK_TRANSFER_QR') {
-            <div class="qr-payment-box">
-              <div class="qr-mockup-frame">
-                <div class="qr-icon-wrapper">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                  </svg>
-                </div>
-                <span class="qr-note">Quét mã chuyển khoản</span>
+            @if (currentMembership() && quote() && !quote()?.issue && (auth.isSuperAdmin() || auth.isBranchManager())) {
+              <div class="credit-adjustment zen-stack zen-stack--sm">
+                <label class="zen-check">
+                  <input type="checkbox" [ngModel]="useCreditAdjustment()" (ngModelChange)="useCreditAdjustment.set($event); adjustedCredit.set(quote()?.credit ?? 0)" [disabled]="isProcessing() || !!pendingCheckout()" />
+                  Quản lý điều chỉnh giá trị quy đổi
+                </label>
+                @if (useCreditAdjustment()) {
+                  <div class="zen-field">
+                    <label class="zen-label" for="adjusted-credit">Giá trị được phê duyệt (VNĐ)</label>
+                    <input class="zen-control" id="adjusted-credit" type="number" min="0" step="1" [ngModel]="adjustedCredit()" (ngModelChange)="adjustedCredit.set($event)" [disabled]="isProcessing() || !!pendingCheckout()" />
+                    <span class="zen-hint">Giá trị theo công thức: {{ quote()?.credit | number:'1.0-0' }} ₫. Không vượt giá trị thẻ đã mua hoặc giá gói mới.</span>
+                  </div>
+                  <div class="zen-field">
+                    <label class="zen-label" for="adjustment-reason">Lý do phê duyệt<span class="zen-required">*</span></label>
+                    <textarea class="zen-control" id="adjustment-reason" [(ngModel)]="adjustmentReason" [disabled]="isProcessing() || !!pendingCheckout()" required></textarea>
+                  </div>
+                  @if (adjustmentInvalid()) { <p class="zen-error" role="alert">Giá trị điều chỉnh nằm ngoài phạm vi cho phép.</p> }
+                }
               </div>
-              <div class="qr-instructions">
-                <p>Ngân hàng: <strong>{{ selectedBranch()?.bankName || 'Chưa cấu hình' }}</strong></p>
-                <p>Số tài khoản: <strong>{{ selectedBranch()?.bankAccountNumber || 'Chưa cấu hình' }}</strong></p>
-                <p>Chủ TK: <strong>{{ selectedBranch()?.bankAccountHolder || 'Chưa cấu hình' }}</strong></p>
-                <p>Số tiền: <strong>{{ amountDue() | number:'1.0-0' }} VNĐ</strong></p>
-                <p class="syntax">Cú pháp: <strong>YOGA {{ studentPhone }}</strong></p>
-              </div>
-            </div>
-          }
-
-          <div class="form-field"><label for="transactionRef">Mã chứng từ đã xác nhận (thẻ/chuyển khoản)</label><input id="transactionRef" [(ngModel)]="transactionReference" [disabled]="isProcessing() || !!pendingCheckout()" /></div>
-          <div class="form-field notes-field">
-            <label for="pos-notes">Ghi chú giao dịch:</label>
-            <textarea [disabled]="isProcessing() || !!pendingCheckout()"
-              id="pos-notes"
-              rows="2"
-              [(ngModel)]="cashierNotes"
-              placeholder="Nhập mã chứng từ chuyển khoản hoặc ghi chú..."
-            ></textarea>
-          </div>
-
-          @if (currentMembership()) { <p class="exchange-note">Thẻ cũ được thay thế khi giao dịch thành công. Giá trị chưa dùng được khấu trừ; số buổi và thời hạn áp dụng theo gói mới. Các lịch phù hợp sẽ được giữ lại.</p> }
-          @if (pendingCheckout()) { <button type="button" class="btn-outline" (click)="cancelPendingCheckout()" [disabled]="isProcessing()">Hủy đơn chưa thanh toán</button> }
-          <!-- Submit Button -->
-          <button
-            type="button"
-            class="btn-checkout-submit"
-            [disabled]="isProcessing() || (!pendingCheckout() && (!resolvedStudent() || !selectedPlan() || !selectedBranchId || isLoadingQuote() || !quote() || !!quote()?.issue || adjustmentInvalid() || (useCreditAdjustment() && !adjustmentReason.trim())))"
-            (click)="handleCheckout()"
-          >
-            @if (isProcessing()) {
-              <span class="spinner"></span> Đang xác nhận thu tiền & kích hoạt...
-            } @else {
-              {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
             }
-          </button>
-        </div>
+
+            <div class="zen-field">
+              <span class="zen-label">Phương thức thanh toán</span>
+              <div class="method-options">
+                <button type="button" class="method-btn" [class.active]="paymentMethod() === 'BANK_TRANSFER_QR'" (click)="setPaymentMethod('BANK_TRANSFER_QR')">
+                  <zen-icon name="qr" [size]="20" /><span>Chuyển khoản QR</span>
+                </button>
+                <button type="button" class="method-btn" [class.active]="paymentMethod() === 'CASH'" (click)="setPaymentMethod('CASH')">
+                  <zen-icon name="banknote" [size]="20" /><span>Tiền mặt</span>
+                </button>
+                <button type="button" class="method-btn" [class.active]="paymentMethod() === 'POS_CARD'" (click)="setPaymentMethod('POS_CARD')">
+                  <zen-icon name="credit-card" [size]="20" /><span>Quẹt thẻ POS</span>
+                </button>
+              </div>
+            </div>
+
+            @if (paymentMethod() === 'BANK_TRANSFER_QR') {
+              <div class="qr-payment-box">
+                <div class="qr-frame">
+                  <zen-icon name="qr" [size]="40" [strokeWidth]="1.4" />
+                  <span class="zen-text-xs zen-text-muted">Quét mã chuyển khoản</span>
+                </div>
+                <dl class="qr-instructions">
+                  <div><dt>Ngân hàng</dt><dd>{{ selectedBranch()?.bankName || 'Chưa cấu hình' }}</dd></div>
+                  <div><dt>Số tài khoản</dt><dd class="zen-mono">{{ selectedBranch()?.bankAccountNumber || 'Chưa cấu hình' }}</dd></div>
+                  <div><dt>Chủ TK</dt><dd>{{ selectedBranch()?.bankAccountHolder || 'Chưa cấu hình' }}</dd></div>
+                  <div><dt>Số tiền</dt><dd class="zen-num">{{ amountDue() | number:'1.0-0' }} ₫</dd></div>
+                  <div class="syntax"><dt>Cú pháp</dt><dd class="zen-mono">YOGA {{ studentPhone }}</dd></div>
+                </dl>
+              </div>
+            }
+
+            <div class="zen-field">
+              <label class="zen-label" for="transactionRef">Mã chứng từ đã xác nhận (thẻ/chuyển khoản)</label>
+              <input class="zen-control" id="transactionRef" [(ngModel)]="transactionReference" [disabled]="isProcessing() || !!pendingCheckout()" />
+            </div>
+            <div class="zen-field">
+              <label class="zen-label" for="pos-notes">Ghi chú giao dịch</label>
+              <textarea class="zen-control" [disabled]="isProcessing() || !!pendingCheckout()"
+                id="pos-notes"
+                rows="2"
+                [(ngModel)]="cashierNotes"
+                placeholder="Nhập mã chứng từ chuyển khoản hoặc ghi chú..."
+              ></textarea>
+            </div>
+
+            @if (currentMembership()) {
+              <zen-alert tone="info">Thẻ cũ được thay thế khi giao dịch thành công. Giá trị chưa dùng được khấu trừ; số buổi và thời hạn áp dụng theo gói mới. Các lịch phù hợp sẽ được giữ lại.</zen-alert>
+            }
+            @if (pendingCheckout()) {
+              <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--block" (click)="cancelPendingCheckout()" [disabled]="isProcessing()">Hủy đơn chưa thanh toán</button>
+            }
+            <button
+              type="button"
+              class="zen-btn zen-btn--primary zen-btn--lg zen-btn--block btn-checkout-submit"
+              [disabled]="isProcessing() || (!pendingCheckout() && (!resolvedStudent() || !selectedPlan() || !selectedBranchId || isLoadingQuote() || !quote() || !!quote()?.issue || adjustmentInvalid() || (useCreditAdjustment() && !adjustmentReason.trim())))"
+              (click)="handleCheckout()"
+            >
+              @if (isProcessing()) {
+                <zen-icon name="refresh" class="zen-spin" /> Đang xác nhận thu tiền & kích hoạt...
+              } @else {
+                {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
+              }
+            </button>
+          </div>
+        </zen-card>
       </div>
     </div>
   }

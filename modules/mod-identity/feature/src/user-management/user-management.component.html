@@ -1,194 +1,123 @@
-<div class="user-mgmt-container">
-  <!-- Notifications -->
-  @if (successMessage()) {
-    <div class="alert alert-success" role="alert">
-      <span>{{ successMessage() }}</span>
-      <button type="button" class="btn-close" (click)="successMessage.set(null)">✕</button>
-    </div>
-  }
-
-  @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">
-      <div class="alert-content">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <span>{{ errorMessage() }}</span>
+<div class="zen-page">
+  <zen-page-header
+    class="mgmt-header"
+    [eyebrow]="auth.isReceptionist() ? 'Quản lý khách hàng & học viên' : 'Quản trị nhân sự & hệ thống'"
+    [heading]="auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Quản Lý Người Dùng'"
+    [subtitle]="auth.isReceptionist() ? 'Tra cứu thông tin, lịch sử tập luyện và thêm mới học viên vào hệ thống' : 'Kiểm soát danh tính, phân quyền vai trò và phân công nhân sự tại các chi nhánh'"
+    [count]="isLoading() ? null : filteredUsers().length"
+    countLabel="tài khoản"
+  >
+    <!-- Vai trò của người dùng hiện tại -->
+    @if (auth.isSuperAdmin()) {
+      <div actions class="role-context">
+        <span class="role-context-icon"><zen-icon name="shield" [size]="18" /></span>
+        <div>
+          <strong>Ban Giám Đốc</strong>
+          <small>Toàn quyền tạo mọi vai trò & chi nhánh</small>
+        </div>
       </div>
-      <button type="button" class="btn-close" (click)="errorMessage.set(null)">✕</button>
-    </div>
+    } @else if (auth.isBranchManager()) {
+      <div actions class="role-context">
+        <span class="role-context-icon"><zen-icon name="building" [size]="18" /></span>
+        <div>
+          <strong>Quản Lý Cơ Sở</strong>
+          <small>Được tạo Lễ tân, HLV, Học viên tại chi nhánh của mình</small>
+        </div>
+      </div>
+    } @else if (auth.isReceptionist()) {
+      <div actions class="role-context">
+        <span class="role-context-icon"><zen-icon name="users" [size]="18" /></span>
+        <div>
+          <strong>Lễ Tân Đón Tiếp</strong>
+          <small>Xem danh sách & Thêm mới học viên</small>
+        </div>
+      </div>
+    }
+
+    <button actions type="button" class="zen-btn zen-btn--primary btn-create-user" (click)="openCreateModal()">
+      <zen-icon name="user-plus" />
+      <span>{{ auth.isReceptionist() ? 'Thêm Mới Học Viên' : 'Tạo Tài Khoản Mới' }}</span>
+    </button>
+  </zen-page-header>
+
+  @if (successMessage()) {
+    <zen-alert tone="success" dismissible (dismissed)="successMessage.set(null)">{{ successMessage() }}</zen-alert>
+  }
+  @if (errorMessage()) {
+    <zen-alert tone="danger" dismissible (dismissed)="errorMessage.set(null)">{{ errorMessage() }}</zen-alert>
   }
 
-  <!-- Header Banner -->
-  <div class="mgmt-header">
-    <div class="header-info">
-      <div class="pre-title">{{ auth.isReceptionist() ? 'QUẢN LÝ KHÁCH HÀNG & HỌC VIÊN' : 'QUẢN TRỊ NHÂN SỰ & HỆ THỐNG' }}</div>
-      <h2>{{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Quản Lý Người Dùng' }}</h2>
-      <p class="subtitle">{{ auth.isReceptionist() ? 'Tra cứu thông tin, lịch sử tập luyện và thêm mới học viên vào hệ thống' : 'Kiểm soát danh tính, phân quyền vai trò và phân công nhân sự tại các chi nhánh' }}</p>
-    </div>
-
-    <div class="header-actions">
-      <!-- Role Badge of Current User -->
-      @if (auth.isSuperAdmin()) {
-        <div class="current-role-badge super-admin">
-          <div class="role-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
-          <div>
-            <strong>SUPER_ADMIN (Ban Giám Đốc)</strong>
-            <small>Toàn quyền tạo mọi vai trò & chi nhánh</small>
-          </div>
-        </div>
-      } @else if (auth.isBranchManager()) {
-        <div class="current-role-badge branch-manager">
-          <div class="role-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 21h18"/>
-              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
-              <path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/>
-            </svg>
-          </div>
-          <div>
-            <strong>BRANCH_MANAGER (Quản Lý Cơ Sở)</strong>
-            <small>Được tạo Lễ tân, HLV, Học viên tại chi nhánh của mình</small>
-          </div>
-        </div>
-      } @else if (auth.isReceptionist()) {
-        <div class="current-role-badge receptionist">
-          <div class="role-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div>
-            <strong>RECEPTIONIST (Lễ Tân Đón Tiếp)</strong>
-            <small>Xem danh sách & Thêm mới học viên</small>
-          </div>
-        </div>
-      }
-
-      <button type="button" class="btn-create-user" (click)="openCreateModal()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="8.5" cy="7" r="4"/>
-          <line x1="20" y1="8" x2="20" y2="14"/>
-          <line x1="23" y1="11" x2="17" y2="11"/>
-        </svg>
-        <span>{{ auth.isReceptionist() ? 'Thêm Mới Học Viên' : 'Tạo Tài Khoản Mới' }}</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Filters Bar -->
-  <div class="filters-card">
-    <div class="filter-item filter-search">
+  <zen-card padding="none">
+    <zen-toolbar class="page-toolbar">
       <zen-search
+        class="zen-toolbar-grow"
         placeholder="Tìm họ tên, SĐT, email..."
         [ngModel]="searchQuery()"
         (ngModelChange)="searchQuery.set($event)"
       />
-    </div>
-
-    <div class="filter-item">
       <zen-select
+        class="zen-toolbar-item"
         id="filterBranch"
         [options]="branchFilterOptions()"
         [ngModel]="filterBranchId()"
         (ngModelChange)="onFilterBranchChange($event)"
         placeholder="Chọn cơ sở"
       />
-    </div>
-
-    @if (!auth.isReceptionist()) {
-      <div class="filter-item">
+      @if (!auth.isReceptionist()) {
         <zen-select
+          class="zen-toolbar-item"
           id="filterRole"
           [options]="roleFilterOptions"
           [ngModel]="filterRoleCode()"
           (ngModelChange)="onFilterRoleChange($event)"
           placeholder="Chọn vai trò"
         />
+      }
+      <div toolbar-end>
+        <button type="button" class="zen-btn zen-btn--outline" (click)="loadUsers()" [disabled]="isLoading()" title="Làm mới danh sách">
+          <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
+          <span>Làm mới danh sách</span>
+        </button>
       </div>
-    }
+    </zen-toolbar>
 
-    <button type="button" class="btn-refresh-list" (click)="loadUsers()" [disabled]="isLoading()" title="Làm mới danh sách">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 4v6h-6"/>
-        <path d="M1 20v-6h6"/>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-      </svg>
-      <span>Làm mới danh sách</span>
-    </button>
-  </div>
-
-  <!-- Users Table -->
-  <div class="table-card">
     @if (isLoading()) {
-      <div class="loading-state">Đang tải danh sách tài khoản từ hệ thống...</div>
+      <zen-loading message="Đang tải danh sách tài khoản..." />
     } @else if (users().length === 0) {
-      <div class="empty-state">
-        <div class="empty-icon-circle">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </div>
-        <p>Không có tài khoản nào phù hợp với bộ lọc hiện tại.</p>
-      </div>
+      <zen-empty-state icon="users" heading="Không có tài khoản nào phù hợp với bộ lọc hiện tại." />
     } @else if (filteredUsers().length === 0) {
-      <div class="empty-state">
-        <div class="empty-icon-circle">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </div>
-        <p>Không tìm thấy tài khoản nào khớp với từ khóa "{{ searchQuery() }}".</p>
-      </div>
+      <zen-empty-state icon="search" [heading]="'Không tìm thấy tài khoản nào khớp với từ khóa &quot;' + searchQuery() + '&quot;.'" />
     } @else {
-      <div class="table-responsive">
-        <table class="user-table">
+      <div class="zen-table-wrap">
+        <table class="zen-table">
           <thead>
             <tr>
               <th>Họ và Tên</th>
               <th>Giới Tính</th>
-              <th>Số Điện Thoại</th>
-              <th>Email</th>
-              <th>Vai Trò (Role)</th>
+              <th>Liên Hệ</th>
+              <th>Vai Trò</th>
               <th>Cơ Sở Phụ Trách</th>
               <th>Trạng Thái</th>
               <th>Ngày Tạo</th>
-              <th>Thao Tác</th>
+              <th class="is-actions">Thao Tác</th>
             </tr>
           </thead>
           <tbody>
             @for (u of filteredUsers(); track u.id) {
               <tr>
                 <td>
-                  <strong class="user-name">{{ u.fullName }}</strong>
+                  <div class="zen-cell-user">
+                    <zen-avatar [name]="u.fullName" size="sm" />
+                    <span class="cell-primary">{{ u.fullName }}</span>
+                  </div>
+                </td>
+                <td><span class="gender-cell">{{ formatGender(u.gender) }}</span></td>
+                <td>
+                  <span class="zen-num">{{ u.phone }}</span>
+                  <span class="cell-sub">{{ u.email || '—' }}</span>
                 </td>
                 <td>
-                  <span class="gender-cell">
-                    {{ formatGender(u.gender) }}
-                  </span>
-                </td>
-                <td>
-                  <span class="phone-code">{{ u.phone }}</span>
-                </td>
-                <td>
-                  <span class="email-text">{{ u.email || '—' }}</span>
-                </td>
-                <td>
-                  <span class="role-tag" [class]="u.roleCode.toLowerCase()">
+                  <zen-badge [tone]="roleTone[u.roleCode] || 'neutral'">
                     @switch (u.roleCode) {
                       @case ('SUPER_ADMIN') { Ban giám đốc }
                       @case ('BRANCH_MANAGER') { Quản lý cơ sở }
@@ -197,7 +126,7 @@
                       @case ('STUDENT') { Học viên }
                       @default { {{ u.roleCode }} }
                     }
-                  </span>
+                  </zen-badge>
                 </td>
                 <td>
                   <span class="branch-name" [class.unassigned]="!u.homeBranchId">
@@ -205,65 +134,53 @@
                   </span>
                 </td>
                 <td>
-                  <span class="status-dot" [class.active]="u.isActive">
+                  <zen-badge [tone]="u.isActive ? 'success' : 'danger'" dot>
                     {{ u.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
-                  </span>
+                  </zen-badge>
                 </td>
-                <td>
-                  <span class="date-text">{{ u.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-                </td>
-                <td class="action-cell">
+                <td class="is-nowrap cell-muted">{{ u.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="is-actions">
                   @if (u.id === auth.currentUserId()) {
-                    <span class="self-tag" title="Tài khoản đang đăng nhập hiện tại">Đang dùng</span>
+                    <zen-badge tone="primary" size="sm" title="Tài khoản đang đăng nhập hiện tại">Đang dùng</zen-badge>
                   } @else {
-                    <div class="action-buttons">
+                    <div class="row-actions">
                       @if (u.roleCode === 'STUDENT') {
                         <button
                           type="button"
-                          class="btn-icon-action btn-detail"
+                          class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon btn-detail"
                           (click)="openStudentDetail(u)"
-                          data-tooltip="Xem chi tiết học viên"
+                          title="Xem chi tiết học viên"
                           aria-label="Xem chi tiết học viên"
                         >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                          </svg>
+                          <zen-icon name="eye" />
                         </button>
                       }
                       @if (canManageUser(u)) {
                         @if (u.isActive) {
                           <button
                             type="button"
-                            class="btn-icon-action btn-lock"
+                            class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon btn-lock"
                             (click)="openConfirmModal(u)"
                             [disabled]="updatingUserId() === u.id"
-                            data-tooltip="Khóa tài khoản"
+                            title="Khóa tài khoản"
                             aria-label="Khóa tài khoản"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
+                            <zen-icon name="lock" />
                           </button>
                         } @else {
                           <button
                             type="button"
-                            class="btn-icon-action btn-unlock"
+                            class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon btn-unlock"
                             (click)="openConfirmModal(u)"
                             [disabled]="updatingUserId() === u.id"
-                            data-tooltip="Mở khóa tài khoản"
+                            title="Mở khóa tài khoản"
                             aria-label="Mở khóa tài khoản"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                              <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-                            </svg>
+                            <zen-icon name="unlock" />
                           </button>
                         }
                       } @else if (u.roleCode !== 'STUDENT') {
-                        <span class="no-perm-tag">—</span>
+                        <span class="cell-muted">—</span>
                       }
                     </div>
                   }
@@ -274,590 +191,365 @@
         </table>
       </div>
     }
-  </div>
-
-  <!-- Create User Modal Dialog -->
-  @if (isModalOpen()) {
-    <div class="modal-backdrop" (click)="closeCreateModal()">
-      <div class="modal-card modal-create-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>{{ auth.isReceptionist() ? 'Thêm Mới Học Viên' : 'Tạo Tài Khoản & Phân Quyền Mới' }}</h3>
-          <button type="button" class="btn-close" (click)="closeCreateModal()">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="rbac-rule-notice">
-            <div class="notice-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </div>
-            <div class="notice-text">
-              <div class="notice-title">Quy tắc phân quyền:</div>
-              @if (auth.isSuperAdmin()) {
-                <p>Bạn đang thao tác với vai trò <strong>Ban Giám Đốc (Super Admin)</strong>: Toàn quyền tạo mọi vai trò và phân bổ nhân sự trên toàn hệ thống.</p>
-              } @else if (auth.isBranchManager()) {
-                <p>Bạn đang thao tác với vai trò <strong>Quản Lý Cơ Sở (Branch Manager)</strong>: Chỉ được phép tạo tài khoản Lễ tân, Huấn luyện viên hoặc Học viên thuộc chi nhánh của mình.</p>
-              } @else if (auth.isReceptionist()) {
-                <p>Bạn đang thao tác với vai trò <strong>Lễ Tân Đón Tiếp (Receptionist)</strong>: Thêm mới học viên vào hệ thống. Học viên áp dụng toàn hệ thống, không cần chọn cơ sở.</p>
-              }
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newFullName">Họ và Tên (*):</label>
-              <zen-input
-                id="newFullName"
-                prefixIcon="user"
-                placeholder="Trần Quốc Tuấn"
-                [ngModel]="newFullName()"
-                (ngModelChange)="newFullName.set($event)"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="newGender">Giới Tính (*):</label>
-              <zen-select
-                id="newGender"
-                [options]="genderOptions"
-                [ngModel]="newGender()"
-                (ngModelChange)="newGender.set($event)"
-                placeholder="Chọn giới tính"
-              />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newPhone">Số Điện Thoại (*):</label>
-              <zen-input
-                id="newPhone"
-                type="tel"
-                prefixIcon="phone"
-                placeholder="0988776655"
-                [ngModel]="newPhone()"
-                (ngModelChange)="newPhone.set($event)"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="newEmail">Email (*):</label>
-              <zen-input
-                id="newEmail"
-                type="email"
-                prefixIcon="mail"
-                placeholder="tuan.tran@an-yen.vn"
-                [ngModel]="newEmail()"
-                (ngModelChange)="newEmail.set($event)"
-                required
-              />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newPassword">Mật Khẩu Ban Đầu (*):</label>
-              <zen-input
-                id="newPassword"
-                type="password"
-                placeholder="Mật khẩu từ 8 đến 72 ký tự"
-                [ngModel]="newPassword()"
-                (ngModelChange)="newPassword.set($event)"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="newDob">Ngày Sinh (Tùy chọn):</label>
-              <zen-input
-                id="newDob"
-                type="date"
-                prefixIcon="calendar"
-                placeholder="Chọn ngày sinh"
-                [ngModel]="newDob()"
-                (ngModelChange)="newDob.set($event)"
-              />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <!-- Vai trò gán -->
-            @if (auth.isReceptionist()) {
-              <div class="form-group">
-                <label>Vai Trò Gán:</label>
-                <div class="unassigned-branch-badge">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                  </svg>
-                  <span>Học Viên (Student)</span>
-                </div>
-              </div>
-            } @else {
-              <div class="form-group">
-                <label for="newRole">Gán Vai Trò (Role) (*):</label>
-                <zen-select
-                  id="newRole"
-                  [options]="availableRoles()"
-                  valueKey="code"
-                  labelKey="name"
-                  [ngModel]="newRoleCode()"
-                  (ngModelChange)="onRoleChange($event)"
-                  placeholder="Chọn vai trò"
-                />
-              </div>
-            }
-
-            <!-- Chi nhánh phụ trách hoặc không cần chọn cơ sở đối với học viên -->
-            @if (newRoleCode() === 'STUDENT') {
-              <div class="form-group branch-notice-box">
-                <label>Cơ Sở Đăng Ký:</label>
-                <div class="unassigned-branch-badge">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="2" y1="12" x2="22" y2="12"/>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                  </svg>
-                  <span>Không cần chọn cơ sở (Toàn hệ thống An Yên)</span>
-                </div>
-                <small class="helper-text">Hội viên không gắn cố định cơ sở, có thể tham gia lớp và dùng thẻ tại mọi chi nhánh.</small>
-              </div>
-            } @else {
-              <div class="form-group">
-                <label for="newBranch">Chi Nhánh Phụ Trách (*):</label>
-                <zen-select
-                  id="newBranch"
-                  [options]="modalBranchOptions()"
-                  [ngModel]="newBranchId()"
-                  (ngModelChange)="newBranchId.set($event)"
-                  [disabled]="auth.isBranchManager() || newRoleCode() === 'SUPER_ADMIN'"
-                  placeholder="Chọn chi nhánh phụ trách"
-                />
-                @if (newRoleCode() === 'SUPER_ADMIN') {
-                  <small class="locked-note">Toàn quyền toàn hệ thống (không cố định cơ sở)</small>
-                } @else if (auth.isBranchManager()) {
-                  <small class="locked-note">Cố định chi nhánh do bạn quản lý</small>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-modal-cancel" (click)="closeCreateModal()" [disabled]="isCreating()">
-            Hủy Bỏ
-          </button>
-          <button
-            type="button"
-            class="btn-modal-submit"
-            (click)="submitCreateUser()"
-            [disabled]="isCreating() || !newFullName().trim() || !newPhone().trim() || !newPassword().trim() || !newEmail().trim() || !newRoleCode() || (newRoleCode() !== 'SUPER_ADMIN' && newRoleCode() !== 'STUDENT' && !newBranchId())"
-          >
-            @if (isCreating()) {
-              <span>Đang lưu...</span>
-            } @else {
-              <span>{{ auth.isReceptionist() ? 'Xác Nhận Thêm Học Viên' : 'Xác Nhận Tạo Tài Khoản' }}</span>
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Confirm Lock / Unlock Modal Dialog -->
-  @if (confirmTargetUser(); as target) {
-    <div class="modal-backdrop" (click)="closeConfirmModal()">
-      <div class="modal-card modal-confirm-card" (click)="$event.stopPropagation()">
-        <div class="confirm-modal-header" [class.danger]="target.isActive">
-          <div class="confirm-icon-circle" [class.danger]="target.isActive">
-            @if (target.isActive) {
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            } @else {
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-              </svg>
-            }
-          </div>
-          <div class="confirm-header-text">
-            <h3>{{ target.isActive ? 'Khóa Tài Khoản Người Dùng' : 'Mở Khóa Tài Khoản Người Dùng' }}</h3>
-            <span class="confirm-target-sub">{{ target.fullName }} ({{ target.phone }})</span>
-          </div>
-          <button type="button" class="btn-close" (click)="closeConfirmModal()" [disabled]="updatingUserId() !== null">✕</button>
-        </div>
-
-        <div class="confirm-modal-body">
-          @if (target.isActive) {
-            <p class="confirm-desc">
-              Bạn có chắc chắn muốn khóa tài khoản của <strong>{{ target.fullName }}</strong>?
-            </p>
-            <div class="confirm-notice-box danger">
-              <div class="notice-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-              </div>
-              <p>Sau khi khóa, tài khoản này sẽ ngay lập tức bị vô hiệu hóa và không thể đăng nhập vào hệ thống An Yên.</p>
-            </div>
-          } @else {
-            <p class="confirm-desc">
-              Bạn có chắc chắn muốn mở khóa tài khoản của <strong>{{ target.fullName }}</strong>?
-            </p>
-            <div class="confirm-notice-box success">
-              <div class="notice-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <p>Sau khi mở khóa, người dùng có thể đăng nhập bình thường và tiếp tục sử dụng hệ thống.</p>
-            </div>
-          }
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-modal-cancel" (click)="closeConfirmModal()" [disabled]="updatingUserId() !== null">
-            Hủy Bỏ
-          </button>
-          <button
-            type="button"
-            [class]="target.isActive ? 'btn-confirm-danger' : 'btn-modal-submit'"
-            (click)="executeConfirmToggleStatus()"
-            [disabled]="updatingUserId() !== null"
-          >
-            @if (updatingUserId() !== null) {
-              <span>Đang xử lý...</span>
-            } @else if (target.isActive) {
-              <span>Xác Nhận Khóa</span>
-            } @else {
-              <span>Xác Nhận Mở Khóa</span>
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Student Detail Modal Dialog -->
-  @if (selectedStudent(); as student) {
-    <div class="modal-backdrop" (click)="closeStudentDetail()">
-      <div class="modal-card modal-detail-card" (click)="$event.stopPropagation()">
-        <!-- Modal Header -->
-        <div class="modal-header">
-          <div class="header-student-info">
-            <div class="student-avatar-circle">
-              {{ student.fullName.slice(0, 1).toUpperCase() }}
-            </div>
-            <div>
-              <div class="student-title-row">
-                <h3>{{ student.fullName }}</h3>
-                <span class="student-role-pill">Học Viên</span>
-                <span class="status-dot" [class.active]="student.isActive">
-                  {{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
-                </span>
-              </div>
-              <p class="modal-subtitle">
-                <span>SĐT: {{ student.phone }}</span>
-                @if (student.email) {
-                  <span class="dot-separator">•</span>
-                  <span>{{ student.email }}</span>
-                }
-                <span class="dot-separator">•</span>
-                <span>{{ student.branchName || 'Chưa phân chi nhánh' }}</span>
-              </p>
-            </div>
-          </div>
-          <button type="button" class="btn-close" (click)="closeStudentDetail()" aria-label="Đóng">✕</button>
-        </div>
-
-        <!-- Tab Bar -->
-        <div class="detail-tabs-bar">
-          <button
-            type="button"
-            class="detail-tab-btn"
-            [class.active]="activeStudentTab() === 'profile'"
-            (click)="activeStudentTab.set('profile')"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            <span>Thông Tin Cá Nhân</span>
-          </button>
-
-          <button
-            type="button"
-            class="detail-tab-btn"
-            [class.active]="activeStudentTab() === 'orders'"
-            (click)="activeStudentTab.set('orders')"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="8" cy="21" r="1"/>
-              <circle cx="19" cy="21" r="1"/>
-              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-            </svg>
-            <span>Lịch Sử Mua Thẻ</span>
-            @if (studentOrders().length > 0) {
-              <span class="tab-badge">{{ studentOrders().length }}</span>
-            }
-          </button>
-
-          <button
-            type="button"
-            class="detail-tab-btn"
-            [class.active]="activeStudentTab() === 'history'"
-            (click)="activeStudentTab.set('history')"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span>Lịch Sử Tập Luyện</span>
-            @if (studentBookings().length > 0) {
-              <span class="tab-badge">{{ studentBookings().length }}</span>
-            }
-          </button>
-        </div>
-
-        <!-- Modal Body Content -->
-        <div class="modal-body detail-modal-body">
-          @if (isDetailLoading()) {
-            <div class="detail-loading-state">
-              <div class="spinner-circle"></div>
-              <span>Đang đồng bộ dữ liệu học viên...</span>
-            </div>
-          } @else {
-            <!-- TAB 1: THÔNG TIN CÁ NHÂN -->
-            @if (activeStudentTab() === 'profile') {
-              <div class="profile-tab-content">
-                <div class="info-grid">
-                  <div class="info-card">
-                    <span class="info-label">Họ và tên</span>
-                    <strong class="info-value">{{ student.fullName }}</strong>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Số điện thoại</span>
-                    <strong class="info-value">{{ student.phone }}</strong>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Địa chỉ Email</span>
-                    <span class="info-value">{{ student.email || 'Chưa cập nhật' }}</span>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Giới tính</span>
-                    <span class="info-value">{{ formatGender(student.gender) }}</span>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Ngày sinh</span>
-                    <span class="info-value">{{ student.dob ? (student.dob | date:'dd/MM/yyyy') : 'Chưa cập nhật' }}</span>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Cơ sở đăng ký / phụ trách</span>
-                    <span class="info-value">{{ student.branchName || 'Chưa phân chi nhánh' }}</span>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Ngày tham gia hệ thống</span>
-                    <span class="info-value">{{ student.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                  <div class="info-card">
-                    <span class="info-label">Trạng thái tài khoản</span>
-                    <span class="info-value">
-                      <span class="status-dot" [class.active]="student.isActive">
-                        {{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Thống kê nhanh -->
-                <div class="quick-stats-row">
-                  <div class="stat-box">
-                    <span class="stat-number">{{ studentMemberships().length }}</span>
-                    <span class="stat-label">Thẻ tập sở hữu</span>
-                  </div>
-                  <div class="stat-box">
-                    <span class="stat-number">{{ studentOrders().length }}</span>
-                    <span class="stat-label">Đơn hàng mua thẻ</span>
-                  </div>
-                  <div class="stat-box">
-                    <span class="stat-number">{{ studentBookings().length }}</span>
-                    <span class="stat-label">Lượt ca học đã đặt</span>
-                  </div>
-                </div>
-              </div>
-            }
-
-            <!-- TAB 2: LỊCH SỬ MUA THẺ & THẺ TẬP -->
-            @if (activeStudentTab() === 'orders') {
-              <div class="orders-tab-content">
-                @if (studentOrders().length === 0) {
-                  <div class="tab-empty-state">
-                    <div class="empty-icon-circle">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="8" cy="21" r="1"/>
-                        <circle cx="19" cy="21" r="1"/>
-                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-                      </svg>
-                    </div>
-                    <p>Chưa ghi nhận đơn hàng mua thẻ tập nào từ học viên này.</p>
-                  </div>
-                } @else {
-                  <div class="table-responsive">
-                    <table class="zen-sub-table">
-                      <thead>
-                        <tr>
-                          <th>Thời Gian</th>
-                          <th>Cơ Sở</th>
-                          <th>Gói Thẻ & Mã Thẻ</th>
-                          <th>Buổi Tập / Hạn Thẻ</th>
-                          <th>Phương Thức</th>
-                          <th>Tổng Tiền</th>
-                          <th>Trạng Thái</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (o of studentOrders(); track o.orderId) {
-                          <tr>
-                            <td>
-                              <span class="date-text">{{ o.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
-                            </td>
-                            <td>
-                              <span class="branch-text">{{ o.branchName || 'Toàn hệ thống' }}</span>
-                            </td>
-                            <td>
-                              @if (o.items && o.items.length > 0) {
-                                @for (item of o.items; track item.itemId) {
-                                  <div class="order-item-block">
-                                    <strong class="item-name">{{ item.itemName || 'Gói thẻ tập' }}</strong>
-                                    @if (item.membershipCode) {
-                                      <span class="item-mb-code">Mã thẻ: {{ item.membershipCode }}</span>
-                                    }
-                                  </div>
-                                }
-                              } @else {
-                                <span class="plan-items-text">Thẻ tập</span>
-                              }
-                            </td>
-                            <td>
-                              @if (o.items && o.items.length > 0 && o.items[0].membershipCode) {
-                                @let it = o.items[0];
-                                <div class="item-sessions-block">
-                                  <span class="sessions-val">
-                                    {{ it.remainingSessions != null ? (it.remainingSessions + '/' + (it.totalSessions ?? '∞') + ' buổi') : 'Không giới hạn' }}
-                                  </span>
-                                  @if (it.startDate || it.endDate) {
-                                    <small class="expiry-val">
-                                      {{ it.startDate | date:'dd/MM/yy' }} - {{ it.endDate ? (it.endDate | date:'dd/MM/yy') : 'Vô hạn' }}
-                                    </small>
-                                  }
-                                </div>
-                              } @else {
-                                <span class="sessions-val">—</span>
-                              }
-                            </td>
-                            <td>
-                              <span class="payment-method-text">
-                                {{ formatPaymentMethod(o.payments?.[0]?.paymentMethod) }}
-                              </span>
-                            </td>
-                            <td>
-                              <strong class="price-text">{{ o.totalAmount | number:'1.0-0' }} đ</strong>
-                            </td>
-                            <td>
-                              <span class="order-status-pill" [class.paid]="o.status === 'PAID'" [class.pending]="o.status === 'PENDING'">
-                                {{ o.status === 'PAID' ? 'Đã thanh toán' : (o.status === 'PENDING' ? 'Chờ thanh toán' : o.status) }}
-                              </span>
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- TAB 4: LỊCH SỬ TẬP LUYỆN -->
-            @if (activeStudentTab() === 'history') {
-              <div class="history-tab-content">
-                @if (studentBookings().length === 0) {
-                  <div class="tab-empty-state">
-                    <div class="empty-icon-circle">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                    </div>
-                    <p>Học viên chưa có lịch sử đặt chỗ hoặc tham gia ca học nào.</p>
-                  </div>
-                } @else {
-                  <div class="table-responsive">
-                    <table class="zen-sub-table">
-                      <thead>
-                        <tr>
-                          <th>Mã Đặt Chỗ</th>
-                          <th>Ca Học & Lớp</th>
-                          <th>Giảng Viên</th>
-                          <th>Cơ Sở & Phòng</th>
-                          <th>Thời Gian</th>
-                          <th>Thảm</th>
-                          <th>Trạng Thái</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (b of studentBookings(); track b.id) {
-                          <tr>
-                            <td>
-                              <span class="code-pill">{{ b.bookingCode }}</span>
-                            </td>
-                            <td>
-                              <strong class="class-name-text">{{ b.className }}</strong>
-                            </td>
-                            <td>
-                              <span class="instructor-text">{{ b.instructorName }}</span>
-                            </td>
-                            <td>
-                              <span class="room-branch-text">{{ b.branchName }} • {{ b.roomName }}</span>
-                            </td>
-                            <td>
-                              <div class="time-block">
-                                <span>{{ b.startTime | date:'dd/MM/yyyy' }}</span>
-                                <small>{{ b.startTime | date:'HH:mm' }} - {{ b.endTime | date:'HH:mm' }}</small>
-                              </div>
-                            </td>
-                            <td>
-                              <span class="mat-number">{{ b.matNumber ? '#' + b.matNumber : '—' }}</span>
-                            </td>
-                            <td>
-                              @let bSt = formatBookingStatus(b.status);
-                              <span class="booking-status-pill" [class]="bSt.class">
-                                {{ bSt.label }}
-                              </span>
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </div>
-            }
-          }
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="modal-footer detail-modal-footer">
-          <button type="button" class="btn-modal-cancel" (click)="closeStudentDetail()">Đóng</button>
-        </div>
-      </div>
-    </div>
-  }
+  </zen-card>
 </div>
+
+<!-- Tạo tài khoản -->
+@if (isModalOpen()) {
+  <zen-modal
+    class="modal-create-card"
+    size="lg"
+    icon="user-plus"
+    [heading]="auth.isReceptionist() ? 'Thêm Mới Học Viên' : 'Tạo Tài Khoản & Phân Quyền Mới'"
+    (closed)="closeCreateModal()"
+  >
+    <zen-alert tone="info" icon="shield" heading="Quy tắc phân quyền" class="rbac-notice">
+      @if (auth.isSuperAdmin()) {
+        Bạn đang thao tác với vai trò <strong>Ban Giám Đốc</strong>: Toàn quyền tạo mọi vai trò và phân bổ nhân sự trên toàn hệ thống.
+      } @else if (auth.isBranchManager()) {
+        Bạn đang thao tác với vai trò <strong>Quản Lý Cơ Sở (Branch Manager)</strong>: Chỉ được phép tạo tài khoản Lễ tân, Huấn luyện viên hoặc Học viên thuộc chi nhánh của mình.
+      } @else if (auth.isReceptionist()) {
+        Bạn đang thao tác với vai trò <strong>Lễ Tân Đón Tiếp (Receptionist)</strong>: Thêm mới học viên vào hệ thống. Học viên áp dụng toàn hệ thống, không cần chọn cơ sở.
+      }
+    </zen-alert>
+
+    <div class="zen-form-grid">
+      <div class="zen-field">
+        <label class="zen-label" for="newFullName">Họ và Tên<span class="zen-required">*</span></label>
+        <zen-input
+          id="newFullName"
+          prefixIcon="user"
+          placeholder="Trần Quốc Tuấn"
+          [ngModel]="newFullName()"
+          (ngModelChange)="newFullName.set($event)"
+          required
+        />
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="newGender">Giới Tính<span class="zen-required">*</span></label>
+        <zen-select
+          id="newGender"
+          [options]="genderOptions"
+          [ngModel]="newGender()"
+          (ngModelChange)="newGender.set($event)"
+          placeholder="Chọn giới tính"
+        />
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="newPhone">Số Điện Thoại<span class="zen-required">*</span></label>
+        <zen-input
+          id="newPhone"
+          type="tel"
+          prefixIcon="phone"
+          placeholder="0988776655"
+          [ngModel]="newPhone()"
+          (ngModelChange)="newPhone.set($event)"
+          required
+        />
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="newEmail">Email<span class="zen-required">*</span></label>
+        <zen-input
+          id="newEmail"
+          type="email"
+          prefixIcon="mail"
+          placeholder="tuan.tran@an-yen.vn"
+          [ngModel]="newEmail()"
+          (ngModelChange)="newEmail.set($event)"
+          required
+        />
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="newPassword">Mật Khẩu Ban Đầu<span class="zen-required">*</span></label>
+        <zen-input
+          id="newPassword"
+          type="password"
+          placeholder="Mật khẩu từ 8 đến 72 ký tự"
+          [ngModel]="newPassword()"
+          (ngModelChange)="newPassword.set($event)"
+          required
+        />
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="newDob">Ngày Sinh (Tùy chọn)</label>
+        <zen-input
+          id="newDob"
+          type="date"
+          prefixIcon="calendar"
+          placeholder="Chọn ngày sinh"
+          [ngModel]="newDob()"
+          (ngModelChange)="newDob.set($event)"
+        />
+      </div>
+
+      @if (auth.isReceptionist()) {
+        <div class="zen-field">
+          <span class="zen-label">Vai Trò Gán</span>
+          <div class="fixed-value">
+            <zen-icon name="user" />
+            <span>Học Viên (Student)</span>
+          </div>
+        </div>
+      } @else {
+        <div class="zen-field">
+          <label class="zen-label" for="newRole">Gán Vai Trò<span class="zen-required">*</span></label>
+          <zen-select
+            id="newRole"
+            [options]="availableRoles()"
+            valueKey="code"
+            labelKey="name"
+            [ngModel]="newRoleCode()"
+            (ngModelChange)="onRoleChange($event)"
+            placeholder="Chọn vai trò"
+          />
+        </div>
+      }
+
+      @if (newRoleCode() === 'STUDENT') {
+        <div class="zen-field">
+          <span class="zen-label">Cơ Sở Đăng Ký</span>
+          <div class="fixed-value">
+            <zen-icon name="map-pin" />
+            <span>Không cần chọn cơ sở (Toàn hệ thống An Yên)</span>
+          </div>
+          <span class="zen-hint">Hội viên không gắn cố định cơ sở, có thể tham gia lớp và dùng thẻ tại mọi chi nhánh.</span>
+        </div>
+      } @else {
+        <div class="zen-field">
+          <label class="zen-label" for="newBranch">Chi Nhánh Phụ Trách<span class="zen-required">*</span></label>
+          <zen-select
+            id="newBranch"
+            [options]="modalBranchOptions()"
+            [ngModel]="newBranchId()"
+            (ngModelChange)="newBranchId.set($event)"
+            [disabled]="auth.isBranchManager() || newRoleCode() === 'SUPER_ADMIN'"
+            placeholder="Chọn chi nhánh phụ trách"
+          />
+          @if (newRoleCode() === 'SUPER_ADMIN') {
+            <span class="zen-hint">Toàn quyền toàn hệ thống (không cố định cơ sở)</span>
+          } @else if (auth.isBranchManager()) {
+            <span class="zen-hint">Cố định chi nhánh do bạn quản lý</span>
+          }
+        </div>
+      }
+    </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeCreateModal()" [disabled]="isCreating()">Hủy Bỏ</button>
+      <button
+        type="button"
+        class="zen-btn zen-btn--primary"
+        (click)="submitCreateUser()"
+        [disabled]="isCreating() || !newFullName().trim() || !newPhone().trim() || !newPassword().trim() || !newEmail().trim() || !newRoleCode() || (newRoleCode() !== 'SUPER_ADMIN' && newRoleCode() !== 'STUDENT' && !newBranchId())"
+      >
+        @if (isCreating()) {
+          <zen-loading inline />
+          <span>Đang lưu...</span>
+        } @else {
+          <span>{{ auth.isReceptionist() ? 'Xác Nhận Thêm Học Viên' : 'Xác Nhận Tạo Tài Khoản' }}</span>
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
+}
+
+<!-- Xác nhận khóa / mở khóa -->
+@if (confirmTargetUser(); as target) {
+  <zen-modal
+    class="modal-confirm-card"
+    size="sm"
+    [icon]="target.isActive ? 'lock' : 'unlock'"
+    [tone]="target.isActive ? 'danger' : 'primary'"
+    [heading]="target.isActive ? 'Khóa Tài Khoản Người Dùng' : 'Mở Khóa Tài Khoản Người Dùng'"
+    [subtitle]="target.fullName + ' (' + target.phone + ')'"
+    [closeOnBackdrop]="updatingUserId() === null"
+    (closed)="updatingUserId() === null && closeConfirmModal()"
+  >
+    <div class="zen-stack">
+      @if (target.isActive) {
+        <p class="confirm-desc">Bạn có chắc chắn muốn khóa tài khoản của <strong>{{ target.fullName }}</strong>?</p>
+        <zen-alert tone="danger">Sau khi khóa, tài khoản này sẽ ngay lập tức bị vô hiệu hóa và không thể đăng nhập vào hệ thống An Yên.</zen-alert>
+      } @else {
+        <p class="confirm-desc">Bạn có chắc chắn muốn mở khóa tài khoản của <strong>{{ target.fullName }}</strong>?</p>
+        <zen-alert tone="success">Sau khi mở khóa, người dùng có thể đăng nhập bình thường và tiếp tục sử dụng hệ thống.</zen-alert>
+      }
+    </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeConfirmModal()" [disabled]="updatingUserId() !== null">Hủy Bỏ</button>
+      <button
+        type="button"
+        class="zen-btn"
+        [class.zen-btn--danger]="target.isActive"
+        [class.zen-btn--primary]="!target.isActive"
+        (click)="executeConfirmToggleStatus()"
+        [disabled]="updatingUserId() !== null"
+      >
+        @if (updatingUserId() !== null) {
+          <span>Đang xử lý...</span>
+        } @else if (target.isActive) {
+          <span>Xác Nhận Khóa</span>
+        } @else {
+          <span>Xác Nhận Mở Khóa</span>
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
+}
+
+<!-- Chi tiết học viên -->
+@if (selectedStudent(); as student) {
+  <zen-modal
+    class="modal-detail-card"
+    size="xl"
+    icon="user"
+    [heading]="student.fullName"
+    [subtitle]="'SĐT: ' + student.phone + (student.email ? ' • ' + student.email : '') + ' • ' + (student.branchName || 'Chưa phân chi nhánh')"
+    (closed)="closeStudentDetail()"
+  >
+    <div class="zen-stack zen-stack--lg">
+      <div class="zen-row">
+        <zen-badge tone="neutral">Học Viên</zen-badge>
+        <zen-badge [tone]="student.isActive ? 'success' : 'danger'" dot>{{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}</zen-badge>
+      </div>
+
+      <zen-tabs [items]="studentTabs()" [active]="activeStudentTab()" (activeChange)="activeStudentTab.set($any($event))" />
+
+      @if (isDetailLoading()) {
+        <zen-loading message="Đang đồng bộ dữ liệu học viên..." />
+      } @else {
+        @if (activeStudentTab() === 'profile') {
+          <div class="zen-grid zen-grid--stats">
+            <zen-stat-card label="Thẻ tập sở hữu" [value]="studentMemberships().length" icon="ticket" />
+            <zen-stat-card label="Đơn hàng mua thẻ" [value]="studentOrders().length" icon="receipt" tone="info" />
+            <zen-stat-card label="Lượt ca học đã đặt" [value]="studentBookings().length" icon="calendar" tone="success" />
+          </div>
+
+          <dl class="zen-dl profile-dl">
+            <dt>Họ và tên</dt><dd>{{ student.fullName }}</dd>
+            <dt>Số điện thoại</dt><dd class="zen-num">{{ student.phone }}</dd>
+            <dt>Địa chỉ Email</dt><dd>{{ student.email || 'Chưa cập nhật' }}</dd>
+            <dt>Giới tính</dt><dd>{{ formatGender(student.gender) }}</dd>
+            <dt>Ngày sinh</dt><dd>{{ student.dob ? (student.dob | date:'dd/MM/yyyy') : 'Chưa cập nhật' }}</dd>
+            <dt>Cơ sở đăng ký / phụ trách</dt><dd>{{ student.branchName || 'Chưa phân chi nhánh' }}</dd>
+            <dt>Ngày tham gia hệ thống</dt><dd>{{ student.createdAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+            <dt>Trạng thái tài khoản</dt>
+            <dd><zen-badge [tone]="student.isActive ? 'success' : 'danger'" dot>{{ student.isActive ? 'Đang hoạt động' : 'Đã khóa' }}</zen-badge></dd>
+          </dl>
+        }
+
+        @if (activeStudentTab() === 'orders') {
+          @if (studentOrders().length === 0) {
+            <zen-empty-state compact icon="shopping-bag" heading="Chưa ghi nhận đơn hàng mua thẻ tập nào từ học viên này." />
+          } @else {
+            <div class="zen-table-wrap sub-table">
+              <table class="zen-table zen-table--compact">
+                <thead>
+                  <tr>
+                    <th>Thời Gian</th>
+                    <th>Cơ Sở</th>
+                    <th>Gói Thẻ & Mã Thẻ</th>
+                    <th>Buổi Tập / Hạn Thẻ</th>
+                    <th>Phương Thức</th>
+                    <th class="is-numeric">Tổng Tiền</th>
+                    <th>Trạng Thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (o of studentOrders(); track o.orderId) {
+                    <tr>
+                      <td class="is-nowrap cell-muted">{{ o.orderDate | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td>{{ o.branchName || 'Toàn hệ thống' }}</td>
+                      <td>
+                        @if (o.items && o.items.length > 0) {
+                          @for (item of o.items; track item.itemId) {
+                            <div>
+                              <span class="cell-primary">{{ item.itemName || 'Gói thẻ tập' }}</span>
+                              @if (item.membershipCode) {
+                                <span class="cell-sub zen-mono">Mã thẻ: {{ item.membershipCode }}</span>
+                              }
+                            </div>
+                          }
+                        } @else {
+                          <span>Thẻ tập</span>
+                        }
+                      </td>
+                      <td>
+                        @if (o.items && o.items.length > 0 && o.items[0].membershipCode) {
+                          @let it = o.items[0];
+                          <span>{{ it.remainingSessions != null ? (it.remainingSessions + '/' + (it.totalSessions ?? '∞') + ' buổi') : 'Không giới hạn' }}</span>
+                          @if (it.startDate || it.endDate) {
+                            <span class="cell-sub">{{ it.startDate | date:'dd/MM/yy' }} - {{ it.endDate ? (it.endDate | date:'dd/MM/yy') : 'Vô hạn' }}</span>
+                          }
+                        } @else {
+                          <span class="cell-muted">—</span>
+                        }
+                      </td>
+                      <td>{{ formatPaymentMethod(o.payments?.[0]?.paymentMethod) }}</td>
+                      <td class="is-numeric"><span class="zen-price">{{ o.totalAmount | number:'1.0-0' }} ₫</span></td>
+                      <td>
+                        <zen-badge [tone]="o.status === 'PAID' ? 'success' : (o.status === 'PENDING' ? 'warning' : 'neutral')" dot>
+                          {{ o.status === 'PAID' ? 'Đã thanh toán' : (o.status === 'PENDING' ? 'Chờ thanh toán' : o.status) }}
+                        </zen-badge>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+        @if (activeStudentTab() === 'history') {
+          @if (studentBookings().length === 0) {
+            <zen-empty-state compact icon="clock" heading="Học viên chưa có lịch sử đặt chỗ hoặc tham gia ca học nào." />
+          } @else {
+            <div class="zen-table-wrap sub-table">
+              <table class="zen-table zen-table--compact">
+                <thead>
+                  <tr>
+                    <th>Mã Đặt Chỗ</th>
+                    <th>Ca Học & Lớp</th>
+                    <th>Giảng Viên</th>
+                    <th>Cơ Sở & Phòng</th>
+                    <th>Thời Gian</th>
+                    <th>Thảm</th>
+                    <th>Trạng Thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (b of studentBookings(); track b.id) {
+                    <tr>
+                      <td><span class="zen-mono">{{ b.bookingCode }}</span></td>
+                      <td><span class="cell-primary">{{ b.className }}</span></td>
+                      <td>{{ b.instructorName }}</td>
+                      <td class="cell-muted">{{ b.branchName }} • {{ b.roomName }}</td>
+                      <td class="is-nowrap">
+                        <span>{{ b.startTime | date:'dd/MM/yyyy' }}</span>
+                        <span class="cell-sub">{{ b.startTime | date:'HH:mm' }} - {{ b.endTime | date:'HH:mm' }}</span>
+                      </td>
+                      <td>{{ b.matNumber ? '#' + b.matNumber : '—' }}</td>
+                      <td>
+                        @let bSt = formatBookingStatus(b.status);
+                        <zen-badge [tone]="bookingTone[b.status ?? ''] || 'neutral'" dot>{{ bSt.label }}</zen-badge>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeStudentDetail()">Đóng</button>
+    </ng-container>
+  </zen-modal>
+}

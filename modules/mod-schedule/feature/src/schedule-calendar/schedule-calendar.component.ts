@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '@yoga/platform/auth';
-import { ZenSelectComponent, ZenConfirmService, ZenToastService } from '@yoga/platform/api';
+import { ZenConfirmService, ZenToastService } from '@yoga/platform/api';
 import { RouterModule } from '@angular/router';
+import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
 import { FormsModule } from '@angular/forms';
 import {
   BookingApi,
@@ -20,7 +21,7 @@ import {
 @Component({
   selector: 'yoga-schedule-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ZenSelectComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ...ZEN_UI],
   templateUrl: './schedule-calendar.component.html',
   styleUrls: ['./schedule-calendar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -213,6 +214,23 @@ export class ScheduleCalendarComponent implements OnInit {
       return true;
     });
   });
+
+  readonly tabs = computed<ZenTabItem[]>(() => [
+    { key: 'calendar', label: 'Thời khóa biểu lớp', icon: 'calendar' },
+    { key: 'my-bookings', label: 'Lịch đã đặt của tôi', icon: 'ticket', count: this.upcomingBookingCount() > 0 ? this.upcomingBookingCount() : null }
+  ]);
+
+  readonly categories = [
+    { key: 'ALL', label: 'Tất cả bộ môn' },
+    { key: 'Hatha', label: 'Hatha' },
+    { key: 'Vinyasa', label: 'Vinyasa Flow' },
+    { key: 'Yin', label: 'Yin & Chuông' },
+    { key: 'Ashtanga', label: 'Ashtanga' }
+  ];
+
+  setTab(key: string): void {
+    this.activeTab.set(key as 'calendar' | 'my-bookings');
+  }
 
   // Upcoming confirmed bookings count
   readonly upcomingBookingCount = computed(() => {
@@ -612,6 +630,14 @@ export class ScheduleCalendarComponent implements OnInit {
     if (lower.includes('yin') || lower.includes('chuông')) return { label: 'Yin & Chuông', type: 'yin' };
     if (lower.includes('ashtanga')) return { label: 'Ashtanga', type: 'ashtanga' };
     return { label: 'Zen Yoga', type: 'zen' };
+  }
+
+  categoryTone(type: string): ZenTone {
+    return ({ hatha: 'primary', vinyasa: 'info', yin: 'neutral', ashtanga: 'warning' } as Record<string, ZenTone>)[type] ?? 'success';
+  }
+
+  bookingTone(status: string): ZenTone {
+    return ({ CONFIRMED: 'success', ATTENDED: 'info', CANCELLED: 'neutral', WAITING: 'warning', CONVERTED: 'success' } as Record<string, ZenTone>)[status] ?? 'neutral';
   }
 
   alertConflict(schedule: ClassSchedule): void {

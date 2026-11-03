@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnDes
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@yoga/platform/auth';
+import { ZEN_UI } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
 import { CheckInApi, CheckInReq, CheckInResp, ScheduleApi, ClassSchedule, ScheduleAttendee } from '@yoga/mod-schedule/data-access';
 import type { IScannerControls } from '@zxing/browser';
@@ -18,7 +19,7 @@ interface CheckInHistoryItem {
 @Component({
   selector: 'yoga-qr-scanner',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ...ZEN_UI],
   templateUrl: './qr-scanner.component.html',
   styleUrls: ['./qr-scanner.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -7,7 +7,8 @@ import {
   forwardRef,
   computed,
   signal,
-  inject
+  inject,
+  OnDestroy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -34,7 +35,8 @@ export interface ZenSelectOption<T = any> {
   ],
   host: {
     '(document:click)': 'onDocumentClick($event)',
-    '(keydown.escape)': 'onEscape()'
+    '(keydown.escape)': 'onEscape()',
+    '(window:resize)': 'close()'
   },
   template: `
     <div class="zen-select-wrapper" [class.is-open]="isOpen()" [class.is-disabled]="isDisabled()">
@@ -75,7 +77,17 @@ export interface ZenSelectOption<T = any> {
       </button>
 
       @if (isOpen()) {
-        <div class="zen-select-dropdown" role="listbox" (click)="$event.stopPropagation()">
+        <div
+          class="zen-select-dropdown"
+          role="listbox"
+          [class.is-above]="dropdownPos()?.above"
+          [style.top.px]="dropdownPos()?.top"
+          [style.bottom.px]="dropdownPos()?.bottom"
+          [style.left.px]="dropdownPos()?.left"
+          [style.min-width.px]="dropdownPos()?.width"
+          [style.max-height.px]="dropdownPos()?.maxHeight"
+          (click)="$event.stopPropagation()"
+        >
           @if (normalizedOptions().length === 0) {
             <div class="empty-options">Không có lựa chọn nào</div>
           } @else {
@@ -135,9 +147,9 @@ export interface ZenSelectOption<T = any> {
         cursor: not-allowed;
 
         .zen-select-trigger {
-          background: #f1f4f3;
+          background: var(--color-surface-variant);
           border-color: rgba(20, 70, 52, 0.08);
-          color: #71887e;
+          color: var(--color-text-muted);
           cursor: not-allowed;
           box-shadow: none;
         }
@@ -145,13 +157,13 @@ export interface ZenSelectOption<T = any> {
 
       &.is-open {
         .zen-select-trigger {
-          border-color: #0f766e;
-          box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14), 0 2px 6px rgba(20, 70, 52, 0.06);
-          background: #ffffff;
+          border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px var(--color-focus-ring);
+          background: var(--color-surface);
 
           .chevron-icon {
             transform: rotate(180deg);
-            color: #0f766e;
+            color: var(--color-primary);
           }
         }
       }
@@ -159,33 +171,39 @@ export interface ZenSelectOption<T = any> {
 
     .zen-select-trigger {
       width: 100%;
-      min-height: 40px;
+      min-height: var(--control-height-md);
       padding: 8px 14px;
-      background: #ffffff;
-      border: 1px solid rgba(20, 70, 52, 0.16);
-      border-radius: 10px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      color: #144634;
-      font-size: 0.875rem;
+      color: var(--color-primary);
+      font-size: var(--text-base);
       font-weight: 500;
       text-align: left;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+      box-shadow: var(--shadow-xs);
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 
       &:hover:not(:disabled) {
-        border-color: #0f766e;
-        background: #fafcfb;
-        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+        border-color: var(--color-primary);
+        background: var(--color-surface-hover);
+        box-shadow: var(--shadow-xs);
       }
 
       &:focus-visible {
         outline: none;
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+      }
+
+      /* Ô hẹp (bộ lọc trên toolbar) chỉ hiện nhãn chính; chú thích phụ vẫn có trong danh sách. */
+      container-type: inline-size;
+      @container (max-width: 280px) {
+        .trigger-label .sub-label { display: none; }
       }
 
       .trigger-label {
@@ -202,14 +220,16 @@ export interface ZenSelectOption<T = any> {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          color: #144634;
+          color: var(--color-text-main);
           min-width: 0;
-          flex-shrink: 1;
+          max-width: 100%;
+          /* Nhãn chính giữ nguyên, phần chú thích phụ bị cắt trước khi thiếu chỗ. */
+          flex-shrink: 0;
         }
 
         .sub-label {
-          font-size: 0.75rem;
-          color: #688377;
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -218,29 +238,28 @@ export interface ZenSelectOption<T = any> {
         }
 
         .placeholder {
-          color: #8da499;
+          color: var(--color-text-subtle);
           font-weight: 400;
         }
       }
 
       .chevron-icon {
-        color: #0f766e;
+        color: var(--color-primary);
         flex-shrink: 0;
         transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
     }
 
+    /* Menu nổi (position: fixed) để không bị card / modal có overflow cắt mất. */
     .zen-select-dropdown {
-      position: absolute;
-      top: calc(100% + 5px);
-      left: 0;
-      min-width: 100%;
+      position: fixed;
+      max-width: min(420px, calc(100vw - 16px));
       max-height: 270px;
       overflow-y: auto;
-      background: #ffffff;
-      border: 1px solid rgba(20, 70, 52, 0.12);
-      border-radius: 12px;
-      box-shadow: 0 12px 30px -4px rgba(20, 70, 52, 0.14), 0 4px 12px rgba(0, 0, 0, 0.04);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
       padding: 5px;
       z-index: 1050;
       animation: dropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -253,7 +272,7 @@ export interface ZenSelectOption<T = any> {
         background: transparent;
       }
       &::-webkit-scrollbar-thumb {
-        background: rgba(20, 70, 52, 0.16);
+        background: var(--color-border-strong);
         border-radius: 9999px;
       }
       &::-webkit-scrollbar-thumb:hover {
@@ -264,8 +283,8 @@ export interface ZenSelectOption<T = any> {
     .empty-options {
       padding: 12px 14px;
       text-align: center;
-      font-size: 0.8125rem;
-      color: #8da499;
+      font-size: var(--text-sm);
+      color: var(--color-text-subtle);
     }
 
     .zen-select-option {
@@ -275,27 +294,27 @@ export interface ZenSelectOption<T = any> {
       gap: 10px;
       padding: 8px 12px;
       border-radius: 8px;
-      font-size: 0.84rem;
-      color: #2c3e35;
+      font-size: var(--text-sm);
+      color: var(--color-text-main);
       cursor: pointer;
       transition: all 0.15s ease;
 
       &:hover:not(.is-disabled) {
-        background: #f0fdf9;
-        color: #0f766e;
+        background: var(--color-surface-hover);
+        color: var(--color-primary);
       }
 
       &.is-selected {
-        background: #e6f4ea;
-        color: #144634;
+        background: var(--color-surface-hover);
+        color: var(--color-primary);
         font-weight: 600;
 
         .option-label {
-          color: #144634;
+          color: var(--color-primary);
         }
 
         .check-icon {
-          color: #0f766e;
+          color: var(--color-primary);
           flex-shrink: 0;
         }
       }
@@ -319,8 +338,8 @@ export interface ZenSelectOption<T = any> {
         }
 
         .option-sublabel {
-          font-size: 0.72rem;
-          color: #688377;
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
         }
       }
     }
@@ -338,7 +357,7 @@ export interface ZenSelectOption<T = any> {
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ZenSelectComponent implements ControlValueAccessor {
+export class ZenSelectComponent implements ControlValueAccessor, OnDestroy {
   private readonly elementRef = inject(ElementRef);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -421,20 +440,67 @@ export class ZenSelectComponent implements ControlValueAccessor {
 
   onDocumentClick(event: MouseEvent): void {
     if (!this.elementRef.nativeElement.contains(event.target)) {
-      this.isOpen.set(false);
+      this.close();
     }
   }
 
   onEscape(): void {
-    this.isOpen.set(false);
+    this.close();
   }
+
+  /** Vị trí menu tính theo ô chọn trên viewport; tự lật lên trên khi phía dưới không đủ chỗ. */
+  protected readonly dropdownPos = signal<{
+    top: number | null; bottom: number | null; left: number; width: number; maxHeight: number; above: boolean;
+  } | null>(null);
+
+  private readonly onAnyScroll = (event: Event): void => {
+    // Cuộn bên trong chính menu thì giữ nguyên; cuộn trang / vùng chứa thì định vị lại.
+    if (event.target instanceof Node && this.elementRef.nativeElement.contains(event.target)) return;
+    this.updatePosition();
+  };
 
   toggleOpen(): void {
     if (this.isDisabled()) return;
-    this.isOpen.update(open => !open);
     if (this.isOpen()) {
-      this.onTouched();
+      this.close();
+      return;
     }
+    this.updatePosition();
+    this.isOpen.set(true);
+    document.addEventListener('scroll', this.onAnyScroll, true);
+    this.onTouched();
+  }
+
+  close(): void {
+    if (!this.isOpen()) return;
+    this.isOpen.set(false);
+    document.removeEventListener('scroll', this.onAnyScroll, true);
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('scroll', this.onAnyScroll, true);
+  }
+
+  private updatePosition(): void {
+    const trigger = (this.elementRef.nativeElement as HTMLElement).querySelector('.zen-select-trigger');
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 5;
+    const margin = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const above = spaceBelow < 200 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(270, above ? spaceAbove : spaceBelow));
+    const width = rect.width;
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - Math.max(width, 160) - margin));
+    this.dropdownPos.set({
+      top: above ? null : rect.bottom + gap,
+      bottom: above ? window.innerHeight - rect.top + gap : null,
+      left,
+      width,
+      maxHeight,
+      above
+    });
   }
 
   selectOption(opt: ZenSelectOption): void {
@@ -442,7 +508,7 @@ export class ZenSelectComponent implements ControlValueAccessor {
     this.internalValue.set(opt.value);
     this.onChange(opt.value);
     this.valueChange.emit(opt.value);
-    this.isOpen.set(false);
+    this.close();
   }
 
   isSelected(val: any): boolean {

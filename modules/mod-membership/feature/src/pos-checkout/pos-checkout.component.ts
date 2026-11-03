@@ -5,10 +5,10 @@ import { RouterModule } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { CheckoutQuote, MembershipResp, MembershipApi, MembershipPlan, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
-import { ZenSelectComponent, ZenInputComponent } from '@yoga/platform/ui';
+import { ZEN_UI } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
 interface CheckoutDraft { actorId: string; key: string; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
-@Component({ selector: 'yoga-pos-checkout', standalone: true, imports: [CommonModule, FormsModule, RouterModule, ZenSelectComponent, ZenInputComponent], templateUrl: './pos-checkout.component.html', styleUrl: './pos-checkout.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'yoga-pos-checkout', standalone: true, imports: [CommonModule, FormsModule, RouterModule, ...ZEN_UI], templateUrl: './pos-checkout.component.html', styleUrl: './pos-checkout.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
 export class PosCheckoutComponent implements OnInit, OnDestroy {
   private readonly membershipApi = inject(MembershipApi);
   private readonly posApi = inject(PosApi);

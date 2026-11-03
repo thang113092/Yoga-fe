@@ -84,12 +84,12 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
       display: flex;
       align-items: center;
       width: 100%;
-      min-height: 40px;
-      background: #ffffff;
-      border: 1px solid rgba(20, 70, 52, 0.16);
-      border-radius: 10px;
+      min-height: var(--control-height-md);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
       padding: 0 12px;
-      box-shadow: 0 1px 3px rgba(20, 70, 52, 0.04);
+      box-shadow: var(--shadow-xs);
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
       box-sizing: border-box;
 
@@ -99,23 +99,23 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
       }
 
       &:hover:not(.is-disabled):not(.is-focused) {
-        border-color: #0f766e;
-        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-xs);
       }
 
       &.is-focused {
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
       }
 
       &.is-disabled {
-        background: #f1f4f3;
+        background: var(--color-surface-variant);
         border-color: rgba(20, 70, 52, 0.08);
         cursor: not-allowed;
         opacity: 0.7;
 
         .zen-search-input {
-          color: #8da499;
+          color: var(--color-text-subtle);
           cursor: not-allowed;
         }
       }
@@ -123,7 +123,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
       &.size-sm {
         min-height: 36px;
         padding: 0 10px;
-        .zen-search-input { font-size: 0.8125rem; }
+        .zen-search-input { font-size: var(--text-sm); }
       }
 
       &.size-lg {
@@ -133,7 +133,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
       }
 
       .search-icon {
-        color: #0f766e;
+        color: var(--color-primary);
         flex-shrink: 0;
         margin-right: 8px;
       }
@@ -142,7 +142,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
         flex: 1;
         min-width: 0;
         height: 100%;
-        min-height: 38px;
+        min-height: var(--control-height-md);
         padding: 6px 0;
         background: transparent !important;
         border: none !important;
@@ -150,9 +150,9 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
         box-shadow: none !important;
         border-radius: 0 !important;
         font-family: var(--font-sans);
-        font-size: 14px;
+        font-size: var(--text-base);
         line-height: 1.5;
-        color: #144634;
+        color: var(--color-primary);
 
         &:focus,
         &:focus-visible,
@@ -171,7 +171,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
         }
 
         &::placeholder {
-          color: #8da499;
+          color: var(--color-text-subtle);
           font-weight: 400;
         }
       }
@@ -179,7 +179,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
       .btn-search-clear {
         background: rgba(20, 70, 52, 0.06);
         border: none;
-        color: #688377;
+        color: var(--color-text-muted);
         width: 20px;
         height: 20px;
         border-radius: 50%;
@@ -192,8 +192,8 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
         transition: all 0.15s ease;
 
         &:hover {
-          color: #0f766e;
-          background: #e6f4ea;
+          color: var(--color-primary);
+          background: var(--color-surface-hover);
         }
       }
     }

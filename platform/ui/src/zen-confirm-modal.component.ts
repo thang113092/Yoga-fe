@@ -157,11 +157,10 @@ import { ZenConfirmType } from './zen-confirm.types';
 
     .zen-confirm-card {
       position: relative;
-      background: #ffffff;
+      background: var(--color-surface);
       border-radius: 18px;
-      border: 1px solid rgba(20, 70, 52, 0.12);
-      box-shadow: 0 24px 48px -12px rgba(10, 25, 19, 0.22),
-                  0 8px 18px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-xl);
       width: 100%;
       max-width: 440px;
       padding: 26px 24px 22px;
@@ -177,7 +176,7 @@ import { ZenConfirmType } from './zen-confirm.types';
       right: 16px;
       background: transparent;
       border: none;
-      color: #71887e;
+      color: var(--color-text-muted);
       width: 32px;
       height: 32px;
       border-radius: 8px;
@@ -188,8 +187,8 @@ import { ZenConfirmType } from './zen-confirm.types';
       transition: all 0.18s ease;
 
       &:hover {
-        background: #f1f5f3;
-        color: #144634;
+        background: var(--color-surface-hover);
+        color: var(--color-primary);
       }
     }
 
@@ -203,27 +202,27 @@ import { ZenConfirmType } from './zen-confirm.types';
       flex-shrink: 0;
 
       &.delete {
-        background: #fef2f2;
-        border: 1px solid rgba(220, 38, 38, 0.2);
-        color: #dc2626;
+        background: var(--color-error-bg);
+        border: 1px solid var(--color-error-border);
+        color: var(--color-error-solid);
       }
 
       &.cancel {
-        background: #fffbeb;
-        border: 1px solid rgba(217, 119, 6, 0.22);
-        color: #d97706;
+        background: var(--color-warning-bg);
+        border: 1px solid var(--color-warning-border);
+        color: var(--color-warning);
       }
 
       &.warning {
-        background: #fef3c7;
-        border: 1px solid rgba(180, 83, 9, 0.2);
-        color: #b45309;
+        background: var(--color-warning-bg);
+        border: 1px solid var(--color-warning-border);
+        color: var(--color-warning);
       }
 
       &.info {
-        background: rgba(20, 70, 52, 0.08);
-        border: 1px solid rgba(20, 70, 52, 0.18);
-        color: #144634;
+        background: var(--color-primary-soft);
+        border: 1px solid var(--color-border-strong);
+        color: var(--color-primary);
       }
     }
 
@@ -237,7 +236,7 @@ import { ZenConfirmType } from './zen-confirm.types';
       font-family: var(--font-serif);
       font-size: 1.25rem;
       font-weight: 700;
-      color: #144634;
+      color: var(--color-primary);
       margin: 0;
       letter-spacing: -0.01em;
       line-height: 1.35;
@@ -248,20 +247,20 @@ import { ZenConfirmType } from './zen-confirm.types';
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      background: #f6f8f7;
-      border: 1px solid rgba(20, 70, 52, 0.08);
+      background: var(--color-surface-hover);
+      border: 1px solid var(--color-border);
       border-radius: 8px;
       font-size: 0.85rem;
       width: fit-content;
       max-width: 100%;
 
       .item-label {
-        color: #71887e;
+        color: var(--color-text-muted);
         font-weight: 500;
       }
 
       .item-value {
-        color: #144634;
+        color: var(--color-primary);
         font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -272,7 +271,7 @@ import { ZenConfirmType } from './zen-confirm.types';
     .zen-confirm-message {
       font-family: var(--font-sans);
       font-size: 0.925rem;
-      color: #3b4e45;
+      color: var(--color-text-main);
       line-height: 1.55;
       margin: 0;
     }
@@ -293,21 +292,21 @@ import { ZenConfirmType } from './zen-confirm.types';
       }
 
       &.delete {
-        background: #fff5f5;
-        border: 1px solid rgba(220, 38, 38, 0.15);
-        color: #991b1b;
+        background: var(--color-error-bg);
+        border: 1px solid var(--color-error-border);
+        color: var(--color-error);
       }
 
       &.cancel {
-        background: #fffbeb;
-        border: 1px solid rgba(217, 119, 6, 0.16);
-        color: #92400e;
+        background: var(--color-warning-bg);
+        border: 1px solid var(--color-warning-border);
+        color: var(--color-warning);
       }
 
       &.warning, &.info {
-        background: #f4f8f6;
-        border: 1px solid rgba(20, 70, 52, 0.12);
-        color: #144634;
+        background: var(--color-surface-hover);
+        border: 1px solid var(--color-border);
+        color: var(--color-primary);
       }
     }
 
@@ -318,13 +317,13 @@ import { ZenConfirmType } from './zen-confirm.types';
       gap: 12px;
       margin-top: 6px;
       padding-top: 14px;
-      border-top: 1px solid rgba(20, 70, 52, 0.08);
+      border-top: 1px solid var(--color-border);
 
       button {
         font-family: var(--font-sans);
-        font-size: 0.875rem;
+        font-size: var(--text-base);
         padding: 9px 18px;
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -334,58 +333,58 @@ import { ZenConfirmType } from './zen-confirm.types';
       }
 
       .btn-zen-cancel {
-        background: #ffffff;
-        border: 1px solid rgba(20, 70, 52, 0.2);
-        color: #244b3c;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        color: var(--color-text-main);
 
         &:hover {
-          background: #f6f8f7;
-          border-color: #144634;
-          color: #144634;
+          background: var(--color-surface-hover);
+          border-color: var(--color-primary);
+          color: var(--color-primary);
         }
       }
 
       .btn-zen-confirm {
-        color: #ffffff;
+        color: var(--color-surface);
         border: none;
 
         &.btn-delete {
-          background: #b91c1c;
-          box-shadow: 0 2px 8px rgba(185, 28, 28, 0.25);
+          background: var(--color-error);
+          box-shadow: var(--shadow-sm);
 
           &:hover {
-            background: #991b1b;
-            box-shadow: 0 4px 12px rgba(185, 28, 28, 0.35);
+            background: var(--color-error);
+            box-shadow: var(--shadow-sm);
           }
         }
 
         &.btn-cancel {
-          background: #0f766e;
-          box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+          background: var(--color-primary);
+          box-shadow: var(--shadow-sm);
 
           &:hover {
-            background: #115e59;
-            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.35);
+            background: var(--color-primary-hover);
+            box-shadow: var(--shadow-sm);
           }
         }
 
         &.btn-warning {
-          background: #d97706;
-          box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25);
+          background: var(--color-warning);
+          box-shadow: var(--shadow-sm);
 
           &:hover {
-            background: #b45309;
-            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+            background: var(--color-warning);
+            box-shadow: var(--shadow-sm);
           }
         }
 
         &.btn-info {
-          background: #144634;
-          box-shadow: 0 2px 8px rgba(20, 70, 52, 0.25);
+          background: var(--color-primary);
+          box-shadow: var(--shadow-sm);
 
           &:hover {
-            background: #0d2f23;
-            box-shadow: 0 4px 12px rgba(20, 70, 52, 0.35);
+            background: var(--color-primary-hover);
+            box-shadow: var(--shadow-sm);
           }
         }
       }

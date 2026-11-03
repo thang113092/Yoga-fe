@@ -99,8 +99,8 @@ describe('RevenueReportComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.main-title')?.textContent).toContain('Tổng Hợp Doanh Thu');
-    expect(compiled.querySelector('.highlight-card .serif-value')?.textContent).toContain('50.000.000');
+    expect(compiled.querySelector('zen-page-header h1')?.textContent).toContain('Tổng Hợp Doanh Thu');
+    expect(compiled.querySelector('.highlight-card')?.textContent).toContain('50.000.000');
     expect(compiled.querySelectorAll('.bar-column').length).toBe(2);
   });
 

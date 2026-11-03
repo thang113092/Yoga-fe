@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, CreateUserReq, UserApi, UserResponse } from '@yoga/platform/auth';
-import { ZenSelectComponent, ZenInputComponent, ZenSearchComponent, ZenToastService } from '@yoga/platform/ui';
+import { ZEN_UI, ZenTabItem, ZenToastService, ZenTone } from '@yoga/platform/ui';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { MembershipApi, PosApi, MembershipResp, StudentOrderHistoryResp } from '@yoga/mod-membership/data-access';
 import { BookingApi, StudentBookingDetail } from '@yoga/mod-schedule/data-access';
@@ -18,7 +18,7 @@ interface RoleOption {
 @Component({
   selector: 'yoga-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ZenSelectComponent, ZenInputComponent, ZenSearchComponent],
+  imports: [CommonModule, FormsModule, ...ZEN_UI],
   templateUrl: './user-management.component.html',
   styleUrls: ['./user-management.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,6 +48,27 @@ export class UserManagementComponent implements OnInit {
   readonly studentOrders = signal<StudentOrderHistoryResp[]>([]);
   readonly studentBookings = signal<StudentBookingDetail[]>([]);
   readonly membershipPlansMap = signal<Map<string, string>>(new Map());
+
+  readonly studentTabs = computed<ZenTabItem[]>(() => [
+    { key: 'profile', label: 'Thông Tin Cá Nhân', icon: 'user' },
+    { key: 'orders', label: 'Lịch Sử Mua Thẻ', icon: 'shopping-bag', count: this.studentOrders().length || null },
+    { key: 'history', label: 'Lịch Sử Tập Luyện', icon: 'clock', count: this.studentBookings().length || null }
+  ]);
+
+  readonly roleTone: Record<string, ZenTone> = {
+    SUPER_ADMIN: 'primary',
+    BRANCH_MANAGER: 'info',
+    RECEPTIONIST: 'warning',
+    INSTRUCTOR: 'success',
+    STUDENT: 'neutral'
+  };
+
+  readonly bookingTone: Record<string, ZenTone> = {
+    ATTENDED: 'success',
+    CONFIRMED: 'info',
+    CANCELLED: 'neutral',
+    NO_SHOW: 'danger'
+  };
 
   // Filter signals
   readonly searchQuery = signal<string>('');
@@ -94,7 +115,7 @@ export class UserManagementComponent implements OnInit {
 
   readonly roleFilterOptions = [
     { value: '', label: 'Tất cả vai trò' },
-    { value: 'SUPER_ADMIN', label: 'Ban Giám Đốc (Super Admin)' },
+    { value: 'SUPER_ADMIN', label: 'Ban Giám Đốc' },
     { value: 'BRANCH_MANAGER', label: 'Quản Lý Cơ Sở (Branch Manager)' },
     { value: 'RECEPTIONIST', label: 'Lễ Tân Đón Tiếp (Receptionist)' },
     { value: 'INSTRUCTOR', label: 'Huấn Luyện Viên (Instructor)' },
@@ -156,7 +177,7 @@ export class UserManagementComponent implements OnInit {
   readonly availableRoles = computed<RoleOption[]>(() => {
     if (this.auth.isSuperAdmin()) {
       return [
-        { code: 'SUPER_ADMIN', name: 'Ban Giám Đốc (Super Admin)', desc: 'Toàn quyền chuỗi phòng tập' },
+        { code: 'SUPER_ADMIN', name: 'Ban Giám Đốc', desc: 'Toàn quyền chuỗi phòng tập' },
         { code: 'BRANCH_MANAGER', name: 'Quản Lý Cơ Sở (Branch Manager)', desc: 'Quản lý cơ sở và nhân sự' },
         { code: 'RECEPTIONIST', name: 'Lễ Tân Đón Tiếp (Receptionist)', desc: 'Bán thẻ POS và điểm danh Kiosk' },
         { code: 'INSTRUCTOR', name: 'Huấn Luyện Viên (Instructor)', desc: 'Giảng dạy và xác nhận ca học' },

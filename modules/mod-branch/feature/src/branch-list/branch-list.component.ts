@@ -14,8 +14,7 @@ import {
 } from '@yoga/mod-branch/data-access';
 import {
   ZenConfirmService,
-  ZenInputComponent,
-  ZenSearchComponent,
+  ZEN_UI,
   ZenToastService
 } from '@yoga/platform/ui';
 
@@ -26,8 +25,7 @@ import {
     CommonModule,
     FormsModule,
     RouterModule,
-    ZenSearchComponent,
-    ZenInputComponent
+    ...ZEN_UI
   ],
   templateUrl: './branch-list.component.html',
   styleUrls: ['./branch-list.component.scss'],

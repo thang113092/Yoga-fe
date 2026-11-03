@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin, finalize, catchError, of } from 'rxjs';
 import { BookingApi, StudentBookingDetail, WorkoutHistoryItem } from '@yoga/mod-schedule/data-access';
 import { AuthService } from '@yoga/platform/auth';
+import { ZEN_UI } from '@yoga/platform/ui';
 
 @Component({
   selector: 'yoga-workout-history',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ...ZEN_UI],
   templateUrl: './workout-history.component.html',
   styleUrl: './workout-history.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

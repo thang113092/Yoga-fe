@@ -1,0 +1,391 @@
+/* ==========================================================================
+   An Yên UI — lớp CSS dùng chung cho toàn bộ phần quản lý.
+   Dùng kèm các component trong @yoga/platform/ui (zen-page-header, zen-card...).
+   Mọi giá trị lấy từ tokens.scss — không hard-code màu / cỡ chữ.
+   ========================================================================== */
+
+/* ---------- Page layout ---------- */
+/* Trang quản lý trải full chiều ngang; lề hai bên theo --page-padding-x (khớp với header). */
+.zen-page {
+  width: 100%;
+  margin: 0;
+  padding: var(--page-padding-y) var(--page-padding-x) var(--spacing-3xl);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-text-main);
+
+  /* Trang đọc (form dài, chi tiết) có thể giới hạn bề rộng nội dung. */
+  &--narrow { max-width: 1200px; margin: 0 auto; }
+}
+
+.zen-stack { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.zen-stack--sm { gap: var(--spacing-sm); }
+.zen-stack--lg { gap: var(--spacing-lg); }
+
+.zen-row { display: flex; align-items: center; gap: var(--spacing-sm); flex-wrap: wrap; }
+.zen-row--between { justify-content: space-between; }
+.zen-row--end { justify-content: flex-end; }
+
+.zen-grid {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+
+  &--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  &--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  &--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  &--stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+
+  @media (max-width: 1024px) {
+    &--3, &--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    &--2, &--3, &--4 { grid-template-columns: minmax(0, 1fr); }
+  }
+}
+
+/* ---------- Typography helpers ---------- */
+.zen-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--color-secondary);
+}
+.zen-section-title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-text-main);
+}
+.zen-text-muted { color: var(--color-text-muted); }
+.zen-text-secondary { color: var(--color-text-secondary); }
+.zen-text-sm { font-size: var(--text-sm); }
+.zen-text-xs { font-size: var(--text-xs); }
+.zen-num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+.zen-mono { font-family: var(--font-mono); font-size: 0.92em; letter-spacing: 0; }
+.zen-strong { font-weight: var(--weight-semibold); color: var(--color-text-main); }
+.zen-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-price {
+  font-weight: var(--weight-bold);
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Buttons ---------- */
+.zen-btn {
+  --btn-h: var(--control-height-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  min-height: var(--btn-h);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+
+  svg { flex-shrink: 0; }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled, &.is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Variants */
+  &--primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-contrast);
+    box-shadow: var(--shadow-xs);
+    &:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+  }
+  &--secondary {
+    background: var(--color-primary-soft);
+    border-color: transparent;
+    color: var(--color-primary);
+    &:hover { background: var(--color-primary-soft-hover); }
+  }
+  &--outline {
+    background: var(--color-surface);
+    border-color: var(--color-border-strong);
+    color: var(--color-text-main);
+    box-shadow: var(--shadow-xs);
+    &:hover { background: var(--color-surface-hover); border-color: var(--color-primary); color: var(--color-primary); }
+  }
+  &--ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+    &:hover { background: var(--color-surface-hover); color: var(--color-primary); }
+  }
+  &--danger {
+    background: var(--color-error-solid);
+    border-color: var(--color-error-solid);
+    color: #ffffff;
+    &:hover { background: var(--color-error); border-color: var(--color-error); }
+  }
+  &--danger-outline {
+    background: var(--color-surface);
+    border-color: var(--color-error-border);
+    color: var(--color-error);
+    &:hover { background: var(--color-error-bg); }
+  }
+
+  /* Sizes */
+  &--sm { --btn-h: var(--control-height-sm); padding: 0 12px; font-size: var(--text-sm); border-radius: var(--radius-sm); }
+  &--lg { --btn-h: var(--control-height-lg); padding: 0 22px; font-size: var(--text-md); }
+  &--block { width: 100%; }
+
+  /* Icon-only */
+  &--icon {
+    width: var(--btn-h);
+    padding: 0;
+  }
+
+  .zen-spin, &.is-loading svg.zen-spin { animation: zen-spin 0.8s linear infinite; }
+}
+
+@keyframes zen-spin { to { transform: rotate(360deg); } }
+.zen-spin { animation: zen-spin 0.8s linear infinite; }
+
+/* ---------- Form fields ---------- */
+.zen-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
+
+  .zen-field--full { grid-column: 1 / -1; }
+
+  @media (max-width: 640px) { grid-template-columns: minmax(0, 1fr); }
+}
+
+.zen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.zen-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-secondary);
+
+  .zen-required { color: var(--color-error); margin-left: 2px; }
+}
+
+.zen-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+.zen-error { font-size: var(--text-xs); color: var(--color-error); font-weight: var(--weight-medium); }
+
+.zen-control {
+  width: 100%;
+  min-height: var(--control-height-md);
+  padding: 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  box-sizing: border-box;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+
+  &::placeholder { color: var(--color-text-subtle); }
+  &:hover:not(:disabled):not(:focus) { border-color: var(--color-text-subtle); }
+  &:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-focus-ring); }
+  &:disabled { background: var(--color-surface-variant); color: var(--color-text-subtle); cursor: not-allowed; }
+  &.is-invalid { border-color: var(--color-error); }
+}
+textarea.zen-control { padding: 10px 12px; min-height: 88px; line-height: var(--leading-normal); resize: vertical; }
+
+/* Checkbox / switch */
+.zen-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-base);
+  color: var(--color-text-main);
+  cursor: pointer;
+
+  input { width: 16px; height: 16px; accent-color: var(--color-primary); margin: 0; }
+}
+
+/* ---------- Table ---------- */
+.zen-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.zen-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-main);
+  font-variant-numeric: tabular-nums;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 10px 16px;
+    background: var(--color-surface-variant);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  /* Mặc định không xuống dòng (bảng cuộn ngang trong .zen-table-wrap);
+     ô chứa văn bản dài (tên khóa học, mô tả...) gắn .is-wrap. */
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  td.is-wrap { white-space: normal; min-width: 220px; max-width: 360px; }
+
+  tbody tr { transition: background-color var(--duration-fast) ease; }
+  tbody tr:hover { background: var(--color-surface-hover); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.is-selected { background: var(--color-primary-soft); }
+
+  .is-numeric, .is-right { text-align: right; }
+  .is-center { text-align: center; }
+  .is-actions { text-align: right; white-space: nowrap; width: 1%; }
+  .is-nowrap { white-space: nowrap; }
+
+  .cell-primary { font-weight: var(--weight-semibold); color: var(--color-text-main); }
+  .cell-sub { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--color-text-muted); }
+  .cell-muted { color: var(--color-text-muted); }
+
+  &--compact {
+    th { padding: 8px 12px; }
+    td { padding: 8px 12px; }
+  }
+}
+
+/* Cell with avatar + 2 lines */
+.zen-cell-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ---------- Filter chips & segmented control ---------- */
+.zen-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) ease;
+
+  &:hover { border-color: var(--color-border-strong); color: var(--color-text-main); }
+  &.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-contrast);
+  }
+}
+
+.zen-segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--color-neutral-bg);
+  border-radius: var(--radius-md);
+
+  button {
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--duration-fast) ease;
+
+    &:hover { color: var(--color-text-main); }
+    &.is-active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-xs); }
+  }
+}
+
+/* ---------- Description list (thông tin chi tiết) ---------- */
+.zen-dl {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: 10px 20px;
+  margin: 0;
+  font-size: var(--text-sm);
+
+  dt { color: var(--color-text-muted); }
+  dd { margin: 0; color: var(--color-text-main); font-weight: var(--weight-medium); }
+}
+
+/* ---------- Divider ---------- */
+.zen-divider {
+  height: 1px;
+  border: none;
+  margin: var(--spacing-md) 0;
+  background: var(--color-border);
+}
+
+/* ---------- Skeleton ---------- */
+.zen-skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-neutral-bg) 0%, var(--color-surface-variant) 50%, var(--color-neutral-bg) 100%);
+  background-size: 200% 100%;
+  animation: zen-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes zen-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .zen-spin, .zen-skeleton { animation: none; }
+}

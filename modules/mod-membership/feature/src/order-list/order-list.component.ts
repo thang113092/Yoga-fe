@@ -6,12 +6,12 @@ import { Subscription } from 'rxjs';
 import { PosApi, OrderListResult } from '@yoga/mod-membership/data-access';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { AuthService } from '@yoga/platform/auth';
-import { ZenSelectComponent, ZenSearchComponent, ZenSelectOption } from '@yoga/platform/ui';
+import { ZEN_UI, ZenSelectOption, ZenTone } from '@yoga/platform/ui';
 
 @Component({
   selector: 'yoga-order-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ZenSelectComponent, ZenSearchComponent],
+  imports: [CommonModule, FormsModule, ...ZEN_UI],
   templateUrl: './order-list.component.html',
   styleUrl: './order-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -37,6 +37,13 @@ export class OrderListComponent implements OnInit {
     PAID: 'Đã thanh toán',
     CANCELLED: 'Đã hủy',
     REFUNDED: 'Đã hoàn tiền'
+  };
+
+  readonly statusTone: Record<string, ZenTone> = {
+    PENDING: 'warning',
+    PAID: 'success',
+    CANCELLED: 'neutral',
+    REFUNDED: 'info'
   };
 
   readonly statusFilterOptions: ZenSelectOption<string>[] = [

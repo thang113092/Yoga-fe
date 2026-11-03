@@ -1,116 +1,45 @@
-<div class="schedule-calendar-container">
-  <!-- Notifications -->
+<div class="zen-page">
+  <zen-page-header
+    eyebrow="Lịch tập & đặt chỗ An Yên"
+    heading="Thời khóa biểu lớp học"
+    subtitle="Chọn ngày, bộ môn và cơ sở để tìm ca học phù hợp, giữ chỗ hoặc đăng ký hàng chờ."
+    [count]="filteredSchedules().length"
+    countLabel="ca mở"
+  >
+    @if (auth.canManageClasses()) {
+      <a actions routerLink="/schedule/manage" class="zen-btn zen-btn--primary">
+        <zen-icon name="plus" />
+        <span>Mở lớp</span>
+      </a>
+    }
+  </zen-page-header>
+
   @if (successMessage()) {
-    <div class="zen-alert zen-alert-success" role="alert">
-      <div class="alert-icon-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-      </div>
-      <div class="alert-text">{{ successMessage() }}</div>
-      <button type="button" class="btn-close" (click)="successMessage.set(null)" aria-label="Đóng thông báo">✕</button>
-    </div>
+    <zen-alert tone="success" dismissible (dismissed)="successMessage.set(null)">{{ successMessage() }}</zen-alert>
   }
-
   @if (errorMessage()) {
-    <div class="zen-alert zen-alert-danger" role="alert">
-      <div class="alert-icon-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-      </div>
-      <div class="alert-text">{{ errorMessage() }}</div>
-      <button type="button" class="btn-close" (click)="errorMessage.set(null)" aria-label="Đóng thông báo">✕</button>
-    </div>
+    <zen-alert tone="danger" dismissible (dismissed)="errorMessage.set(null)">{{ errorMessage() }}</zen-alert>
   }
 
-  <!-- Compact Header Banner -->
-  <div class="calendar-header-compact">
-    <div class="header-left">
-      <div class="header-pre-tag">LỊCH TẬP & ĐẶT CHỖ AN YÊN</div>
-      <div class="title-with-meta">
-        <h1 class="header-title">Thời Khóa Biểu Lớp Học</h1>
-        <span class="header-count-badge">{{ filteredSchedules().length }} ca mở</span>
-      </div>
-    </div>
-
-    <!-- Zen Luxury Navigation Tabs -->
-    <div class="calendar-tabs-group">
-      <button
-        type="button"
-        class="zen-tab-pill"
-        [class.active]="activeTab() === 'calendar'"
-        (click)="activeTab.set('calendar')"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        <span>Thời Khóa Biểu Lớp</span>
-      </button>
-
-      <button
-        type="button"
-        class="zen-tab-pill"
-        [class.active]="activeTab() === 'my-bookings'"
-        (click)="activeTab.set('my-bookings')"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-        </svg>
-        <span>Lịch Đã Đặt Của Tôi</span>
-        @if (upcomingBookingCount() > 0) {
-          <span class="tab-badge">{{ upcomingBookingCount() }}</span>
-        }
-      </button>
-
-      @if (auth.canManageClasses()) {
-        <a routerLink="/schedule/manage" class="zen-tab-pill btn-admin-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          <span>Mở Lớp</span>
-        </a>
-      }
-    </div>
-  </div>
+  <zen-tabs [items]="tabs()" [active]="activeTab()" (activeChange)="setTab($event)" />
 
   @if (activeTab() === 'calendar') {
     @if (!auth.isStudent()) {
-      <div class="login-notice-bar">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>Vui lòng <a routerLink="/auth/login" class="link-bold">đăng nhập tài khoản học viên</a> để đặt chỗ và xem lịch cá nhân.</span>
-      </div>
+      <zen-alert tone="info">
+        Vui lòng <a routerLink="/auth/login" class="inline-link">đăng nhập tài khoản học viên</a> để đặt chỗ và xem lịch cá nhân.
+      </zen-alert>
     }
 
-    <!-- Unified Control Toolbar -->
-    <div class="compact-control-bar">
-      <!-- Dòng 1: Danh sách các ngày trong tháng -->
-      <div class="control-row month-calendar-row">
-        <div class="month-selector-box">
-          <button type="button" class="btn-month-nav" (click)="prevMonth()" title="Tháng trước">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
+    <zen-card padding="none">
+      <!-- Dải ngày trong tháng -->
+      <div class="month-row">
+        <div class="month-selector">
+          <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon" (click)="prevMonth()" title="Tháng trước" aria-label="Tháng trước">
+            <zen-icon name="chevron-left" />
           </button>
           <span class="current-month-text">{{ currentMonthLabel() }}</span>
-          <button type="button" class="btn-month-nav" (click)="nextMonth()" title="Tháng sau">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
+          <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon" (click)="nextMonth()" title="Tháng sau" aria-label="Tháng sau">
+            <zen-icon name="chevron-right" />
           </button>
         </div>
 
@@ -134,218 +63,124 @@
               [class.has-classes]="day.count > 0"
               (click)="selectedDate.set(day.isoDate)"
             >
-              <div class="day-sub-wrap">
-                <span class="day-sub">{{ day.dayName }}</span>
+              <span class="day-sub">
+                {{ day.dayName }}
                 @if (day.count > 0) {
                   <span class="day-dot" [title]="day.count + ' ca học'"></span>
                 }
-              </div>
+              </span>
               <span class="day-num">{{ day.dayNumber }}</span>
             </button>
           }
         </div>
       </div>
 
-      <!-- Dòng 2: Search chung -> Bộ môn -> Cơ sở -->
-      <div class="control-row filters-bottom-row">
-        <!-- 1. Tìm kiếm chung -->
-        <div class="inline-search">
-          <div class="search-input-box">
-            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              class="search-input"
-              placeholder="Tìm lớp, HLV..."
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event)"
-            />
-            @if (searchQuery()) {
-              <button type="button" class="btn-clear-search" (click)="searchQuery.set('')">✕</button>
-            }
-          </div>
+      <zen-toolbar class="calendar-toolbar">
+        <zen-search
+          class="zen-toolbar-grow"
+          placeholder="Tìm lớp, HLV..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          (clear)="searchQuery.set('')"
+        />
+        <div class="category-chips">
+          @for (cat of categories; track cat.key) {
+            <button
+              type="button"
+              class="zen-chip"
+              [class.is-active]="selectedCategory() === cat.key"
+              (click)="selectedCategory.set(cat.key)"
+            >
+              {{ cat.label }}
+            </button>
+          }
         </div>
+        <div toolbar-end class="branch-filter">
+          <zen-icon name="map-pin" [size]="14" />
+          <zen-select
+            id="branchSelect"
+            [options]="branchOptions()"
+            valueKey="id"
+            labelKey="name"
+            [ngModel]="selectedBranch()"
+            (ngModelChange)="onBranchChange($event)"
+            placeholder="Tất cả cơ sở"
+          />
+        </div>
+      </zen-toolbar>
+    </zen-card>
 
-        <!-- 2. Bộ môn -->
-        <div class="inline-categories">
-          <div class="category-pills">
-            <button
-              type="button"
-              class="pill-btn"
-              [class.active]="selectedCategory() === 'ALL'"
-              (click)="selectedCategory.set('ALL')"
-            >
-              Tất cả bộ môn
-            </button>
-            <button
-              type="button"
-              class="pill-btn"
-              [class.active]="selectedCategory() === 'Hatha'"
-              (click)="selectedCategory.set('Hatha')"
-            >
-              Hatha
-            </button>
-            <button
-              type="button"
-              class="pill-btn"
-              [class.active]="selectedCategory() === 'Vinyasa'"
-              (click)="selectedCategory.set('Vinyasa')"
-            >
-              Vinyasa Flow
-            </button>
-            <button
-              type="button"
-              class="pill-btn"
-              [class.active]="selectedCategory() === 'Yin'"
-              (click)="selectedCategory.set('Yin')"
-            >
-              Yin & Chuông
-            </button>
-            <button
-              type="button"
-              class="pill-btn"
-              [class.active]="selectedCategory() === 'Ashtanga'"
-              (click)="selectedCategory.set('Ashtanga')"
-            >
-              Ashtanga
-            </button>
-          </div>
-        </div>
-
-        <!-- 3. Cơ sở tập luyện -->
-        <div class="inline-branch-right">
-          <label for="branchSelect" class="branch-label">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <span>Cơ sở:</span>
-          </label>
-          <div class="branch-select-box">
-            <zen-select
-              id="branchSelect"
-              [options]="branchOptions()"
-              valueKey="id"
-              labelKey="name"
-              [ngModel]="selectedBranch()"
-              (ngModelChange)="onBranchChange($event)"
-              placeholder="Tất cả cơ sở"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Schedules Grid -->
-    @if (filteredSchedules().length === 0) {
-      <div class="empty-schedules-state">
-        <div class="empty-icon-circle">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-            <line x1="10" y1="15" x2="14" y2="15"/>
-          </svg>
-        </div>
-        <h3>Không tìm thấy ca học phù hợp</h3>
-        <p>Hiện không có ca học nào thỏa mãn bộ lọc hiện tại. Hãy thử chọn ngày khác hoặc mở rộng bộ môn.</p>
-        <button
-          type="button"
-          class="btn btn-clear-filters"
-          (click)="selectedCategory.set('ALL'); selectedDate.set('ALL'); searchQuery.set('')"
+    @if (isLoading() && schedules().length === 0) {
+      <zen-loading message="Đang tải lịch học..." />
+    } @else if (filteredSchedules().length === 0) {
+      <zen-card padding="none">
+        <zen-empty-state
+          icon="calendar"
+          heading="Không tìm thấy ca học phù hợp"
+          description="Hiện không có ca học nào thỏa mãn bộ lọc hiện tại. Hãy thử chọn ngày khác hoặc mở rộng bộ môn."
         >
-          Xóa Bộ Lọc & Xem Tất Cả
-        </button>
-      </div>
+          <button
+            type="button"
+            class="zen-btn zen-btn--outline"
+            (click)="selectedCategory.set('ALL'); selectedDate.set('ALL'); searchQuery.set('')"
+          >
+            Xóa bộ lọc & xem tất cả
+          </button>
+        </zen-empty-state>
+      </zen-card>
     } @else {
       <div class="schedules-grid">
         @for (schedule of filteredSchedules(); track schedule.id) {
-          <div
+          <article
             class="schedule-card"
             [class.is-full]="schedule.availableSlots === 0"
             [class.is-booked]="isBooked(schedule.id)"
           >
-            <!-- Card Top Header: Time, Duration & Category -->
             <div class="card-top">
               <div class="time-block">
-                <div class="time-badge">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  <strong class="time-range">{{ schedule.startTime | date:'HH:mm' }} – {{ schedule.endTime | date:'HH:mm' }}</strong>
-                </div>
-                <span class="duration-tag">{{ getDurationMinutes(schedule.startTime, schedule.endTime) }} phút</span>
+                <zen-icon name="clock" [size]="15" />
+                <strong class="time-range">{{ schedule.startTime | date:'HH:mm' }} – {{ schedule.endTime | date:'HH:mm' }}</strong>
+                <span class="zen-text-xs zen-text-muted">{{ getDurationMinutes(schedule.startTime, schedule.endTime) }} phút</span>
               </div>
-
-              <span class="category-tag" [class]="getCategoryBadge(schedule.className).type">
+              <zen-badge size="sm" [tone]="categoryTone(getCategoryBadge(schedule.className).type)">
                 {{ getCategoryBadge(schedule.className).label }}
-              </span>
+              </zen-badge>
             </div>
 
-            <!-- Card Meta: Date -->
-            <div class="card-meta-row">
-              <div class="card-date">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <span>{{ formatDateLabel(schedule.startTime) }}</span>
-              </div>
+            <div class="card-date">
+              <zen-icon name="calendar" [size]="13" />
+              <span>{{ formatDateLabel(schedule.startTime) }}</span>
             </div>
 
-            <div class="card-divider"></div>
-
-            <!-- Class Info -->
-            <div class="class-info-block">
+            <div class="card-body">
               <h3 class="class-title" [title]="schedule.className">{{ schedule.className }}</h3>
 
-              <div class="instructor-row">
-                <div class="instructor-avatar">
-                  <span>{{ getInitials(schedule.instructorName) }}</span>
-                </div>
-                <div class="instructor-meta">
-                  <span class="instructor-name">{{ schedule.instructorName }}</span>
-                  <span class="instructor-role">Huấn luyện viên An Yên</span>
+              <div class="zen-cell-user">
+                <zen-avatar [name]="schedule.instructorName" size="sm" />
+                <div>
+                  <span class="cell-name">{{ schedule.instructorName }}</span>
+                  <span class="cell-role">Huấn luyện viên An Yên</span>
                 </div>
               </div>
 
-              <!-- Location Row (Branch & Room) -->
-              <div class="card-location-row" [title]="(schedule.branchName ? schedule.branchName + ' · ' : '') + schedule.roomName">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <span class="location-text">
+              <div class="card-location" [title]="(schedule.branchName ? schedule.branchName + ' · ' : '') + schedule.roomName">
+                <zen-icon name="map-pin" [size]="13" />
+                <span class="zen-truncate">
                   @if (schedule.branchName) {
-                    <span class="branch-name">{{ schedule.branchName }}</span>
-                    <span class="loc-sep">·</span>
+                    <span class="zen-strong">{{ schedule.branchName }}</span> ·
                   }
-                  <span class="room-name">{{ schedule.roomName }}</span>
+                  {{ schedule.roomName }}
                 </span>
               </div>
             </div>
 
-            <!-- Capacity & Mat Bar -->
             <div class="capacity-section">
-              <div class="capacity-labels">
-                <span class="label-title">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                  </svg>
-                  Sĩ số lớp
-                </span>
-                <span class="label-count" [class.full-text]="schedule.availableSlots === 0">
+              <div class="zen-row zen-row--between zen-text-xs">
+                <span class="capacity-label"><zen-icon name="users" [size]="13" />Sĩ số lớp</span>
+                <span class="zen-num" [class.is-full-text]="schedule.availableSlots === 0">
                   <strong>{{ schedule.bookedCount }}/{{ schedule.maxCapacity }}</strong> thảm tập
                 </span>
               </div>
-
               <div class="progress-track">
                 <div
                   class="progress-fill"
@@ -354,464 +189,254 @@
                   [style.width.%]="(schedule.bookedCount / schedule.maxCapacity) * 100"
                 ></div>
               </div>
-
               <div class="slot-status">
                 @if (schedule.availableSlots > 4) {
-                  <span class="status-available">
-                    <span class="dot"></span> Còn {{ schedule.availableSlots }} vị trí thảm trống
-                  </span>
+                  <span class="is-available">Còn {{ schedule.availableSlots }} vị trí thảm trống</span>
                 } @else if (schedule.availableSlots > 0) {
-                  <span class="status-warning">
-                    <span class="dot"></span> Chỉ còn {{ schedule.availableSlots }} vị trí cuối cùng
-                  </span>
+                  <span class="is-warning">Chỉ còn {{ schedule.availableSlots }} vị trí cuối cùng</span>
                 } @else {
-                  <span class="status-full">
-                    <span class="dot"></span> Đã kín chỗ • Nhận đăng ký hàng chờ
-                  </span>
+                  <span class="is-danger">Đã kín chỗ · Nhận đăng ký hàng chờ</span>
                 }
               </div>
             </div>
 
-            <!-- Action Buttons Footer -->
             <div class="card-footer">
               @if (schedule.courseClassId) {
-                <a routerLink="/schedule/courses" [queryParams]="{classId:schedule.courseClassId}" class="btn btn-secondary-login">Buổi {{schedule.sessionNumber}} · Xem và đăng ký cả khóa</a>
+                <a routerLink="/schedule/courses" [queryParams]="{classId:schedule.courseClassId}" class="zen-btn zen-btn--secondary zen-btn--block">Buổi {{schedule.sessionNumber}} · Xem và đăng ký cả khóa</a>
               } @else if (isBooked(schedule.id)) {
-                <div class="booked-state-card">
-                  <div class="booked-info">
-                    <div class="booked-icon">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    </div>
-                    <span class="booked-text">Bạn đã giữ chỗ ca này</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn-link-action"
-                    (click)="activeTab.set('my-bookings')"
-                  >
-                    Xem vé & Thảm tập →
+                <div class="state-box tone-success">
+                  <span class="state-head"><zen-icon name="check" [size]="15" />Bạn đã giữ chỗ ca này</span>
+                  <button type="button" class="state-link" (click)="activeTab.set('my-bookings')">
+                    Xem vé & thảm tập <zen-icon name="arrow-right" [size]="13" />
                   </button>
                 </div>
               } @else if (getWaitingItem(schedule.id)) {
-                <div class="waitlist-state-card">
-                  <div class="waitlist-info">
-                    <div class="waitlist-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                    </div>
-                    <span class="waitlist-text">Đang trong hàng chờ (#{{ getWaitingItem(schedule.id)?.queuePosition }})</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn-link-action"
-                    (click)="activeTab.set('my-bookings')"
-                  >
-                    Quản lý thứ hạng →
+                <div class="state-box tone-warning">
+                  <span class="state-head"><zen-icon name="clock" [size]="15" />Đang trong hàng chờ (#{{ getWaitingItem(schedule.id)?.queuePosition }})</span>
+                  <button type="button" class="state-link" (click)="activeTab.set('my-bookings')">
+                    Quản lý thứ hạng <zen-icon name="arrow-right" [size]="13" />
                   </button>
                 </div>
               } @else if (hasTimeConflict(schedule)) {
                 <button
                   type="button"
-                  class="btn btn-conflict-card"
+                  class="state-box tone-danger is-clickable"
                   (click)="alertConflict(schedule)"
                   title="Trùng khung giờ với một ca học bạn đã đặt"
                 >
-                  <div class="conflict-head">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span>Trùng lịch ca đã đặt</span>
-                  </div>
-                  <span class="conflict-sub">Nhấp để xem chi tiết ca trùng</span>
+                  <span class="state-head"><zen-icon name="alert-circle" [size]="15" />Trùng lịch ca đã đặt</span>
+                  <span class="state-sub">Nhấp để xem chi tiết ca trùng</span>
                 </button>
               } @else if (isDifferentBranchOnly(schedule)) {
-                <div class="card-view-only-box" title="Thẻ tập của bạn là thẻ đơn cơ sở, chỉ áp dụng tại cơ sở đã đăng ký">
-                  <div class="view-only-pill">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                    <span>Chỉ Xem • Khác Cơ Sở Thẻ Tập</span>
-                  </div>
-                  <span class="view-only-sub">Thẻ đơn cơ sở không áp dụng tại đây</span>
+                <div class="state-box tone-neutral" title="Thẻ tập của bạn là thẻ đơn cơ sở, chỉ áp dụng tại cơ sở đã đăng ký">
+                  <span class="state-head"><zen-icon name="shield" [size]="14" />Chỉ xem · Khác cơ sở thẻ tập</span>
+                  <span class="state-sub">Thẻ đơn cơ sở không áp dụng tại đây</span>
                 </div>
               } @else if (!auth.isStudent()) {
-                <a
-                  routerLink="/auth/login"
-                  class="btn btn-secondary-login"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                    <polyline points="10 17 15 12 10 7"/>
-                    <line x1="15" y1="12" x2="3" y2="12"/>
-                  </svg>
-                  <span>Đăng Nhập Để Đặt Chỗ</span>
+                <a routerLink="/auth/login" class="zen-btn zen-btn--outline zen-btn--block">
+                  <zen-icon name="log-out" />
+                  <span>Đăng nhập để đặt chỗ</span>
                 </a>
               } @else if (!canBookSchedule(schedule)) {
-                <div class="card-no-pass-box" title="Bạn chưa có gói thẻ hoạt động phù hợp với ca học này">
-                  <div class="no-pass-pill">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span>Chỉ Xem • Chưa Có Thẻ Phù Hợp</span>
-                  </div>
-                  <span class="no-pass-sub">Vui lòng đăng ký thẻ tập để giữ chỗ</span>
+                <div class="state-box tone-neutral" title="Bạn chưa có gói thẻ hoạt động phù hợp với ca học này">
+                  <span class="state-head"><zen-icon name="info" [size]="14" />Chỉ xem · Chưa có thẻ phù hợp</span>
+                  <span class="state-sub">Vui lòng đăng ký thẻ tập để giữ chỗ</span>
                 </div>
               } @else if (schedule.availableSlots > 0) {
-                <button
-                  type="button"
-                  class="btn btn-primary-reserve"
-                  (click)="openBookingModal(schedule)"
-                >
-                  <span>Đặt Chỗ Ngay</span>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
-                  </svg>
+                <button type="button" class="zen-btn zen-btn--primary zen-btn--block" (click)="openBookingModal(schedule)">
+                  <span>Đặt chỗ ngay</span>
+                  <zen-icon name="arrow-right" />
                 </button>
               } @else {
-                <button
-                  type="button"
-                  class="btn btn-waitlist-reserve"
-                  (click)="openWaitlistModal(schedule)"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <line x1="19" y1="8" x2="19" y2="14"/>
-                    <line x1="22" y1="11" x2="16" y2="11"/>
-                  </svg>
-                  <span>Đăng Ký Hàng Chờ</span>
+                <button type="button" class="zen-btn zen-btn--outline zen-btn--block waitlist-btn" (click)="openWaitlistModal(schedule)">
+                  <zen-icon name="user-plus" />
+                  <span>Đăng ký hàng chờ</span>
                 </button>
               }
             </div>
-          </div>
+          </article>
         }
       </div>
     }
   } @else {
-    <!-- My Bookings & Waitlist Tab -->
-    <div class="my-bookings-container">
-      <!-- Section 1: Ca Đã Đặt Chỗ -->
-      <div class="section-block">
-        <h4 class="section-title">
-          <span>Ca Học Đã Giữ Chỗ ({{ myBookings().length }})</span>
-        </h4>
-
-        @if (myBookings().length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon-circle">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </div>
-            <p>Bạn chưa có lịch đặt chỗ nào. Hãy chọn ca học phù hợp từ Thời khóa biểu!</p>
-            <button type="button" class="btn btn-primary-reserve" (click)="activeTab.set('calendar')">
-              Xem Thời Khóa Biểu
-            </button>
-          </div>
-        } @else {
-          <div class="bookings-list">
-            @for (b of myBookings(); track b.id) {
-              <div class="booking-row" [class.cancelled]="b.status === 'CANCELLED'" [class.attended]="b.status === 'ATTENDED'">
-                <div class="booking-main-info">
-                  <div class="code-and-status">
-                    <strong class="booking-code">{{ b.bookingCode }}</strong>
-                    <span class="class-name-tag">{{ b.className }}</span>
-                    <span class="status-badge" [class]="b.status.toLowerCase()">
-                      @switch (b.status) {
-                        @case ('CONFIRMED') { Đã giữ chỗ (Sẵn sàng) }
-                        @case ('ATTENDED') { Đã điểm danh }
-                        @case ('CANCELLED') { Đã hủy (Đã hoàn lượt) }
-                        @default { {{ b.status }} }
-                      }
-                    </span>
-                  </div>
-                  <div class="booking-meta">
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      {{ b.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ b.endTime | date:'HH:mm' }}
-                    </span>
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      {{ b.roomName }} • {{ b.branchName }}
-                    </span>
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
-                      HLV: <strong>{{ b.instructorName }}</strong>
-                    </span>
-                    <span class="meta-item mat-highlight">
-                      Thảm số: <strong>{{ b.matNumber || 1 }}</strong>
-                    </span>
-                  </div>
+    <!-- Lịch đã đặt & hàng chờ -->
+    <zen-card heading="Ca học đã giữ chỗ" [subtitle]="myBookings().length + ' lượt đặt chỗ'" padding="none">
+      @if (myBookings().length === 0) {
+        <zen-empty-state icon="calendar" heading="Bạn chưa có lịch đặt chỗ nào" description="Hãy chọn ca học phù hợp từ Thời khóa biểu.">
+          <button type="button" class="zen-btn zen-btn--primary" (click)="activeTab.set('calendar')">Xem thời khóa biểu</button>
+        </zen-empty-state>
+      } @else {
+        <div class="bookings-list">
+          @for (b of myBookings(); track b.id) {
+            <div class="booking-row" [class.is-muted]="b.status === 'CANCELLED'">
+              <div class="booking-main">
+                <div class="zen-row">
+                  <strong class="zen-mono booking-code">{{ b.bookingCode }}</strong>
+                  <span class="zen-strong">{{ b.className }}</span>
+                  <zen-badge [tone]="bookingTone(b.status)" dot>
+                    @switch (b.status) {
+                      @case ('CONFIRMED') { Đã giữ chỗ (Sẵn sàng) }
+                      @case ('ATTENDED') { Đã điểm danh }
+                      @case ('CANCELLED') { Đã hủy (Đã hoàn lượt) }
+                      @default { {{ b.status }} }
+                    }
+                  </zen-badge>
                 </div>
-
-                <div class="booking-actions">
-                  @if (b.status === 'CONFIRMED' && b.canCancel) {
-                    <button
-                      type="button"
-                      class="btn btn-danger-outline"
-                      (click)="cancelBooking(b)"
-                      title="Hủy ca để nhận lại 1 lượt tập vào thẻ"
-                    >
-                      Hủy Ca (Hoàn Lượt)
-                    </button>
-                  } @else if (b.status === 'CONFIRMED' && !b.canCancel) {
-                    <span class="text-muted-notice">Đã qua giờ cho phép hủy</span>
-                  } @else if (b.status === 'ATTENDED') {
-                    <span class="attended-tag">Đã tham gia ca học</span>
-                  } @else if (b.status === 'CANCELLED') {
-                    <span class="refund-tag">Đã hoàn 1 lượt tập</span>
-                  }
+                <div class="booking-meta">
+                  <span><zen-icon name="clock" [size]="14" />{{ b.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ b.endTime | date:'HH:mm' }}</span>
+                  <span><zen-icon name="map-pin" [size]="14" />{{ b.roomName }} · {{ b.branchName }}</span>
+                  <span><zen-icon name="user" [size]="14" />HLV: <strong>{{ b.instructorName }}</strong></span>
+                  <zen-badge size="sm" tone="primary">Thảm số {{ b.matNumber || 1 }}</zen-badge>
                 </div>
               </div>
-            }
-          </div>
+
+              <div class="booking-actions">
+                @if (b.status === 'CONFIRMED' && b.canCancel) {
+                  <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelBooking(b)" title="Hủy ca để nhận lại 1 lượt tập vào thẻ">
+                    Hủy ca (hoàn lượt)
+                  </button>
+                } @else if (b.status === 'CONFIRMED' && !b.canCancel) {
+                  <span class="zen-text-xs zen-text-muted">Đã qua giờ cho phép hủy</span>
+                } @else if (b.status === 'ATTENDED') {
+                  <span class="zen-text-xs zen-text-muted">Đã tham gia ca học</span>
+                } @else if (b.status === 'CANCELLED') {
+                  <span class="zen-text-xs zen-text-muted">Đã hoàn 1 lượt tập</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </zen-card>
+
+    @if (myWaitlists().length > 0) {
+      <zen-card heading="Danh sách đang trong hàng chờ" [subtitle]="myWaitlists().length + ' ca học'" padding="none">
+        <div class="bookings-list">
+          @for (w of myWaitlists(); track w.id) {
+            <div class="booking-row" [class.is-muted]="w.status === 'CANCELLED'">
+              <div class="booking-main">
+                <div class="zen-row">
+                  <zen-badge tone="warning" size="sm">Hàng đợi #{{ w.queuePosition }}</zen-badge>
+                  <span class="zen-strong">{{ w.className }}</span>
+                  <zen-badge [tone]="bookingTone(w.status)" dot>
+                    @switch (w.status) {
+                      @case ('WAITING') { Đang xếp hàng chờ }
+                      @case ('CONVERTED') { Đã tự động giữ chỗ }
+                      @case ('CANCELLED') { Đã rút khỏi hàng chờ }
+                      @default { {{ w.status }} }
+                    }
+                  </zen-badge>
+                </div>
+                <div class="booking-meta">
+                  <span><zen-icon name="clock" [size]="14" />{{ w.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ w.endTime | date:'HH:mm' }}</span>
+                  <span><zen-icon name="map-pin" [size]="14" />{{ w.roomName }} · {{ w.branchName }}</span>
+                  <span><zen-icon name="user" [size]="14" />HLV: <strong>{{ w.instructorName }}</strong></span>
+                </div>
+              </div>
+
+              <div class="booking-actions">
+                @if (w.status === 'WAITING') {
+                  <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="cancelWaitlist(w)">Rút khỏi hàng chờ</button>
+                } @else if (w.status === 'CONVERTED') {
+                  <span class="zen-text-xs zen-text-muted">Đã chuyển sang lịch đặt chỗ</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </zen-card>
+    }
+  }
+</div>
+
+<!-- Modal đặt chỗ -->
+@if (bookingModalSchedule(); as m) {
+  <zen-modal heading="Đặt chỗ ca học yoga" subtitle="Xác nhận giữ chỗ bằng thẻ tập của bạn." icon="ticket" (closed)="closeBookingModal()">
+    <div class="zen-stack">
+      <div class="class-summary">
+        <p class="zen-section-title">{{ m.className }}</p>
+        <p class="zen-text-sm zen-text-muted">
+          {{ m.startTime | date:'HH:mm' }} – {{ m.endTime | date:'HH:mm' }} · {{ m.roomName }} · HLV: {{ m.instructorName }}
+        </p>
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="passSelect">Chọn thẻ tập áp dụng</label>
+        @if (eligiblePasses(m).length > 0) {
+          <zen-select
+            id="passSelect"
+            [options]="bookingPassOptions()"
+            [ngModel]="selectedPassId()"
+            (ngModelChange)="selectedPassId.set($event)"
+            placeholder="Chọn thẻ tập áp dụng"
+          />
+        } @else {
+          <zen-alert tone="danger">Học viên chưa có thẻ tập đang hoạt động. Vui lòng liên hệ tiếp tân hoặc mua thẻ trước khi đặt chỗ.</zen-alert>
+        }
+        <span class="zen-hint">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</span>
+      </div>
+
+      <zen-alert tone="info" heading="Chính sách giữ & hoàn lượt">
+        Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.
+      </zen-alert>
+    </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeBookingModal()" [disabled]="isSubmittingBooking()">Hủy bỏ</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitBooking()" [disabled]="isSubmittingBooking() || !selectedPassId()">
+        @if (isSubmittingBooking()) {
+          <zen-loading inline />
+          <span>Đang xác nhận...</span>
+        } @else {
+          Xác nhận giữ chỗ
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
+}
+
+<!-- Modal hàng chờ -->
+@if (waitlistModalSchedule(); as m) {
+  <zen-modal heading="Đăng ký vào hàng chờ ca học" subtitle="Hàng đợi tự động — không trừ lượt khi đang chờ." icon="users" tone="warning" (closed)="closeWaitlistModal()">
+    <div class="zen-stack">
+      <div class="class-summary">
+        <p class="zen-section-title">{{ m.className }}</p>
+        <p class="zen-text-sm zen-text-muted">
+          {{ m.startTime | date:'HH:mm' }} – {{ m.endTime | date:'HH:mm' }} · {{ m.roomName }} · HLV: {{ m.instructorName }}
+        </p>
+        <zen-badge tone="danger" size="sm">Ca học này hiện đã kín {{ m.maxCapacity }}/{{ m.maxCapacity }} thảm tập.</zen-badge>
+      </div>
+
+      <div class="zen-field">
+        <label class="zen-label" for="waitlistPassSelect">Chọn thẻ tập liên kết</label>
+        @if (eligiblePasses(m).length > 0) {
+          <zen-select
+            id="waitlistPassSelect"
+            [options]="waitlistPassOptions()"
+            [ngModel]="selectedPassId()"
+            (ngModelChange)="selectedPassId.set($event)"
+            placeholder="Chọn thẻ tập liên kết"
+          />
+        } @else {
+          <zen-alert tone="danger">Học viên chưa có thẻ tập hoạt động phù hợp với cơ sở của ca học này.</zen-alert>
         }
       </div>
 
-      <!-- Section 2: Hàng Chờ Lớp Học (Waitlist) -->
-      @if (myWaitlists().length > 0) {
-        <div class="section-block waitlist-block">
-          <h4 class="section-title waitlist-title">
-            <span>Danh Sách Đang Trong Hàng Chờ ({{ myWaitlists().length }})</span>
-          </h4>
-
-          <div class="bookings-list">
-            @for (w of myWaitlists(); track w.id) {
-              <div class="booking-row waitlist-row" [class.converted]="w.status === 'CONVERTED'" [class.cancelled]="w.status === 'CANCELLED'">
-                <div class="booking-main-info">
-                  <div class="code-and-status">
-                    <span class="queue-rank-badge">Hàng đợi: #{{ w.queuePosition }}</span>
-                    <strong class="booking-code">{{ w.className }}</strong>
-                    <span class="status-badge" [class]="w.status.toLowerCase()">
-                      @switch (w.status) {
-                        @case ('WAITING') { Đang xếp hàng chờ }
-                        @case ('CONVERTED') { Đã tự động giữ chỗ }
-                        @case ('CANCELLED') { Đã rút khỏi hàng chờ }
-                        @default { {{ w.status }} }
-                      }
-                    </span>
-                  </div>
-                  <div class="booking-meta">
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      {{ w.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ w.endTime | date:'HH:mm' }}
-                    </span>
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      {{ w.roomName }} • {{ w.branchName }}
-                    </span>
-                    <span class="meta-item">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
-                      HLV: <strong>{{ w.instructorName }}</strong>
-                    </span>
-                  </div>
-                </div>
-
-                <div class="booking-actions">
-                  @if (w.status === 'WAITING') {
-                    <button
-                      type="button"
-                      class="btn btn-warning-outline"
-                      (click)="cancelWaitlist(w)"
-                    >
-                      Rút Khỏi Hàng Chờ
-                    </button>
-                  } @else if (w.status === 'CONVERTED') {
-                    <span class="attended-tag">Đã chuyển sang Lịch đặt chỗ</span>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
+      <zen-alert tone="warning" heading="Cơ chế hàng đợi tự động">
+        Hệ thống không trừ lượt tập khi bạn đang trong hàng chờ. Ngay khi có bất kỳ học viên nào hủy chỗ, vị trí số 1 sẽ được tự động đôn lên thành ca giữ chỗ chính thức.
+      </zen-alert>
     </div>
-  }
 
-  <!-- Booking Modal Dialog -->
-  @if (bookingModalSchedule()) {
-    <div class="modal-backdrop" (click)="closeBookingModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <span class="modal-pre-title">XÁC NHẬN GIỮ CHỖ</span>
-            <h3>Đặt Chỗ Ca Học Yoga</h3>
-          </div>
-          <button type="button" class="btn-close" (click)="closeBookingModal()">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="class-summary">
-            <h4>{{ bookingModalSchedule()?.className }}</h4>
-            <div class="summary-details">
-              <span>{{ bookingModalSchedule()?.startTime | date:'HH:mm' }} – {{ bookingModalSchedule()?.endTime | date:'HH:mm' }}</span>
-              <span>·</span>
-              <span>{{ bookingModalSchedule()?.roomName }}</span>
-              <span>·</span>
-              <span>HLV: {{ bookingModalSchedule()?.instructorName }}</span>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="passSelect">Chọn thẻ tập áp dụng:</label>
-            @if (eligiblePasses(bookingModalSchedule()).length > 0) {
-              <zen-select
-                id="passSelect"
-                [options]="bookingPassOptions()"
-                [ngModel]="selectedPassId()"
-                (ngModelChange)="selectedPassId.set($event)"
-                placeholder="Chọn thẻ tập áp dụng"
-              />
-            } @else {
-              <div class="alert alert-danger" style="margin-top: 6px; padding: 10px; font-size: 0.8125rem;">
-                Học viên chưa có thẻ tập đang hoạt động. Vui lòng liên hệ tiếp tân hoặc mua thẻ trước khi đặt chỗ.
-              </div>
-            }
-          </div>
-
-          <p class="mat-alloc-note">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</p>
-
-          <div class="policy-callout">
-            <div class="callout-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
-            </div>
-            <div>
-              <strong>Chính sách giữ & hoàn lượt:</strong>
-              <p>Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" (click)="closeBookingModal()" [disabled]="isSubmittingBooking()">
-            Hủy Bỏ
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary-submit"
-            (click)="submitBooking()"
-            [disabled]="isSubmittingBooking() || !selectedPassId()"
-          >
-            @if (isSubmittingBooking()) {
-              Đang xác nhận...
-            } @else {
-              Xác Nhận Giữ Chỗ
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Waitlist Modal Dialog -->
-  @if (waitlistModalSchedule()) {
-    <div class="modal-backdrop" (click)="closeWaitlistModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header waitlist-modal-header">
-          <div class="modal-title-group">
-            <span class="modal-pre-title">HÀNG ĐỢI TỰ ĐỘNG</span>
-            <h3>Đăng Ký Vào Hàng Chờ Ca Học</h3>
-          </div>
-          <button type="button" class="btn-close" (click)="closeWaitlistModal()">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="class-summary waitlist-summary">
-            <h4>{{ waitlistModalSchedule()?.className }}</h4>
-            <div class="summary-details">
-              <span>{{ waitlistModalSchedule()?.startTime | date:'HH:mm' }} – {{ waitlistModalSchedule()?.endTime | date:'HH:mm' }}</span>
-              <span>·</span>
-              <span>{{ waitlistModalSchedule()?.roomName }}</span>
-              <span>·</span>
-              <span>HLV: {{ waitlistModalSchedule()?.instructorName }}</span>
-            </div>
-            <div class="full-notice">
-              Ca học này hiện đã kín {{ waitlistModalSchedule()?.maxCapacity }}/{{ waitlistModalSchedule()?.maxCapacity }} thảm tập.
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="waitlistPassSelect">Chọn thẻ tập liên kết:</label>
-            @if (eligiblePasses(waitlistModalSchedule()).length > 0) {
-              <zen-select
-                id="waitlistPassSelect"
-                [options]="waitlistPassOptions()"
-                [ngModel]="selectedPassId()"
-                (ngModelChange)="selectedPassId.set($event)"
-                placeholder="Chọn thẻ tập liên kết"
-              />
-            } @else {
-              <div class="alert alert-danger" style="margin-top: 6px; padding: 10px; font-size: 0.8125rem;">
-                Học viên chưa có thẻ tập hoạt động phù hợp với cơ sở của ca học này.
-              </div>
-            }
-          </div>
-
-          <div class="policy-callout waitlist-callout">
-            <div class="callout-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-            </div>
-            <div>
-              <strong>Cơ chế hàng đợi tự động (Auto-Promotion):</strong>
-              <p>Hệ thống không trừ lượt tập khi bạn đang trong hàng chờ. Ngay khi có bất kỳ học viên nào hủy chỗ, vị trí số 1 sẽ được tự động đôn lên thành ca giữ chỗ chính thức.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" (click)="closeWaitlistModal()" [disabled]="isSubmittingWaitlist()">
-            Đóng
-          </button>
-          <button
-            type="button"
-            class="btn btn-warning-submit"
-            (click)="submitWaitlist()"
-            [disabled]="isSubmittingWaitlist() || !selectedPassId()"
-          >
-            @if (isSubmittingWaitlist()) {
-              Đang xếp hàng...
-            } @else {
-              Xác Nhận Vào Hàng Chờ
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-</div>
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeWaitlistModal()" [disabled]="isSubmittingWaitlist()">Đóng</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitWaitlist()" [disabled]="isSubmittingWaitlist() || !selectedPassId()">
+        @if (isSubmittingWaitlist()) {
+          <zen-loading inline />
+          <span>Đang xếp hàng...</span>
+        } @else {
+          Xác nhận vào hàng chờ
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
+}

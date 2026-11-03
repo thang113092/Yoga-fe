@@ -7,12 +7,13 @@ import { MembershipApi, MembershipResp, PosApi, StudentOrderHistoryResp } from '
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { BookingApi, StudentBookingDetail, StudentWaitlistResp, WaitlistApi, WorkoutHistoryItem } from '@yoga/mod-schedule/data-access';
 import { AuthService } from '@yoga/platform/auth';
+import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
 import { QrCodeComponent } from '@yoga/platform/api';
 
 @Component({
   selector: 'yoga-student-passes',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, QrCodeComponent],
+  imports: [CommonModule, RouterModule, FormsModule, QrCodeComponent, ...ZEN_UI],
   templateUrl: './student-passes.component.html',
   styleUrl: './student-passes.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +75,34 @@ export class StudentPassesComponent implements OnInit {
       return timeB - timeA;
     });
   });
+
+  protected readonly tabItems = computed<ZenTabItem[]>(() => [
+    { key: 'passes', label: 'Thẻ tập', count: this.passes().length, icon: 'credit-card' },
+    { key: 'bookings', label: 'Lịch đã đặt', count: this.bookings().length, icon: 'calendar' },
+    { key: 'waitlist', label: 'Hàng chờ', count: this.activeWaitlistCount(), icon: 'clock' },
+  ]);
+
+  membershipStatusTone(status: string | undefined): ZenTone {
+    return (
+      {
+        ACTIVE: 'success',
+        FROZEN: 'info',
+        EXPIRED: 'danger',
+        PENDING_PAYMENT: 'warning',
+        REPLACED: 'neutral',
+        CANCELLED: 'neutral',
+        TRANSFERRED: 'neutral',
+      } as Record<string, ZenTone>
+    )[status ?? ''] ?? 'neutral';
+  }
+
+  bookingStatusTone(status: string): ZenTone {
+    return ({ CONFIRMED: 'info', ATTENDED: 'success', CANCELLED: 'neutral', WAITING: 'warning', CONVERTED: 'success' } as Record<string, ZenTone>)[status] ?? 'neutral';
+  }
+
+  onTabChange(key: string): void {
+    this.setTab(key as 'passes' | 'bookings' | 'waitlist');
+  }
 
   constructor() {
     effect(() => {

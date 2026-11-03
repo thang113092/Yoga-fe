@@ -29,6 +29,11 @@ export const appRoutes: Routes = [
     title: 'Quản Lý Học Viên & Người Dùng - Yoga Center'
   },
   {
+    path: 'ui-kit',
+    loadComponent: () => import('./ui-kit.page').then(m => m.UiKitPage),
+    title: 'Bộ giao diện - An Yên'
+  },
+  {
     path: '**',
     redirectTo: ''
   }

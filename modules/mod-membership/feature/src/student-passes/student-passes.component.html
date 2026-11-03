@@ -1,293 +1,179 @@
-<div class="passes-container">
+<div class="zen-page">
   @if (successMessage()) {
-    <div class="alert alert-success" role="status">
-      <span>{{ successMessage() }}</span>
-      <button type="button" class="btn-close" (click)="successMessage.set(null)" aria-label="Đóng thông báo">✕</button>
-    </div>
+    <zen-alert tone="success" dismissible (dismissed)="successMessage.set(null)">{{ successMessage() }}</zen-alert>
   }
 
   @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">
-      <span>{{ errorMessage() }}</span>
-      <button type="button" class="btn-close" (click)="errorMessage.set(null)" aria-label="Đóng thông báo">✕</button>
-    </div>
+    <zen-alert tone="danger" dismissible (dismissed)="errorMessage.set(null)">{{ errorMessage() }}</zen-alert>
   }
 
-  <!-- STUDENT PROFILE HEADER (ZEN WELLNESS AESTHETIC) -->
-  <div class="passes-header">
-    <div class="header-content">
-      <div class="avatar-circle">
-        <span>{{ auth.userFullName() ? auth.userFullName().charAt(0).toUpperCase() : 'H' }}</span>
-      </div>
-      <div class="student-meta">
-        <div class="welcome-label">Cổng thông tin hội viên</div>
-        <div class="name-row">
-          <h1 class="passes-title">{{ auth.userFullName() || 'Học viên An Yên' }}</h1>
-          <span class="vip-badge">Hội viên chính thức</span>
+  <!-- HỒ SƠ HỘI VIÊN -->
+  <zen-card class="profile-card">
+    <div class="profile">
+      <zen-avatar [name]="auth.userFullName() || 'Học viên'" size="lg" />
+      <div class="profile-meta">
+        <span class="zen-eyebrow">Cổng thông tin hội viên</span>
+        <div class="zen-row">
+          <h1 class="profile-name">{{ auth.userFullName() || 'Học viên An Yên' }}</h1>
+          <zen-badge tone="primary">Hội viên chính thức</zen-badge>
         </div>
-        <p class="passes-subtitle">
-          <span class="meta-item">{{ auth.profile()?.phone || 'Chưa cập nhật SĐT' }}</span>
-          <span class="meta-sep">·</span>
-          <span class="meta-item">{{ auth.profile()?.email || 'Chưa cập nhật email' }}</span>
+        <p class="profile-sub">
+          <span>{{ auth.profile()?.phone || 'Chưa cập nhật SĐT' }}</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ auth.profile()?.email || 'Chưa cập nhật email' }}</span>
           @if (workoutHistory().length > 0) {
-            <span class="meta-sep">·</span>
-            <a routerLink="/membership/history" class="meta-item workout-badge-link" title="Xem chi tiết lịch sử rèn luyện tại trang Lịch Sử Tập">
-              <strong>{{ workoutHistory().length }}</strong> buổi đã rèn luyện →
+            <span aria-hidden="true">·</span>
+            <a routerLink="/membership/history" class="profile-link" title="Xem chi tiết lịch sử rèn luyện tại trang Lịch Sử Tập">
+              <strong>{{ workoutHistory().length }}</strong> buổi đã rèn luyện
+              <zen-icon name="arrow-right" [size]="14" />
             </a>
           }
         </p>
       </div>
-    </div>
-
-    <div class="header-actions">
       <button
         type="button"
-        class="btn-refresh"
+        class="zen-btn zen-btn--outline profile-action"
         (click)="refreshAllData()"
         [disabled]="isLoading()"
         title="Đồng bộ dữ liệu mới nhất"
       >
-        <svg class="refresh-icon" [class.spinning]="isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-        </svg>
+        <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
         <span>{{ isLoading() ? 'Đang tải...' : 'Làm mới' }}</span>
       </button>
     </div>
-  </div>
+  </zen-card>
 
-  <!-- UPCOMING BOOKING HERO CARD -->
+  <!-- CA HỌC TIẾP THEO -->
   @if (nextBooking(); as next) {
-    <div class="hero-live-qr-card">
-      <div class="card-glow"></div>
-      <div class="hero-left">
-        <div class="live-pill">
-          <span class="live-dot"></span>
-          <span>Ca học tiếp theo</span>
-        </div>
-        <h2 class="class-title">{{ next.className }}</h2>
+    <section class="next-class" aria-label="Ca học tiếp theo">
+      <div class="next-main">
+        <span class="next-pill"><span class="next-dot"></span>Ca học tiếp theo</span>
+        <h2 class="next-title">{{ next.className }}</h2>
 
-        <div class="class-meta-grid">
-          <div class="meta-item">
-            <span class="meta-label">Thời gian</span>
-            <strong>{{ next.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</strong>
+        <dl class="next-meta">
+          <div>
+            <dt>Thời gian</dt>
+            <dd>{{ next.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</dd>
           </div>
-          <div class="meta-item">
-            <span class="meta-label">Địa điểm & Phòng</span>
-            <strong>{{ next.branchName }} · {{ next.roomName }}</strong>
+          <div>
+            <dt>Địa điểm & Phòng</dt>
+            <dd>{{ next.branchName }} · {{ next.roomName }}</dd>
           </div>
-          <div class="meta-item">
-            <span class="meta-label">Vị trí thảm</span>
-            <strong class="mat-badge">Thảm số {{ next.matNumber ?? 'Tự do' }}</strong>
+          <div>
+            <dt>Vị trí thảm</dt>
+            <dd>Thảm số {{ next.matNumber ?? 'Tự do' }}</dd>
           </div>
-        </div>
+        </dl>
 
-        <div class="hero-buttons">
-          <button type="button" class="btn-open-qr" (click)="openBookingQrModal(next)">
+        <div class="zen-row">
+          <button type="button" class="zen-btn next-btn-primary" (click)="openBookingQrModal(next)">
+            <zen-icon name="qr" />
             <span>Mã QR điểm danh</span>
           </button>
           @if (next.canCancel) {
-            <button type="button" class="btn-hero-cancel" (click)="cancelBooking(next)" [disabled]="isLoading()">
+            <button type="button" class="zen-btn next-btn-ghost" (click)="cancelBooking(next)" [disabled]="isLoading()">
               Hủy ca học
             </button>
           }
         </div>
       </div>
 
-      <div class="hero-right">
-        <div class="qr-ticket-card" (click)="openBookingQrModal(next)" title="Mở mã QR">
-          <div class="ticket-header">
-            <span>Vé điểm danh</span>
-            <strong>{{ next.bookingCode }}</strong>
-          </div>
-          <div class="qr-matrix-box">
-            <yoga-qr-code [value]="next.bookingCode" />
-          </div>
-          <span class="click-to-scan">Chạm để phóng to</span>
-        </div>
-      </div>
-    </div>
+      <button type="button" class="next-ticket" (click)="openBookingQrModal(next)" title="Mở mã QR">
+        <span class="ticket-label">Vé điểm danh</span>
+        <strong class="zen-mono">{{ next.bookingCode }}</strong>
+        <span class="ticket-qr"><yoga-qr-code [value]="next.bookingCode" /></span>
+        <span class="ticket-hint">Chạm để phóng to</span>
+      </button>
+    </section>
   }
 
-  <!-- TABS NAVIGATION BAR (CLEAN TYPOGRAPHY) -->
-  <div class="tabs-nav-bar" role="tablist">
-    <button
-      type="button"
-      role="tab"
-      class="tab-link"
-      [class.active]="activeTab() === 'passes'"
-      [attr.aria-selected]="activeTab() === 'passes'"
-      (click)="setTab('passes')"
-    >
-      <span>Thẻ tập</span>
-      <span class="count-pill">{{ passes().length }}</span>
-    </button>
-
-    <button
-      type="button"
-      role="tab"
-      class="tab-link"
-      [class.active]="activeTab() === 'bookings'"
-      [attr.aria-selected]="activeTab() === 'bookings'"
-      (click)="setTab('bookings')"
-    >
-      <span>Lịch đã đặt</span>
-      <span class="count-pill">{{ bookings().length }}</span>
-    </button>
-
-    <button
-      type="button"
-      role="tab"
-      class="tab-link"
-      [class.active]="activeTab() === 'waitlist'"
-      [attr.aria-selected]="activeTab() === 'waitlist'"
-      (click)="setTab('waitlist')"
-    >
-      <span>Hàng chờ</span>
-      <span class="count-pill" [class.alert-pill]="activeWaitlistCount() > 0">{{ activeWaitlistCount() }}</span>
-    </button>
-  </div>
+  <zen-tabs [items]="tabItems()" [active]="activeTab()" (activeChange)="onTabChange($event)" />
 
   @if (isLoading()) {
-    <div class="loading-state" role="status">
-      <span>Đang đồng bộ dữ liệu...</span>
-    </div>
+    <zen-loading message="Đang đồng bộ dữ liệu..." />
   }
 
-  <!-- TAB 1: PASSES & PURCHASE HISTORY -->
+  <!-- TAB 1: THẺ TẬP & LỊCH SỬ MUA -->
   @if (activeTab() === 'passes') {
     @if (passes().length === 0 && orders().length === 0) {
       @if (!isLoading() && !errorMessage()) {
-        <div class="empty-state">
-          <div class="empty-icon-circle">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="5" width="20" height="14" rx="3"/>
-              <line x1="2" y1="10" x2="22" y2="10"/>
-              <circle cx="6" cy="15" r="1.5"/>
-            </svg>
-          </div>
-          <h3 class="empty-title">Chưa có thẻ tập hoạt động</h3>
-          <p class="empty-desc">
-            Tài khoản hiện chưa được kích hoạt thẻ tập. Hãy khám phá các gói thẻ All-Access hoặc liên hệ tiếp tân tại cơ sở để bắt đầu hành trình An Yên.
-          </p>
-
-          <div class="empty-actions">
-            <a routerLink="/schedule/calendar" class="btn-primary-action">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
+        <zen-card>
+          <zen-empty-state
+            icon="credit-card"
+            heading="Chưa có thẻ tập hoạt động"
+            description="Tài khoản hiện chưa được kích hoạt thẻ tập. Hãy khám phá các gói thẻ All-Access hoặc liên hệ tiếp tân tại cơ sở để bắt đầu hành trình An Yên."
+          >
+            <a routerLink="/schedule/calendar" class="zen-btn zen-btn--primary">
+              <zen-icon name="calendar" />
               <span>Xem lịch lớp học</span>
             </a>
-            <a routerLink="/" class="btn-secondary-action">
-              <span>Bảng giá gói thẻ</span>
-            </a>
-            <a routerLink="/branches" class="btn-outline-action">
-              <span>Hệ thống chi nhánh</span>
-            </a>
-          </div>
+            <a routerLink="/" class="zen-btn zen-btn--secondary">Bảng giá gói thẻ</a>
+            <a routerLink="/branches" class="zen-btn zen-btn--outline">Hệ thống chi nhánh</a>
+          </zen-empty-state>
 
-          <div class="empty-perks">
-            <div class="perk-item">
-              <div class="perk-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 14 14"/>
-                </svg>
-              </div>
-              <div class="perk-text">
-                <strong>Khung giờ linh hoạt</strong>
-                <span>Hơn 50+ ca học mỗi tuần từ sáng sớm đến tối</span>
+          <div class="zen-grid zen-grid--3 perks">
+            <div class="perk">
+              <span class="perk-icon"><zen-icon name="clock" [size]="18" /></span>
+              <div>
+                <strong class="zen-strong">Khung giờ linh hoạt</strong>
+                <span class="perk-desc">Hơn 50+ ca học mỗi tuần từ sáng sớm đến tối</span>
               </div>
             </div>
-
-            <div class="perk-item">
-              <div class="perk-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-              </div>
-              <div class="perk-text">
-                <strong>Giáo viên chuẩn quốc tế</strong>
-                <span>Đội ngũ chứng chỉ Yoga Alliance tâm huyết</span>
+            <div class="perk">
+              <span class="perk-icon"><zen-icon name="shield" [size]="18" /></span>
+              <div>
+                <strong class="zen-strong">Giáo viên chuẩn quốc tế</strong>
+                <span class="perk-desc">Đội ngũ chứng chỉ Yoga Alliance tâm huyết</span>
               </div>
             </div>
-
-            <div class="perk-item">
-              <div class="perk-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="7" height="7"/>
-                  <rect x="14" y="3" width="7" height="7"/>
-                  <rect x="14" y="14" width="7" height="7"/>
-                  <rect x="3" y="14" width="7" height="7"/>
-                </svg>
-              </div>
-              <div class="perk-text">
-                <strong>Điểm danh 1 chạm</strong>
-                <span>Quét QR nhanh chóng tại quầy đón tiếp cơ sở</span>
+            <div class="perk">
+              <span class="perk-icon"><zen-icon name="qr" [size]="18" /></span>
+              <div>
+                <strong class="zen-strong">Điểm danh 1 chạm</strong>
+                <span class="perk-desc">Quét QR nhanh chóng tại quầy đón tiếp cơ sở</span>
               </div>
             </div>
           </div>
-        </div>
+        </zen-card>
       }
     } @else {
-      <div class="passes-flow-layout">
+      <div class="zen-stack zen-stack--lg">
 
-        <!-- 1. THẺ ĐANG HOẠT ĐỘNG (LÊN ĐẦU) -->
-        <section class="section-active-pass" aria-label="Thẻ đang hoạt động">
-          <div class="content-section-head">
-            <div class="head-title-wrap">
-              <h2 class="head-title">Thẻ đang hoạt động</h2>
+        <!-- 1. THẺ ĐANG HOẠT ĐỘNG -->
+        <section class="zen-stack" aria-label="Thẻ đang hoạt động">
+          <div class="section-head">
+            <div class="zen-row">
+              <h2 class="zen-section-title">Thẻ đang hoạt động</h2>
               @if (activePasses().length > 0) {
-                <span class="badge-status-pill success">{{ activePasses().length }} thẻ có hiệu lực</span>
+                <zen-badge tone="success" size="sm">{{ activePasses().length }} thẻ có hiệu lực</zen-badge>
               }
             </div>
-            <span class="head-subtitle">Thẻ hội viên dùng để đặt lịch tập và xuất trình mã QR điểm danh</span>
+            <span class="zen-text-sm zen-text-muted">Thẻ hội viên dùng để đặt lịch tập và xuất trình mã QR điểm danh</span>
           </div>
 
           @if (activePasses().length > 0) {
-            <div class="active-landscape-container">
+            <div class="zen-stack">
               @for (pass of activePasses(); track pass.id) {
-                <div class="active-landscape-pass" [class.vip]="pass.isAllBranches">
-                  <div class="card-ambient-glow" aria-hidden="true"></div>
-
-                  <!-- HEADER ROW -->
-                  <div class="pass-landscape-header">
-                    <div class="brand-and-scope">
-                      <span class="brand-label">AN YÊN DIGITAL PASS</span>
-                      <span class="brand-sep">·</span>
-                      <span class="scope-pill" [class.all-branches]="pass.isAllBranches" title="Cơ sở áp dụng">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                          <circle cx="12" cy="10" r="3"/>
-                        </svg>
+                <article class="member-pass" [class.vip]="pass.isAllBranches">
+                  <div class="mp-header">
+                    <div class="zen-row">
+                      <span class="mp-brand">An Yên Digital Pass</span>
+                      <span class="mp-scope" title="Cơ sở áp dụng">
+                        <zen-icon name="map-pin" [size]="12" />
                         <span>{{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : getBranchName(pass.registeredBranchId, pass) }}</span>
                       </span>
                     </div>
-
-                    <div class="status-indicator">
-                      <span class="live-status-badge" [class.frozen]="pass.status === 'FROZEN'">
-                        <span class="pulse-dot"></span>
-                        <span>{{ membershipStatusLabel(pass.status) }}</span>
-                      </span>
-                    </div>
+                    <span class="mp-status" [class.frozen]="pass.status === 'FROZEN'">
+                      <span class="mp-status-dot"></span>
+                      <span>{{ membershipStatusLabel(pass.status) }}</span>
+                    </span>
                   </div>
 
-                  <!-- HORIZONTAL CONTENT ROW -->
-                  <div class="pass-landscape-body">
-                    <div class="main-code-block">
-                      <div class="code-header-meta">
-                        <span class="code-sublabel">Mã thẻ hội viên</span>
-                        @if (!pass.isAllBranches) {
-                          <span class="registered-facility-badge">
-                            <span class="facility-dot"></span>
-                            <span>{{ getBranchName(pass.registeredBranchId, pass) }}</span>
-                          </span>
-                        }
-                      </div>
-                      <h3 class="landscape-code" title="{{ pass.membershipCode }}">{{ pass.membershipCode }}</h3>
-                      <p class="landscape-note">
+                  <div class="mp-body">
+                    <div class="mp-code-block">
+                      <span class="mp-label">Mã thẻ hội viên</span>
+                      <h3 class="mp-code" title="{{ pass.membershipCode }}">{{ pass.membershipCode }}</h3>
+                      <p class="mp-note">
                         @if (pass.isAllBranches) {
                           Tập luyện tại tất cả chi nhánh trong hệ thống An Yên Yoga.
                         } @else {
@@ -296,424 +182,339 @@
                       </p>
                     </div>
 
-                    <div class="actions-and-stats-block">
-                      <div class="stats-compact-capsule">
-                        <div class="compact-stat">
-                          <span class="c-label">Buổi khả dụng</span>
-                          <strong class="c-val highlight">
+                    <div class="mp-side">
+                      <div class="mp-stats">
+                        <div>
+                          <span class="mp-label">Buổi khả dụng</span>
+                          <strong class="mp-stat-val">
                             {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}
                           </strong>
                         </div>
-
-                        <div class="c-divider" aria-hidden="true"></div>
-
-                        <div class="compact-stat">
-                          <span class="c-label">Hạn sử dụng</span>
-                          <strong class="c-val">
+                        <span class="mp-divider" aria-hidden="true"></span>
+                        <div>
+                          <span class="mp-label">Hạn sử dụng</span>
+                          <strong class="mp-stat-val">
                             {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
                           </strong>
                         </div>
                       </div>
 
-                      <button type="button" class="btn-landscape-info" (click)="openPassQrModal(pass)">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="3" width="7" height="7"/>
-                          <rect x="14" y="3" width="7" height="7"/>
-                          <rect x="14" y="14" width="7" height="7"/>
-                          <rect x="3" y="14" width="7" height="7"/>
-                        </svg>
+                      <button type="button" class="zen-btn mp-btn" (click)="openPassQrModal(pass)">
+                        <zen-icon name="grid" />
                         <span>Thông tin thẻ</span>
                       </button>
                     </div>
                   </div>
-                </div>
+                </article>
               }
             </div>
           } @else if (!isLoading()) {
-            <div class="no-active-banner">
-              <div class="banner-icon-circle">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="3"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                </svg>
+            <zen-alert tone="warning" icon="credit-card" heading="Hiện chưa có thẻ đang hoạt động">
+              <div class="zen-row zen-row--between">
+                <span>Các thẻ tập trước đây đã hết hạn hoặc đã thay thế. Quý hội viên vui lòng chọn gói thẻ mới để tiếp tục hành trình An Yên.</span>
+                <a routerLink="/" class="zen-btn zen-btn--primary zen-btn--sm">Khám phá gói thẻ</a>
               </div>
-              <div class="banner-body">
-                <h4 class="banner-title">Hiện chưa có thẻ đang hoạt động</h4>
-                <p class="banner-desc">Các thẻ tập trước đây đã hết hạn hoặc đã thay thế. Quý hội viên vui lòng chọn gói thẻ mới để tiếp tục hành trình An Yên.</p>
-              </div>
-              <a routerLink="/" class="btn-browse-plans">Khám phá gói thẻ</a>
-            </div>
+            </zen-alert>
           }
         </section>
 
-        <!-- 2. LỊCH SỬ MUA THẺ (BÊN DƯỚI) -->
-        <section class="section-purchase-history" aria-label="Lịch sử mua thẻ">
-          <div class="content-section-head">
-            <div class="head-title-wrap">
-              <h2 class="head-title">Lịch sử mua thẻ</h2>
-              <span class="badge-status-pill neutral">
+        <!-- 2. LỊCH SỬ MUA THẺ -->
+        <section class="zen-stack" aria-label="Lịch sử mua thẻ">
+          <div class="section-head">
+            <div class="zen-row">
+              <h2 class="zen-section-title">Lịch sử mua thẻ</h2>
+              <zen-badge size="sm">
                 {{ orders().length > 0 ? (orders().length + ' giao dịch') : (pastPasses().length + ' thẻ đã dùng') }}
-              </span>
+              </zen-badge>
             </div>
-            <span class="head-subtitle">Toàn bộ lịch sử các giao dịch mua thẻ, nâng cấp đổi gói và thẻ đã lưu trữ</span>
+            <span class="zen-text-sm zen-text-muted">Toàn bộ lịch sử các giao dịch mua thẻ, nâng cấp đổi gói và thẻ đã lưu trữ</span>
           </div>
 
-          <!-- A. DANH SÁCH ĐƠN HÀNG MUA THẺ TỪ POS (NẾU CÓ) -->
           @if (orders().length > 0) {
-            <div class="orders-history-stream">
-              @for (order of orders(); track order.orderId) {
-                <div class="order-history-card">
-                  <div class="order-card-header">
-                    <div class="order-id-group">
-                      <span class="order-code">#{{ order.orderCode }}</span>
-                      <span class="order-status-badge" [class.paid]="order.status === 'PAID'">
-                        {{ orderStatusLabel(order.status) }}
-                      </span>
-                    </div>
-                    <div class="order-date-branch">
-                      <span class="order-date">{{ order.orderDate | date:'dd/MM/yyyy HH:mm' }}</span>
-                      <span class="sep">·</span>
-                      <span class="order-branch">{{ order.branchName || 'Cơ sở hệ thống' }}</span>
-                    </div>
+            @for (order of orders(); track order.orderId) {
+              <zen-card padding="none">
+                <div class="order-head">
+                  <div class="zen-row">
+                    <span class="zen-mono zen-strong">#{{ order.orderCode }}</span>
+                    <zen-badge [tone]="order.status === 'PAID' ? 'success' : (order.status === 'PENDING' ? 'warning' : 'neutral')" size="sm" dot>
+                      {{ orderStatusLabel(order.status) }}
+                    </zen-badge>
                   </div>
-
-                  <div class="order-card-body">
-                    @for (item of order.items; track (item.itemId || $index)) {
-                      <div class="order-item-row">
-                        <div class="item-main-info">
-                          <h4 class="item-name">{{ item.itemName || 'Gói thẻ An Yên' }}</h4>
-                          <div class="item-sub-meta">
-                            @if (item.membershipCode) {
-                              <span class="linked-card-code">Mã thẻ: <strong>{{ item.membershipCode }}</strong></span>
-                            }
-                            @if (item.membershipStatus) {
-                              <span class="item-status-pill" [ngClass]="item.membershipStatus.toLowerCase()">
-                                {{ membershipStatusLabel(item.membershipStatus) }}
-                              </span>
-                            }
-                            @if (item.startDate) {
-                              <span class="item-dates">
-                                {{ item.startDate | date:'dd/MM/yyyy' }}
-                                {{ item.endDate ? (' – ' + (item.endDate | date:'dd/MM/yyyy')) : '' }}
-                              </span>
-                            }
-                          </div>
-                        </div>
-
-                        <div class="item-price-action">
-                          <div class="price-box">
-                            <span class="price-val">{{ (item.lineTotal || item.unitPrice || order.totalAmount) | number:'1.0-0' }} đ</span>
-                          </div>
-                          @if (item.membershipCode) {
-                            <button
-                              type="button"
-                              class="btn-view-card-detail"
-                              (click)="openPassByCode(item.membershipCode)"
-                              title="Xem chi tiết thẻ tập"
-                            >
-                              <span>Thông tin thẻ</span>
-                            </button>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- PAYMENTS SUMMARY -->
-                    @if (order.payments && order.payments.length > 0) {
-                      <div class="order-payments-summary">
-                        <span class="payment-method-tag">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                            <line x1="1" y1="10" x2="23" y2="10"/>
-                          </svg>
-                          <span>{{ paymentMethodLabel(order.payments[0].paymentMethod) }}</span>
-                        </span>
-                        <span class="order-total-label">
-                          Tổng thanh toán: <strong>{{ order.totalAmount | number:'1.0-0' }} đ</strong>
-                        </span>
-                      </div>
-                    }
-                  </div>
+                  <span class="zen-text-sm zen-text-muted">
+                    {{ order.orderDate | date:'dd/MM/yyyy HH:mm' }} · {{ order.branchName || 'Cơ sở hệ thống' }}
+                  </span>
                 </div>
-              }
-            </div>
-          }
 
-          <!-- B. DANH SÁCH CÁC THẺ TRONG LỊCH SỬ / ĐÃ THAY THẾ (PAST PASSES) -->
-          @if (pastPasses().length > 0) {
-            <div class="past-passes-subblock">
-              @if (orders().length > 0) {
-                <h3 class="subblock-title">Thẻ đã từng sử dụng & đổi gói</h3>
-              }
-              <div class="passes-history-stream">
-                @for (pass of pastPasses(); track pass.id) {
-                  <div
-                    class="history-pass-card"
-                    [class.is-replaced]="pass.status === 'REPLACED'"
-                    [class.is-expired]="pass.status === 'EXPIRED'"
-                    [class.is-cancelled]="pass.status === 'CANCELLED'"
-                  >
-                    <div class="history-left">
-                      <div class="history-code-row">
-                        <span class="history-card-code">{{ pass.membershipCode }}</span>
-                        <span
-                          class="status-badge"
-                          [class.replaced]="pass.status === 'REPLACED'"
-                          [class.expired]="pass.status === 'EXPIRED'"
-                          [class.cancelled]="pass.status === 'CANCELLED'"
-                          [class.frozen]="pass.status === 'FROZEN'"
-                        >
-                          {{ membershipStatusLabel(pass.status) }}
-                        </span>
-                        <span class="scope-tag-sm">
-                          {{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}
-                        </span>
-                      </div>
-
-                      <div class="history-stats-line">
-                        <span class="stat-chip">
-                          <strong>{{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi khả dụng') : 'Không giới hạn buổi' }}</strong>
-                        </span>
-                        <span class="sep">·</span>
-                        <span class="stat-chip">
-                          Thời hạn: {{ pass.startDate ? (pass.startDate | date:'dd/MM/yyyy') : '---' }}
-                          –
-                          {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
-                        </span>
-                        @if (pass.purchasedPrice) {
-                          <span class="sep">·</span>
-                          <span class="stat-chip price-chip">
-                            {{ pass.purchasedPrice | number:'1.0-0' }} đ
+                @for (item of order.items; track (item.itemId || $index)) {
+                  <div class="order-item">
+                    <div class="order-item-info">
+                      <h4 class="order-item-name">{{ item.itemName || 'Gói thẻ An Yên' }}</h4>
+                      <div class="zen-row zen-text-sm zen-text-muted">
+                        @if (item.membershipCode) {
+                          <span>Mã thẻ: <strong class="zen-mono zen-strong">{{ item.membershipCode }}</strong></span>
+                        }
+                        @if (item.membershipStatus) {
+                          <zen-badge [tone]="membershipStatusTone(item.membershipStatus)" size="sm">
+                            {{ membershipStatusLabel(item.membershipStatus) }}
+                          </zen-badge>
+                        }
+                        @if (item.startDate) {
+                          <span>
+                            {{ item.startDate | date:'dd/MM/yyyy' }}
+                            {{ item.endDate ? (' – ' + (item.endDate | date:'dd/MM/yyyy')) : '' }}
                           </span>
                         }
                       </div>
                     </div>
 
-                    <div class="history-right">
-                      <button type="button" class="btn-history-qr" (click)="openPassQrModal(pass)">
-                        <span>Thông tin thẻ</span>
-                      </button>
+                    <div class="zen-row">
+                      <span class="zen-price">{{ (item.lineTotal || item.unitPrice || order.totalAmount) | number:'1.0-0' }} ₫</span>
+                      @if (item.membershipCode) {
+                        <button
+                          type="button"
+                          class="zen-btn zen-btn--outline zen-btn--sm"
+                          (click)="openPassByCode(item.membershipCode)"
+                          title="Xem chi tiết thẻ tập"
+                        >
+                          Thông tin thẻ
+                        </button>
+                      }
                     </div>
                   </div>
                 }
-              </div>
-            </div>
+
+                @if (order.payments && order.payments.length > 0) {
+                  <div card-footer class="zen-row zen-row--between zen-text-sm">
+                    <span class="zen-row zen-text-secondary">
+                      <zen-icon name="credit-card" [size]="14" />
+                      {{ paymentMethodLabel(order.payments[0].paymentMethod) }}
+                    </span>
+                    <span class="zen-text-muted">
+                      Tổng thanh toán: <strong class="zen-price">{{ order.totalAmount | number:'1.0-0' }} ₫</strong>
+                    </span>
+                  </div>
+                }
+              </zen-card>
+            }
           }
 
-          <!-- C. TRƯỜNG HỢP CHỈ CÓ THẺ ACTIVE VÀ CHƯA CÓ LỊCH SỬ THẺ CŨ / ĐƠN HÀNG -->
+          @if (pastPasses().length > 0) {
+            @if (orders().length > 0) {
+              <h3 class="subblock-title">Thẻ đã từng sử dụng & đổi gói</h3>
+            }
+            <zen-card padding="none">
+              <div class="zen-table-wrap">
+                <table class="zen-table">
+                  <thead>
+                    <tr>
+                      <th>Mã thẻ</th>
+                      <th>Trạng thái</th>
+                      <th>Phạm vi</th>
+                      <th>Số buổi</th>
+                      <th>Thời hạn</th>
+                      <th class="is-numeric">Giá mua</th>
+                      <th class="is-actions"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pass of pastPasses(); track pass.id) {
+                      <tr>
+                        <td><span class="zen-mono cell-primary">{{ pass.membershipCode }}</span></td>
+                        <td>
+                          <zen-badge [tone]="membershipStatusTone(pass.status)" size="sm" dot>{{ membershipStatusLabel(pass.status) }}</zen-badge>
+                        </td>
+                        <td class="cell-muted">{{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}</td>
+                        <td>{{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi khả dụng') : 'Không giới hạn buổi' }}</td>
+                        <td class="is-nowrap cell-muted">
+                          {{ pass.startDate ? (pass.startDate | date:'dd/MM/yyyy') : '---' }}
+                          –
+                          {{ pass.endDate ? (pass.endDate | date:'dd/MM/yyyy') : 'Vô thời hạn' }}
+                        </td>
+                        <td class="is-numeric">
+                          @if (pass.purchasedPrice) {
+                            <span class="zen-price">{{ pass.purchasedPrice | number:'1.0-0' }} ₫</span>
+                          } @else {
+                            <span class="cell-muted">—</span>
+                          }
+                        </td>
+                        <td class="is-actions">
+                          <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="openPassQrModal(pass)">Thông tin thẻ</button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </zen-card>
+          }
+
           @if (orders().length === 0 && pastPasses().length === 0 && activePasses().length > 0) {
-            <div class="history-empty-note">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <span>Bạn đang sử dụng thẻ tập đầu tiên. Chưa có lịch sử đổi thẻ hoặc thẻ hết hạn trước đó.</span>
-            </div>
+            <zen-alert tone="info">
+              Bạn đang sử dụng thẻ tập đầu tiên. Chưa có lịch sử đổi thẻ hoặc thẻ hết hạn trước đó.
+            </zen-alert>
           }
         </section>
-
       </div>
     }
   }
 
-  <!-- TAB 2: BOOKINGS -->
+  <!-- TAB 2: LỊCH ĐÃ ĐẶT -->
   @if (activeTab() === 'bookings') {
-    <div class="bookings-wrapper">
-      <div class="bookings-top-bar">
-        <span class="bookings-count">Tổng số: <strong>{{ bookings().length }}</strong> ca học</span>
-        <a routerLink="/schedule/calendar" class="btn-book-more">
+    <zen-card padding="none">
+      <div class="list-head zen-row zen-row--between">
+        <span class="zen-text-sm zen-text-muted">Tổng số: <strong class="zen-strong">{{ bookings().length }}</strong> ca học</span>
+        <a routerLink="/schedule/calendar" class="zen-btn zen-btn--primary zen-btn--sm">
+          <zen-icon name="plus" />
           <span>Đặt lịch lớp mới</span>
         </a>
       </div>
 
-      <div class="bookings-stream">
-        @for (b of bookings(); track b.id) {
-          <div
-            class="booking-item-card"
-            [class.attended]="b.status === 'ATTENDED'"
-            [class.cancelled]="b.status === 'CANCELLED'"
-          >
-            <div class="item-left">
-              <div class="item-head">
-                <span class="booking-code-text">#{{ b.bookingCode }}</span>
-                <span class="class-badge">{{ b.className }}</span>
-                <span class="status-tag" [ngClass]="b.status.toLowerCase()">
-                  {{ b.status === 'CONFIRMED' ? 'Đã xác nhận' : (b.status === 'ATTENDED' ? 'Đã tham dự' : (b.status === 'CANCELLED' ? 'Đã hủy' : b.status)) }}
-                </span>
-              </div>
-              <div class="item-details">
-                <span>{{ b.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</span>
-                <span>·</span>
-                <span>{{ b.branchName }}</span>
-                <span>·</span>
-                <span>Thảm: {{ b.matNumber ?? 'Tự do' }}</span>
-              </div>
+      @for (b of bookings(); track b.id) {
+        <div class="list-row" [class.is-muted]="b.status === 'CANCELLED'">
+          <div class="list-row-main">
+            <div class="zen-row">
+              <span class="zen-strong">{{ b.className }}</span>
+              <span class="zen-mono zen-text-xs zen-text-muted">#{{ b.bookingCode }}</span>
+              <zen-badge [tone]="bookingStatusTone(b.status)" size="sm" dot>
+                {{ b.status === 'CONFIRMED' ? 'Đã xác nhận' : (b.status === 'ATTENDED' ? 'Đã tham dự' : (b.status === 'CANCELLED' ? 'Đã hủy' : b.status)) }}
+              </zen-badge>
             </div>
-
-            <div class="item-right">
-              @if (b.status === 'CONFIRMED') {
-                <button type="button" class="btn-qr-icon" (click)="openBookingQrModal(b)" title="Mở mã QR">
-                  <span>Mã QR</span>
-                </button>
-                @if (b.canCancel) {
-                  <button type="button" class="btn-cancel-action" (click)="cancelBooking(b)" [disabled]="isLoading()" title="Hủy ca học">
-                    Hủy ca
-                  </button>
-                }
-              } @else if (b.status === 'ATTENDED') {
-                <span class="tag-done">Đã hoàn thành</span>
-              } @else if (b.status === 'CANCELLED') {
-                <span class="cant-cancel-note">Đã hủy</span>
-              }
+            <div class="zen-row zen-text-sm zen-text-muted">
+              <span>{{ b.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</span>
+              <span>·</span>
+              <span>{{ b.branchName }}</span>
+              <span>·</span>
+              <span>Thảm: {{ b.matNumber ?? 'Tự do' }}</span>
             </div>
           </div>
-        } @empty {
-          @if (!isLoading() && !errorMessage()) {
-            <div class="empty-state">
-              <div class="empty-icon-circle">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-              </div>
-              <h3 class="empty-title">Chưa có lịch đặt chỗ</h3>
-              <p class="empty-desc">
-                Bạn chưa đăng ký tham gia ca học nào. Hãy xem lịch biểu để chọn khung giờ và giáo viên phù hợp.
-              </p>
-              <div class="empty-actions">
-                <a routerLink="/schedule/calendar" class="btn-primary-action">
-                  <span>Xem lịch và đặt chỗ</span>
-                </a>
-              </div>
-            </div>
-          }
+
+          <div class="zen-row">
+            @if (b.status === 'CONFIRMED') {
+              <button type="button" class="zen-btn zen-btn--secondary zen-btn--sm" (click)="openBookingQrModal(b)" title="Mở mã QR">
+                <zen-icon name="qr" />
+                <span>Mã QR</span>
+              </button>
+              @if (b.canCancel) {
+                <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelBooking(b)" [disabled]="isLoading()" title="Hủy ca học">
+                  Hủy ca
+                </button>
+              }
+            } @else if (b.status === 'ATTENDED') {
+              <span class="zen-text-sm zen-text-muted">Đã hoàn thành</span>
+            } @else if (b.status === 'CANCELLED') {
+              <span class="zen-text-sm zen-text-muted">Đã hủy</span>
+            }
+          </div>
+        </div>
+      } @empty {
+        @if (!isLoading() && !errorMessage()) {
+          <zen-empty-state
+            icon="calendar"
+            heading="Chưa có lịch đặt chỗ"
+            description="Bạn chưa đăng ký tham gia ca học nào. Hãy xem lịch biểu để chọn khung giờ và giáo viên phù hợp."
+          >
+            <a routerLink="/schedule/calendar" class="zen-btn zen-btn--primary">Xem lịch và đặt chỗ</a>
+          </zen-empty-state>
         }
-      </div>
-    </div>
+      }
+    </zen-card>
   }
 
-  <!-- TAB 3: WAITLIST -->
+  <!-- TAB 3: HÀNG CHỜ -->
   @if (activeTab() === 'waitlist') {
-    <div class="bookings-stream">
+    <zen-card padding="none">
       @for (w of waitlists(); track w.id) {
-        <div class="booking-item-card waitlist-card" [class.converted]="w.status === 'CONVERTED'">
-          <div class="item-left">
-            <div class="item-head">
-              <span class="class-badge">{{ w.className }}</span>
-              <span class="rank-pill">Thứ tự hàng chờ: #{{ w.queuePosition }}</span>
-              <span class="status-tag" [ngClass]="w.status.toLowerCase()">
+        <div class="list-row">
+          <div class="list-row-main">
+            <div class="zen-row">
+              <span class="zen-strong">{{ w.className }}</span>
+              <zen-badge size="sm">Thứ tự hàng chờ: #{{ w.queuePosition }}</zen-badge>
+              <zen-badge [tone]="bookingStatusTone(w.status)" size="sm" dot>
                 {{ w.status === 'WAITING' ? 'Đang đợi slot' : (w.status === 'CONVERTED' ? 'Đã có chỗ' : w.status) }}
-              </span>
+              </zen-badge>
             </div>
-            <div class="item-details">
+            <div class="zen-row zen-text-sm zen-text-muted">
               <span>{{ w.startTime | date:'EEEE, dd/MM/yyyy HH:mm':'':'vi' }}</span>
               <span>·</span>
               <span>{{ w.branchName }}</span>
             </div>
           </div>
 
-          <div class="item-right">
+          <div class="zen-row">
             @if (w.status === 'WAITING') {
-              <button type="button" class="btn-leave-waitlist" (click)="cancelWaitlist(w)" [disabled]="isLoading()">
+              <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelWaitlist(w)" [disabled]="isLoading()">
                 Rút khỏi hàng chờ
               </button>
             } @else if (w.status === 'CONVERTED') {
-              <span class="tag-done">Đã chuyển thành đặt chỗ</span>
+              <span class="zen-text-sm zen-text-muted">Đã chuyển thành đặt chỗ</span>
             }
           </div>
         </div>
       } @empty {
         @if (!isLoading() && !errorMessage()) {
-          <div class="empty-state">
-            <div class="empty-icon-circle">
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-            </div>
-            <h3 class="empty-title">Hàng chờ đang trống</h3>
-            <p class="empty-desc">
-              Khi một ca học đã kín chỗ, bạn có thể tham gia hàng chờ để tự động nhận chỗ khi có người hủy sớm.
-            </p>
-            <div class="empty-actions">
-              <a routerLink="/schedule/calendar" class="btn-primary-action">
-                <span>Xem lịch lớp học</span>
-              </a>
-            </div>
-          </div>
+          <zen-empty-state
+            icon="clock"
+            heading="Hàng chờ đang trống"
+            description="Khi một ca học đã kín chỗ, bạn có thể tham gia hàng chờ để tự động nhận chỗ khi có người hủy sớm."
+          >
+            <a routerLink="/schedule/calendar" class="zen-btn zen-btn--primary">Xem lịch lớp học</a>
+          </zen-empty-state>
         }
       }
-    </div>
+    </zen-card>
   }
 
-  <!-- QR MODAL FOR BOOKING -->
+  <!-- MODAL QR ĐẶT CHỖ -->
   @if (selectedBookingForQr(); as booking) {
-    <div class="modal-backdrop" (click)="closeQrModal()">
-      <div
-        class="qr-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Mã QR điểm danh"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="closeQrModal()"
-      >
-        <button type="button" class="btn-close" aria-label="Đóng" (click)="closeQrModal()">✕</button>
-        <div class="qr-head">
-          <h3>{{ booking.className }}</h3>
-          <p class="subtitle">{{ booking.branchName }} · {{ booking.startTime | date:'dd/MM/yyyy HH:mm' }}</p>
-        </div>
-
-        <div class="class-callout">
+    <zen-modal
+      [heading]="booking.className"
+      [subtitle]="booking.branchName + ' · ' + (booking.startTime | date:'dd/MM/yyyy HH:mm')"
+      icon="qr"
+      size="sm"
+      (closed)="closeQrModal()"
+    >
+      <div class="zen-stack qr-modal">
+        <div class="qr-callout">
           <strong>Mã đặt chỗ: {{ booking.bookingCode }}</strong>
           <span>Thảm: {{ booking.matNumber ? ('Thảm ' + booking.matNumber) : 'Tự do chọn thảm' }}</span>
         </div>
 
-        <div class="qr-code-display">
-          <div class="qr-frame">
-            <yoga-qr-code [value]="booking.bookingCode" />
-            <div class="code-and-copy">
-              <span class="qr-code-txt">{{ booking.bookingCode }}</span>
-              <button type="button" class="btn-copy-sm" (click)="copyToClipboard(booking.bookingCode)">Sao chép</button>
-            </div>
+        <div class="qr-frame">
+          <yoga-qr-code [value]="booking.bookingCode" />
+          <div class="zen-row">
+            <span class="zen-mono zen-strong">{{ booking.bookingCode }}</span>
+            <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="copyToClipboard(booking.bookingCode)">
+              <zen-icon name="copy" />
+              Sao chép
+            </button>
           </div>
         </div>
 
-        <p class="anti-duplicate-note">
+        <p class="zen-text-sm zen-text-muted qr-note">
           Quét mã này tại quầy tiếp tân trước giờ học để xác nhận điểm danh.
         </p>
       </div>
-    </div>
+    </zen-modal>
   }
 
-  <!-- QR MODAL FOR MEMBERSHIP PASS -->
+  <!-- MODAL THÔNG TIN THẺ -->
   @if (selectedPassForQr(); as pass) {
-    <div class="modal-backdrop" (click)="closeQrModal()">
-      <div
-        class="qr-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Thông tin thẻ tập"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="closeQrModal()"
-      >
-        <button type="button" class="btn-close" aria-label="Đóng" (click)="closeQrModal()">✕</button>
-        <div class="qr-head">
-          <h3>{{ pass.membershipCode }}</h3>
-          <p class="subtitle">{{ pass.isAllBranches ? 'Toàn chuỗi đa chi nhánh' : ('Cơ sở: ' + getBranchName(pass.registeredBranchId, pass)) }}</p>
-        </div>
-
-        <div class="class-callout">
+    <zen-modal
+      [heading]="pass.membershipCode"
+      [subtitle]="pass.isAllBranches ? 'Toàn chuỗi đa chi nhánh' : ('Cơ sở: ' + getBranchName(pass.registeredBranchId, pass))"
+      icon="credit-card"
+      size="sm"
+      (closed)="closeQrModal()"
+    >
+      <div class="zen-stack">
+        <div class="qr-callout">
           <strong>Trạng thái: {{ membershipStatusLabel(pass.status) }}</strong>
           <span>Số buổi khả dụng: {{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi') : 'Không giới hạn' }}</span>
         </div>
-
-        <p class="anti-duplicate-note">
+        <p class="zen-text-sm zen-text-muted qr-note">
           Đặt ca học tại mục Lịch & Đặt Chỗ để hệ thống cấp mã QR cho từng ca điểm danh.
         </p>
       </div>
-    </div>
+    </zen-modal>
   }
 </div>

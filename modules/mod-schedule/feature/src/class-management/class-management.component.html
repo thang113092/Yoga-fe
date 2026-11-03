@@ -1,988 +1,696 @@
-<div class="zen-container">
-  <!-- Header Section -->
-  <!-- Compact Unified Control Header -->
-  <header class="page-header">
-    <div class="header-main-row">
-      <div class="header-titles">
-        <div class="pre-title">{{ auth.isInstructor() ? 'Phân hệ Huấn luyện viên' : (auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học') }}</div>
-        <h1 class="main-title">{{ activeTab() === 'class-types' ? 'Bộ môn' : 'Lịch học' }}</h1>
+<div class="zen-page">
+  <zen-page-header
+    [eyebrow]="auth.isInstructor() ? 'Phân hệ Huấn luyện viên' : (auth.isReceptionist() ? 'Phân hệ Lễ tân & Vận hành' : 'Phân hệ Quản trị Lớp học')"
+    [heading]="activeTab() === 'class-types' ? 'Bộ môn' : 'Lịch học'"
+    [subtitle]="activeTab() === 'class-types'
+      ? 'Danh mục bộ môn yoga dùng để xếp lịch và mở khóa học tại các cơ sở.'
+      : 'Theo dõi ca học theo phòng và theo tuần, xếp lịch mới và xem danh sách học viên đặt chỗ.'"
+    [count]="activeTab() === 'class-types' ? classTypes().length : null"
+    countLabel="bộ môn"
+  >
+    <div actions class="zen-row">
+      @if (activeTab() === 'schedules') {
+        <button type="button" class="zen-btn zen-btn--outline" (click)="loadSchedules()" [disabled]="isLoading()" title="Đồng bộ danh sách">
+          <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
+          <span>Làm Mới</span>
+        </button>
+        @if (!auth.isReceptionist() && !auth.isInstructor()) {
+          <button type="button" class="zen-btn zen-btn--primary" (click)="openCreateScheduleModal()" title="Mở form xếp ca học mới">
+            <zen-icon name="plus" />
+            <span>Xếp Lịch Mới</span>
+          </button>
+        }
+      } @else if (!auth.isReceptionist() && !auth.isInstructor()) {
+        <button type="button" class="zen-btn zen-btn--primary" (click)="openCreateClassTypeModal()">
+          <zen-icon name="plus" />
+          <span>Thêm Bộ Môn Mới</span>
+        </button>
+      }
+    </div>
+  </zen-page-header>
+
+  @if (successMessage()) {
+    <zen-alert tone="success" dismissible (dismissed)="successMessage.set(null)">{{ successMessage() }}</zen-alert>
+  }
+
+  @if (errorMessage()) {
+    <zen-alert tone="danger" dismissible (dismissed)="errorMessage.set(null)">{{ errorMessage() }}</zen-alert>
+  }
+
+  <!-- TAB 1: LỊCH HỌC -->
+  @if (activeTab() === 'schedules') {
+    <zen-card padding="none" class="schedule-control-card">
+      <zen-toolbar class="cm-toolbar">
+        <zen-search
+          class="zen-toolbar-grow"
+          placeholder="Tìm theo tên lớp, HLV, phòng..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+        <zen-select
+          class="zen-toolbar-item"
+          [options]="branchFilterOptions()"
+          [ngModel]="selectedBranchId()"
+          (ngModelChange)="onBranchFilterChange($event)"
+          [disabled]="isBranchLocked()"
+          placeholder="Chọn cơ sở yoga..."
+        />
+        <zen-select
+          class="zen-toolbar-item"
+          [options]="instructorFilterOptions()"
+          [ngModel]="selectedInstructorId()"
+          (ngModelChange)="selectedInstructorId.set($event)"
+          placeholder="Lọc theo huấn luyện viên..."
+        />
+      </zen-toolbar>
+
+      <!-- Tầng 1: Chọn phòng học -->
+      <div class="room-selector-row" role="tablist" aria-label="Danh sách phòng học">
+        <button
+          type="button"
+          class="zen-chip"
+          [class.is-active]="selectedRoomId() === 'ALL'"
+          (click)="onRoomFilterChange('ALL')"
+          role="tab"
+          [attr.aria-selected]="selectedRoomId() === 'ALL'"
+        >
+          <span>Tất cả các phòng</span>
+          <span class="chip-count">{{ currentContextRooms().length }}</span>
+        </button>
+
+        @for (room of currentContextRooms(); track room.id) {
+          <button
+            type="button"
+            class="zen-chip"
+            [class.is-active]="selectedRoomId() === room.id"
+            (click)="onRoomFilterChange(room.id)"
+            role="tab"
+            [attr.aria-selected]="selectedRoomId() === room.id"
+            [title]="room.name + (room.floor ? ' · ' + room.floor : '') + ' · ' + room.maxCapacity + ' thảm'"
+          >
+            <span class="room-dot" [attr.data-theme]="getRoomThemeIndex(room.id)"></span>
+            <span>{{ getCleanRoomName(room.name) }}</span>
+            @if (room.floor) {
+              <span class="chip-count">{{ room.floor }}</span>
+            }
+          </button>
+        }
       </div>
 
-      <!-- Controls on top header row -->
-      @if (activeTab() === 'schedules') {
-        <div class="header-filters-row">
-          <div class="filter-group search-box">
-            <div class="input-search-wrapper">
-              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <input
-                type="text"
-                class="filter-input"
-                placeholder="Tìm theo tên lớp, HLV, phòng..."
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)"
-              />
+      <!-- Tầng 2: Điều hướng thời gian -->
+      <div class="date-navigator-row">
+        @if (selectedRoomId() === 'ALL') {
+          <div class="date-identity">
+            <div class="zen-segmented" role="group" aria-label="Chuyển ngày">
+              <button type="button" (click)="goToPrevDay()" title="Hôm trước" aria-label="Hôm trước"><zen-icon name="chevron-left" /></button>
+              <button type="button" [class.is-active]="isTodayDate(activeDayIso())" (click)="setDateToToday()" title="Về hôm nay">Hôm nay</button>
+              <button type="button" (click)="goToNextDay()" title="Hôm sau" aria-label="Hôm sau"><zen-icon name="chevron-right" /></button>
+            </div>
+
+            <div class="active-date-display">
+              <span class="date-main">{{ getWeekdayDisplay(activeDayIso()) }}, {{ formatDisplayDate(activeDayIso()) }}</span>
+              @if (isTodayDate(activeDayIso())) {
+                <zen-badge tone="primary" size="sm">Hôm nay</zen-badge>
+              }
+              <label class="zen-btn zen-btn--outline zen-btn--sm zen-btn--icon calendar-trigger" title="Nhấp chọn ngày bất kỳ trên lịch">
+                <zen-icon name="calendar" />
+                <input
+                  type="date"
+                  class="hidden-native-date-input"
+                  [ngModel]="activeDayIso()"
+                  (ngModelChange)="onDayDateChange($event)"
+                  aria-label="Chọn ngày xem lịch"
+                />
+              </label>
             </div>
           </div>
 
-          <div class="filter-group branch-selector">
-            <zen-select
-              [options]="branchFilterOptions()"
-              [ngModel]="selectedBranchId()"
-              (ngModelChange)="onBranchFilterChange($event)"
-              [disabled]="isBranchLocked()"
-              placeholder="Chọn cơ sở yoga..."
-            />
-          </div>
-
-          <div class="filter-group instructor-selector">
-            <zen-select
-              [options]="instructorFilterOptions()"
-              [ngModel]="selectedInstructorId()"
-              (ngModelChange)="selectedInstructorId.set($event)"
-              placeholder="Lọc theo huấn luyện viên..."
-            />
-          </div>
-
-          <div class="filter-action">
-            <button type="button" class="btn-refresh" (click)="loadSchedules()" [disabled]="isLoading()" title="Đồng bộ danh sách">
-              <svg class="refresh-icon" [class.spinning]="isLoading()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>Làm Mới</span>
+          <div class="week-strip">
+            <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon" (click)="moveWeek(-1)" title="Tuần trước" aria-label="Tuần trước">
+              <zen-icon name="chevron-left" />
             </button>
-            @if (!auth.isReceptionist() && !auth.isInstructor()) {
-              <button type="button" class="btn-primary btn-create-schedule" (click)="openCreateScheduleModal()" title="Mở form xếp ca học mới">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Xếp Lịch Mới</span>
-              </button>
+            <div class="week-strip-days" role="tablist" aria-label="Các ngày trong tuần">
+              @for (day of weekDays(); track day.iso) {
+                <button
+                  type="button"
+                  class="strip-day"
+                  [class.is-active]="activeDayIso() === day.iso"
+                  [class.is-today]="isTodayDate(day.iso)"
+                  (click)="onDateSelect(day.iso)"
+                  role="tab"
+                  [attr.aria-selected]="activeDayIso() === day.iso"
+                  [title]="day.label + ', ' + formatDisplayDate(day.iso)"
+                >
+                  <span class="strip-day-name">{{ getShortDayName(day.label) }}</span>
+                  <span class="strip-day-num">{{ formatDayNumber(day.iso) }}</span>
+                </button>
+              }
+            </div>
+            <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm zen-btn--icon" (click)="moveWeek(1)" title="Tuần sau" aria-label="Tuần sau">
+              <zen-icon name="chevron-right" />
+            </button>
+          </div>
+        } @else {
+          <div class="date-identity">
+            <div class="zen-segmented" role="group" aria-label="Chuyển tuần">
+              <button type="button" (click)="moveWeek(-1)" title="Tuần trước" aria-label="Tuần trước"><zen-icon name="chevron-left" /></button>
+              <button type="button" (click)="setDateToToday()" title="Về tuần này">Tuần này</button>
+              <button type="button" (click)="moveWeek(1)" title="Tuần sau" aria-label="Tuần sau"><zen-icon name="chevron-right" /></button>
+            </div>
+            <span class="date-main">{{ getWeekRangeDisplay() }}</span>
+          </div>
+
+          <div class="week-presets">
+            <div class="zen-segmented">
+              <button type="button" [class.is-active]="dateRangeMode() === 'week'" (click)="selectThisWeek()">Tuần này</button>
+              <button type="button" [class.is-active]="dateRangeMode() === 'month'" (click)="selectThisMonth()">Tháng này</button>
+            </div>
+            <div class="custom-range">
+              <input
+                type="date"
+                class="zen-control"
+                [ngModel]="fromDate()"
+                (ngModelChange)="onFromDateChange($event)"
+                title="Từ ngày"
+                aria-label="Từ ngày"
+              />
+              <zen-icon name="arrow-right" class="zen-text-muted" />
+              <input
+                type="date"
+                class="zen-control"
+                [ngModel]="toDate()"
+                (ngModelChange)="onToDateChange($event)"
+                title="Đến ngày"
+                aria-label="Đến ngày"
+              />
+            </div>
+          </div>
+        }
+      </div>
+    </zen-card>
+
+    @if (isLoading()) {
+      <zen-card><zen-loading message="Đang tải lịch học…" /></zen-card>
+    } @else {
+      @if (!filteredSchedules().length) {
+        <zen-alert tone="info">Chưa có buổi học phù hợp trong thời gian này.</zen-alert>
+      }
+      @if (selectedRoomId() === 'ALL') {
+        <!-- Lịch theo ngày: mỗi phòng là một cột -->
+        <div class="timetable-scroll" aria-label="Lịch phòng theo ngày">
+          <div class="timetable-grid"
+               [style.gridTemplateColumns]="'64px repeat(' + dayRoomColumns().length + ', minmax(210px, 1fr))'"
+               [style.minWidth.px]="64 + dayRoomColumns().length * 220">
+
+            <div class="col-heading time-heading">Giờ</div>
+
+            @for (col of dayRoomColumns(); track col.roomId) {
+              <div class="col-heading">
+                <div class="col-title">
+                  <span class="room-dot" [attr.data-theme]="getRoomThemeIndex(col.roomId)"></span>
+                  <strong class="col-name">{{ col.roomName }}</strong>
+                </div>
+                <div class="col-meta">
+                  <span>
+                    @if (col.floor) { {{ col.floor }} · }{{ col.maxCapacity }} thảm
+                  </span>
+                  <zen-badge size="sm" [tone]="col.classCount > 0 ? 'primary' : 'neutral'">{{ col.classCount }} lớp</zen-badge>
+                </div>
+              </div>
+            }
+
+            <div class="time-axis">
+              @for (hour of hours; track hour) {
+                <span [style.top.px]="(hour - 4) * 72">{{ hour < 10 ? '0' : '' }}{{ hour }}:00</span>
+              }
+            </div>
+
+            @for (col of dayRoomColumns(); track col.roomId) {
+              <div class="room-track"
+                   (click)="onRoomTrackClick($event, col.roomId)"
+                   [title]="'Nhấp vào vùng trống để xếp lịch mới cho phòng ' + col.roomName">
+                @for (item of col.items; track item.schedule.id) {
+                  <div class="schedule-card-event"
+                       [attr.data-theme]="getRoomThemeIndex(item.schedule.roomId)"
+                       [class.course-event]="!!item.schedule.courseClassId"
+                       [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
+                       [style.top.px]="(item.start - 240) * 1.2"
+                       [style.height.px]="(item.end - item.start) * 1.2"
+                       [style.left.%]="item.lane * 100 / item.lanes"
+                       [style.width.%]="100 / item.lanes"
+                       (click)="$event.stopPropagation()">
+                    <button type="button"
+                            class="event-card-btn"
+                            (click)="openAttendeesModal(item.schedule)"
+                            [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
+                      <span class="card-top-row">
+                        <span class="card-time">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
+                        <span class="card-tag">{{ item.end - item.start }}p</span>
+                        @if (item.schedule.courseClassId) {
+                          <span class="card-tag card-tag--end" title="Buổi học thuộc khóa đào tạo">Khóa</span>
+                        }
+                      </span>
+                      <strong class="card-class-title">{{ item.schedule.className }}</strong>
+                      <span class="card-meta-row">
+                        <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">{{ item.schedule.instructorName }}</span>
+                        <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                          {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                }
+              </div>
             }
           </div>
         </div>
       } @else {
-        @if (!auth.isReceptionist() && !auth.isInstructor()) {
-          <div class="header-actions">
-            <button type="button" class="btn-primary" (click)="openCreateClassTypeModal()">
-              <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Thêm Bộ Môn Mới</span>
-            </button>
-          </div>
-        }
-      }
-    </div>
-  </header>
-
-  <!-- Messages Feedback -->
-  @if (successMessage()) {
-    <div class="zen-alert alert-success">
-      <div class="alert-icon-wrap">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-      </div>
-      <div class="alert-content">
-        <span>{{ successMessage() }}</span>
-      </div>
-      <button type="button" class="alert-close-btn" (click)="successMessage.set(null)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-  }
-
-  @if (errorMessage()) {
-    <div class="zen-alert alert-error">
-      <div class="alert-icon-wrap">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-      </div>
-      <div class="alert-content">
-        <span>{{ errorMessage() }}</span>
-      </div>
-      <button type="button" class="alert-close-btn" (click)="errorMessage.set(null)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-  }
-
-  <!-- TAB 1: SCHEDULES MANAGEMENT -->
-  @if (activeTab() === 'schedules') {
-    <!-- UNIFIED CONTROL CARD: PHÒNG HỌC & ĐIỀU HƯỚNG THỜI GIAN THEO NGỮ CẢNH -->
-    <div class="schedule-control-card">
-      <!-- Tầng 1: Chọn phòng học dạng Zen Pills -->
-      <div class="room-selector-row">
-        <div class="room-pills-scroll" role="tablist" aria-label="Danh sách phòng học">
-          <button
-            type="button"
-            class="room-tab-pill"
-            [class.active]="selectedRoomId() === 'ALL'"
-            (click)="onRoomFilterChange('ALL')"
-            role="tab"
-            [attr.aria-selected]="selectedRoomId() === 'ALL'"
-          >
-            <span class="pill-dot"></span>
-            <span class="pill-name">Tất cả các phòng</span>
-            <span class="room-count-badge">{{ currentContextRooms().length }}</span>
-          </button>
-
-          @for (room of currentContextRooms(); track room.id) {
-            <button
-              type="button"
-              class="room-tab-pill"
-              [class.active]="selectedRoomId() === room.id"
-              (click)="onRoomFilterChange(room.id)"
-              role="tab"
-              [attr.aria-selected]="selectedRoomId() === room.id"
-              [title]="room.name + (room.floor ? ' · ' + room.floor : '') + ' · ' + room.maxCapacity + ' thảm'"
-            >
-              <span class="pill-name">{{ getCleanRoomName(room.name) }}</span>
-              @if (room.floor) {
-                <span class="pill-floor-tag">{{ room.floor }}</span>
+        <!-- Lịch theo tuần cho một phòng -->
+        <div class="timetable-scroll" aria-label="Lịch học theo tuần">
+          <div class="timetable-grid"
+               [style.gridTemplateColumns]="'64px repeat(' + weekDays().length + ', minmax(145px, 1fr))'"
+               [style.minWidth.px]="64 + weekDays().length * 150">
+            <div class="col-heading time-heading">Giờ</div>
+            @for (day of weekColumns(); track day.iso) {
+              <div class="col-heading col-heading--day" [class.is-today]="isTodayDate(day.iso)">
+                <strong class="col-name">{{ day.label }}</strong>
+                <span class="col-meta">{{ formatDisplayDate(day.iso) }}</span>
+              </div>
+            }
+            <div class="time-axis">
+              @for (hour of hours; track hour) {
+                <span [style.top.px]="(hour - 4) * 72">{{ hour < 10 ? '0' : '' }}{{ hour }}:00</span>
               }
-            </button>
-          }
-        </div>
-      </div>
-
-      <!-- Tầng 2: Điều hướng thời gian thông minh theo ngữ cảnh -->
-      <div class="date-navigator-row">
-        @if (selectedRoomId() === 'ALL') {
-          <!-- Ngữ cảnh 1: Chế độ Xem Theo Ngày (Mỗi phòng là một cột) -->
-          <div class="day-nav-wrapper">
-            <!-- Left: Cụm chuyển ngày & Nhãn ngày nổi bật -->
-            <div class="day-identity-group">
-              <div class="day-step-arrows" role="group" aria-label="Chuyển ngày">
-                <button type="button" class="btn-step-arrow" (click)="goToPrevDay()" title="Hôm trước">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                  </svg>
-                </button>
-                <button type="button" class="btn-step-today" [class.is-today-active]="isTodayDate(activeDayIso())" (click)="setDateToToday()" title="Về hôm nay">
-                  Hôm nay
-                </button>
-                <button type="button" class="btn-step-arrow" (click)="goToNextDay()" title="Hôm sau">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="active-date-display">
-                <span class="day-weekday">{{ getWeekdayDisplay(activeDayIso()) }},</span>
-                <span class="day-date-text">{{ formatDisplayDate(activeDayIso()) }}</span>
-                @if (isTodayDate(activeDayIso())) {
-                  <span class="today-dot-pill">Hôm nay</span>
-                }
-                <label class="btn-calendar-trigger" title="Nhấp chọn ngày bất kỳ trên lịch">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <input
-                    type="date"
-                    class="hidden-native-date-input"
-                    [ngModel]="activeDayIso()"
-                    (ngModelChange)="onDayDateChange($event)"
-                    aria-label="Chọn ngày xem lịch"
-                  />
-                </label>
-              </div>
             </div>
-
-            <!-- Right: Dải 7 ngày mini trong tuần -->
-            <div class="week-strip-wrapper">
-              <button type="button" class="btn-week-step-arrow" (click)="moveWeek(-1)" title="Tuần trước">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-              </button>
-
-              <div class="week-strip-days" role="tablist" aria-label="Các ngày trong tuần">
-                @for (day of weekDays(); track day.iso) {
-                  <button
-                    type="button"
-                    class="strip-day-card"
-                    [class.active]="activeDayIso() === day.iso"
-                    [class.is-today]="isTodayDate(day.iso)"
-                    (click)="onDateSelect(day.iso)"
-                    role="tab"
-                    [attr.aria-selected]="activeDayIso() === day.iso"
-                    [title]="day.label + ', ' + formatDisplayDate(day.iso)"
-                  >
-                    <span class="strip-day-name">{{ getShortDayName(day.label) }}</span>
-                    <span class="strip-day-num">{{ formatDayNumber(day.iso) }}</span>
-                    @if (isTodayDate(day.iso)) {
-                      <span class="strip-today-dot"></span>
-                    }
-                  </button>
+            @for (day of weekColumns(); track day.iso) {
+              <div class="day-track"
+                   [class.is-today]="isTodayDate(day.iso)"
+                   (click)="onDayTrackClick($event, day.iso)"
+                   [title]="'Nhấp vào vùng trống để xếp lịch cho ngày ' + formatDisplayDate(day.iso)">
+                @for (item of day.items; track item.schedule.id) {
+                  <div class="schedule-card-event"
+                       [attr.data-theme]="getRoomThemeIndex(item.schedule.roomId)"
+                       [class.course-event]="!!item.schedule.courseClassId"
+                       [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
+                       [style.top.px]="(item.start - 240) * 1.2"
+                       [style.height.px]="(item.end - item.start) * 1.2"
+                       [style.left.%]="item.lane * 100 / item.lanes"
+                       [style.width.%]="100 / item.lanes"
+                       (click)="$event.stopPropagation()">
+                    <button type="button"
+                            class="event-card-btn"
+                            (click)="openAttendeesModal(item.schedule)"
+                            [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
+                      <strong class="card-class-title">{{ item.schedule.className }}</strong>
+                      <span class="card-top-row">
+                        <span class="card-time">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
+                        <span class="card-tag">{{ item.end - item.start }}p</span>
+                      </span>
+                      <span class="card-meta-row">
+                        <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">{{ item.schedule.instructorName }}</span>
+                        <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                          {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
                 }
               </div>
-
-              <button type="button" class="btn-week-step-arrow" (click)="moveWeek(1)" title="Tuần sau">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
-            </div>
-          </div>
-        } @else {
-          <!-- Ngữ cảnh 2: Chế độ Xem Tuần (Khi chọn 1 phòng cụ thể) -->
-          <div class="week-nav-wrapper">
-            <div class="week-identity-group">
-              <div class="day-step-arrows" role="group" aria-label="Chuyển tuần">
-                <button type="button" class="btn-step-arrow" (click)="moveWeek(-1)" title="Tuần trước">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                  </svg>
-                </button>
-                <button type="button" class="btn-step-today" (click)="setDateToToday()" title="Về tuần này">
-                  Tuần này
-                </button>
-                <button type="button" class="btn-step-arrow" (click)="moveWeek(1)" title="Tuần sau">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="active-date-display">
-                <span class="week-range-label">{{ getWeekRangeDisplay() }}</span>
-              </div>
-            </div>
-
-            <div class="week-presets-group">
-              <button
-                type="button"
-                class="btn-date-preset"
-                [class.active]="dateRangeMode() === 'week'"
-                (click)="selectThisWeek()"
-              >
-                Tuần này
-              </button>
-              <button
-                type="button"
-                class="btn-date-preset"
-                [class.active]="dateRangeMode() === 'month'"
-                (click)="selectThisMonth()"
-              >
-                Tháng này
-              </button>
-
-              <div class="custom-range-mini">
-                <input
-                  type="date"
-                  class="mini-date-input"
-                  [ngModel]="fromDate()"
-                  (ngModelChange)="onFromDateChange($event)"
-                  title="Từ ngày"
-                  aria-label="Từ ngày"
-                />
-                <span class="range-arrow">→</span>
-                <input
-                  type="date"
-                  class="mini-date-input"
-                  [ngModel]="toDate()"
-                  (ngModelChange)="onToDateChange($event)"
-                  title="Đến ngày"
-                  aria-label="Đến ngày"
-                />
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-
-    @if (isLoading()) {<p role="status">Đang tải lịch học…</p>} @else {
-    @if (!filteredSchedules().length) {<p role="status">Chưa có buổi học phù hợp trong thời gian này.</p>}
-    @if (selectedRoomId() === 'ALL') {
-
-      <!-- Day-Resource Timetable Grid (Mỗi phòng là một cột) -->
-      <div class="day-resource-scroll" aria-label="Lịch phòng theo ngày">
-        <div class="day-resource-grid"
-             [style.gridTemplateColumns]="'64px repeat(' + dayRoomColumns().length + ', minmax(210px, 1fr))'"
-             [style.minWidth.px]="64 + dayRoomColumns().length * 220">
-          
-          <div class="room-col-heading time-heading">Giờ</div>
-
-          @for (col of dayRoomColumns(); track col.roomId) {
-            <div class="room-col-heading" [class]="'room-col-theme-' + getRoomThemeIndex(col.roomId)">
-              <div class="room-col-title-wrap">
-                <span class="room-theme-dot"></span>
-                <strong class="room-col-name">{{ col.roomName }}</strong>
-              </div>
-              <div class="room-col-meta">
-                @if (col.floor) {
-                  <span class="room-col-floor">{{ col.floor }} · </span>
-                }
-                <span class="room-col-cap">{{ col.maxCapacity }} thảm</span>
-                <span class="room-col-classes-count" [class.has-classes]="col.classCount > 0">
-                  {{ col.classCount }} lớp
-                </span>
-              </div>
-            </div>
-          }
-
-          <!-- Time axis column -->
-          <div class="time-axis">
-            @for (hour of hours; track hour) {
-              <span [style.top.px]="(hour - 4) * 72">{{ hour < 10 ? '0' : '' }}{{ hour }}:00</span>
             }
           </div>
-
-          <!-- Room tracks -->
-          @for (col of dayRoomColumns(); track col.roomId) {
-            <div class="room-track"
-                 [class]="'room-track-theme-' + getRoomThemeIndex(col.roomId)"
-                 (click)="onRoomTrackClick($event, col.roomId)"
-                 [title]="'Nhấp vào vùng trống để xếp lịch mới cho phòng ' + col.roomName">
-              
-              @for (item of col.items; track item.schedule.id) {
-                <div class="week-event schedule-card-event day-resource-card"
-                     [class]="'room-theme-' + getRoomThemeIndex(item.schedule.roomId)"
-                     [class.course-event]="!!item.schedule.courseClassId"
-                     [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
-                     [style.top.px]="(item.start - 240) * 1.2"
-                     [style.height.px]="(item.end - item.start) * 1.2"
-                     [style.left.%]="item.lane * 100 / item.lanes"
-                     [style.width.%]="100 / item.lanes"
-                     (click)="$event.stopPropagation()">
-                  <button type="button"
-                          class="event-card-btn"
-                          (click)="openAttendeesModal(item.schedule)"
-                          [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
-                    
-                    <div class="card-top-row">
-                      <span class="card-time-badge">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
-                      <span class="card-duration-badge">{{ item.end - item.start }}p</span>
-                      @if (item.schedule.courseClassId) {
-                        <span class="card-course-badge" title="Buổi học thuộc khóa đào tạo">Khóa</span>
-                      }
-                    </div>
-
-                    <strong class="card-class-title">{{ item.schedule.className }}</strong>
-
-                    <div class="card-meta-row">
-                      <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">
-                        {{ item.schedule.instructorName }}
-                      </span>
-                      <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
-                        {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              }
-            </div>
-          }
         </div>
-      </div>
-    } @else {
-      <!-- ================================================================= -->
-      <!-- CHẾ ĐỘ XEM TUẦN CHO MỘT PHÒNG CỤ THỂ                              -->
-      <!-- ================================================================= -->
-      <div class="week-scroll" aria-label="Lịch học theo tuần">
-        <div class="week-grid"
-             [style.gridTemplateColumns]="'64px repeat(' + weekDays().length + ', minmax(145px, 1fr))'"
-             [style.minWidth.px]="64 + weekDays().length * 150">
-          <div class="week-heading">Giờ</div>
-          @for(day of weekColumns();track day.iso){<div class="week-heading" [class.is-today]="isTodayDate(day.iso)"><strong>{{day.label}}</strong><span>{{formatDisplayDate(day.iso)}}</span></div>}
-          <div class="time-axis">@for(hour of hours;track hour){<span [style.top.px]="(hour-4)*72">{{hour<10?'0':''}}{{hour}}:00</span>}</div>
-          @for(day of weekColumns();track day.iso){
-            <div class="day-track"
-                 [class.is-today]="isTodayDate(day.iso)"
-                 (click)="onDayTrackClick($event, day.iso)"
-                 [title]="'Nhấp vào vùng trống để xếp lịch cho ngày ' + formatDisplayDate(day.iso)">
-              @for(item of day.items; track item.schedule.id){
-                <div class="week-event schedule-card-event single-room-mode"
-                     [class]="'room-theme-' + getRoomThemeIndex(item.schedule.roomId)"
-                     [class.course-event]="!!item.schedule.courseClassId"
-                     [class.cancelled-event]="item.schedule.status === 'CANCELLED'"
-                     [style.top.px]="(item.start - 240) * 1.2"
-                     [style.height.px]="(item.end - item.start) * 1.2"
-                     [style.left.%]="item.lane * 100 / item.lanes"
-                     [style.width.%]="100 / item.lanes"
-                     (click)="$event.stopPropagation()">
-                  <button type="button"
-                          class="event-card-btn"
-                          (click)="openAttendeesModal(item.schedule)"
-                          [title]="item.schedule.className + ' (' + formatTime(item.schedule.startTime) + ' - ' + formatTime(item.schedule.endTime) + ', ' + (item.end - item.start) + ' phút) · ' + item.schedule.roomName + ' · HLV: ' + item.schedule.instructorName + ' · Nhấp để xem danh sách điểm danh'">
-                    
-                    <strong class="card-class-title">{{ item.schedule.className }}</strong>
-
-                    <div class="card-time-row">
-                      <span class="card-time">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
-                      <span class="card-duration">({{ item.end - item.start }}p)</span>
-                    </div>
-
-                    <div class="card-meta-row">
-                      <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">
-                        {{ item.schedule.instructorName }}
-                      </span>
-                      <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
-                        {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
+      }
     }
   }
-}
 
-  <!-- TAB 2: CLASS TYPES (BỘ MÔN) -->
+  <!-- TAB 2: BỘ MÔN -->
   @if (activeTab() === 'class-types') {
-    <div class="class-types-grid">
+    @if (!classTypes().length) {
+      <zen-card padding="none">
+        <zen-empty-state icon="book" heading="Chưa có bộ môn nào" description="Thêm bộ môn đầu tiên để bắt đầu xếp lịch và mở khóa học." />
+      </zen-card>
+    }
+    <div class="zen-grid">
       @for (ct of classTypes(); track ct.id) {
-        <div class="class-type-card">
-          <div class="card-header-line">
-            <div class="card-badges">
-              <span class="type-code-badge">{{ ct.code }}</span>
-              <span class="intensity-tag">{{ getIntensityLabel(ct.intensityLevel) }}</span>
+        <zen-card class="class-type-card">
+          <div class="zen-stack zen-stack--sm">
+            <div class="zen-row zen-row--between">
+              <div class="zen-row">
+                <zen-badge size="sm"><span class="zen-mono">{{ ct.code }}</span></zen-badge>
+                <zen-badge size="sm" tone="info">{{ getIntensityLabel(ct.intensityLevel) }}</zen-badge>
+              </div>
+              @if (!auth.isReceptionist() && !auth.isInstructor()) {
+                <button
+                  type="button"
+                  class="zen-btn zen-btn--ghost zen-btn--sm"
+                  (click)="deleteClassType(ct)"
+                  title="Xóa hoặc tạm dừng bộ môn này"
+                  aria-label="Xóa bộ môn"
+                >
+                  <zen-icon name="trash" />
+                  <span>Xóa</span>
+                </button>
+              }
             </div>
-            @if (!auth.isReceptionist() && !auth.isInstructor()) {
-              <button
-                type="button"
-                class="btn-delete-type"
-                (click)="deleteClassType(ct)"
-                title="Xóa hoặc tạm dừng bộ môn này"
-                aria-label="Xóa bộ môn"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-                <span>Xóa</span>
-              </button>
-            }
+
+            <h3 class="zen-section-title">{{ ct.name }}</h3>
+            <p class="type-desc">{{ ct.description || 'Chưa có thông tin mô tả chi tiết cho bộ môn này.' }}</p>
           </div>
-
-          <h3 class="type-name">{{ ct.name }}</h3>
-
-          <p class="type-desc">{{ ct.description || 'Chưa có thông tin mô tả chi tiết cho bộ môn này.' }}</p>
 
           <div class="type-footer">
-            <div class="duration-meta">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-              <span>Thời lượng tiêu chuẩn: <strong>{{ ct.defaultDurationMinutes }} phút</strong></span>
-            </div>
-            <span class="active-indicator" [class.inactive]="!ct.isActive">
-              {{ ct.isActive ? 'Đang áp dụng' : 'Tạm dừng' }}
+            <span class="zen-row zen-text-sm zen-text-muted">
+              <zen-icon name="clock" />
+              <span>Thời lượng tiêu chuẩn: <strong class="zen-strong">{{ ct.defaultDurationMinutes }} phút</strong></span>
             </span>
+            <zen-badge [tone]="ct.isActive ? 'success' : 'neutral'" dot>{{ ct.isActive ? 'Đang áp dụng' : 'Tạm dừng' }}</zen-badge>
           </div>
-        </div>
+        </zen-card>
       }
     </div>
   }
 </div>
 
-<!-- ========================================================================= -->
-<!-- MODAL: MỞ CA HỌC MỚI                                                       -->
-<!-- ========================================================================= -->
+<!-- MODAL: TẠO BUỔI HỌC LẺ -->
 @if (isCreateScheduleOpen()) {
-  <div class="modal-backdrop" (click)="closeCreateScheduleModal()">
-    <div class="modal-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="pre-title">Xếp Lịch Giảng Dạy</div>
-          <h2 class="modal-title">Tạo buổi học lẻ</h2>
-        </div>
-        <button type="button" class="btn-close-modal" (click)="closeCreateScheduleModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="form-grid">
-          <!-- Cơ Sở Chi Nhánh -->
-          <div class="form-field full-width">
-            <label class="form-label">Cơ Sở Trực Thuộc <span class="req">*</span></label>
-            <zen-select
-              [options]="branchSelectOptions()"
-              [ngModel]="scheduleForm().branchId"
-              (ngModelChange)="onScheduleFormBranchChange($event)"
-              [disabled]="auth.isBranchManager()"
-              placeholder="Chọn cơ sở mở lớp..."
-            />
-            @if (auth.isBranchManager()) {
-              <small class="field-hint">Cố định theo cơ sở bạn đang quản lý</small>
-            }
-          </div>
-
-          <!-- Bộ Môn / Loại Lớp -->
-          <div class="form-field full-width">
-            <label class="form-label">Bộ Môn / Loại Lớp Học <span class="req">*</span></label>
-            <zen-select
-              [options]="classTypeSelectOptions()"
-              [ngModel]="scheduleForm().classTypeId"
-              (ngModelChange)="onScheduleFormClassTypeChange($event)"
-              placeholder="Chọn bộ môn yoga..."
-            />
-          </div>
-
-          <!-- Phòng Tập -->
-          <div class="form-field">
-            <label class="form-label">Phòng Tập (Studio) <span class="req">*</span></label>
-            <zen-select
-              [options]="roomSelectOptions()"
-              [ngModel]="scheduleForm().roomId"
-              (ngModelChange)="onScheduleFormRoomChange($event)"
-              placeholder="Chọn phòng tập..."
-            />
-          </div>
-
-          <!-- Huấn Luyện Viên -->
-          <div class="form-field">
-            <label class="form-label">Huấn Luyện Viên Giảng Dạy <span class="req">*</span></label>
-            <zen-select
-              [options]="instructorSelectOptions()"
-              [ngModel]="scheduleForm().instructorId"
-              (ngModelChange)="onScheduleFormInstructorChange($event)"
-              placeholder="Chọn huấn luyện viên..."
-            />
-          </div>
-
-          <!-- Ngày Tập -->
-          <div class="form-field">
-            <label class="form-label">Ngày Diễn Ra <span class="req">*</span></label>
-            <input
-              type="date"
-              class="form-input"
-              [ngModel]="scheduleForm().date"
-              (ngModelChange)="scheduleForm().date = $event"
-            />
-          </div>
-
-          <!-- Giờ Bắt Đầu -->
-          <div class="form-field">
-            <label class="form-label">Giờ Bắt Đầu <span class="req">*</span></label>
-            <input
-              type="time"
-              class="form-input"
-              [ngModel]="scheduleForm().startTimeStr"
-              (ngModelChange)="scheduleForm().startTimeStr = $event"
-            />
-          </div>
-
-          <!-- Thời Lượng Dự Kiến -->
-          <div class="form-field">
-            <label class="form-label">Thời Lượng (Phút) <span class="req">*</span></label>
-            <input
-              type="number"
-              class="form-input"
-              min="30"
-              max="180"
-              step="15"
-              [ngModel]="scheduleForm().durationMinutes"
-              (ngModelChange)="scheduleForm().durationMinutes = $event"
-            />
-          </div>
-
-          <!-- Sĩ Số Tối Đa -->
-          <div class="form-field">
-            <label class="form-label">Sĩ Số Tối Đa (Số Thảm) <span class="req">*</span></label>
-            <input
-              type="number"
-              class="form-input"
-              min="1"
-              max="50"
-              [ngModel]="scheduleForm().maxCapacity"
-              (ngModelChange)="scheduleForm().maxCapacity = $event"
-            />
-          </div>
-        </div>
-
-        <div class="note-box">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          <span>Sau khi tạo, ca học sẽ lập tức hiển thị trên ứng dụng để hội viên có thẻ tập hợp lệ tiến hành đặt chỗ.</span>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" (click)="closeCreateScheduleModal()" [disabled]="isSubmittingSchedule()">
-          Hủy Bỏ
-        </button>
-        <button type="button" class="btn-primary" (click)="submitCreateSchedule()" [disabled]="isSubmittingSchedule()">
-          @if (isSubmittingSchedule()) {
-            <span>Đang lưu ca học...</span>
-          } @else {
-            <span>Xác Nhận Mở Lớp</span>
+  <zen-modal
+    heading="Tạo buổi học lẻ"
+    subtitle="Xếp lịch giảng dạy cho một ca học tại cơ sở."
+    icon="calendar"
+    size="lg"
+    (closed)="closeCreateScheduleModal()"
+  >
+    <div class="zen-stack">
+      <div class="zen-form-grid">
+        <div class="zen-field zen-field--full">
+          <span class="zen-label">Cơ Sở Trực Thuộc <span class="zen-required">*</span></span>
+          <zen-select
+            [options]="branchSelectOptions()"
+            [ngModel]="scheduleForm().branchId"
+            (ngModelChange)="onScheduleFormBranchChange($event)"
+            [disabled]="auth.isBranchManager()"
+            placeholder="Chọn cơ sở mở lớp..."
+          />
+          @if (auth.isBranchManager()) {
+            <span class="zen-hint">Cố định theo cơ sở bạn đang quản lý</span>
           }
-        </button>
+        </div>
+
+        <div class="zen-field zen-field--full">
+          <span class="zen-label">Bộ Môn / Loại Lớp Học <span class="zen-required">*</span></span>
+          <zen-select
+            [options]="classTypeSelectOptions()"
+            [ngModel]="scheduleForm().classTypeId"
+            (ngModelChange)="onScheduleFormClassTypeChange($event)"
+            placeholder="Chọn bộ môn yoga..."
+          />
+        </div>
+
+        <div class="zen-field">
+          <span class="zen-label">Phòng Tập (Studio) <span class="zen-required">*</span></span>
+          <zen-select
+            [options]="roomSelectOptions()"
+            [ngModel]="scheduleForm().roomId"
+            (ngModelChange)="onScheduleFormRoomChange($event)"
+            placeholder="Chọn phòng tập..."
+          />
+        </div>
+
+        <div class="zen-field">
+          <span class="zen-label">Huấn Luyện Viên Giảng Dạy <span class="zen-required">*</span></span>
+          <zen-select
+            [options]="instructorSelectOptions()"
+            [ngModel]="scheduleForm().instructorId"
+            (ngModelChange)="onScheduleFormInstructorChange($event)"
+            placeholder="Chọn huấn luyện viên..."
+          />
+        </div>
+
+        <label class="zen-field">
+          <span class="zen-label">Ngày Diễn Ra <span class="zen-required">*</span></span>
+          <input type="date" class="zen-control" [ngModel]="scheduleForm().date" (ngModelChange)="scheduleForm().date = $event" />
+        </label>
+
+        <label class="zen-field">
+          <span class="zen-label">Giờ Bắt Đầu <span class="zen-required">*</span></span>
+          <input type="time" class="zen-control" [ngModel]="scheduleForm().startTimeStr" (ngModelChange)="scheduleForm().startTimeStr = $event" />
+        </label>
+
+        <label class="zen-field">
+          <span class="zen-label">Thời Lượng (Phút) <span class="zen-required">*</span></span>
+          <input
+            type="number"
+            class="zen-control"
+            min="30"
+            max="180"
+            step="15"
+            [ngModel]="scheduleForm().durationMinutes"
+            (ngModelChange)="scheduleForm().durationMinutes = $event"
+          />
+        </label>
+
+        <label class="zen-field">
+          <span class="zen-label">Sĩ Số Tối Đa (Số Thảm) <span class="zen-required">*</span></span>
+          <input
+            type="number"
+            class="zen-control"
+            min="1"
+            max="50"
+            [ngModel]="scheduleForm().maxCapacity"
+            (ngModelChange)="scheduleForm().maxCapacity = $event"
+          />
+        </label>
       </div>
+
+      <zen-alert tone="info">Sau khi tạo, ca học sẽ lập tức hiển thị trên ứng dụng để hội viên có thẻ tập hợp lệ tiến hành đặt chỗ.</zen-alert>
     </div>
-  </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeCreateScheduleModal()" [disabled]="isSubmittingSchedule()">Hủy Bỏ</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitCreateSchedule()" [disabled]="isSubmittingSchedule()">
+        @if (isSubmittingSchedule()) {
+          <zen-loading inline />
+          <span>Đang lưu ca học...</span>
+        } @else {
+          <span>Xác Nhận Mở Lớp</span>
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
 }
 
-<!-- ========================================================================= -->
-<!-- MODAL: DANH SÁCH HỌC VIÊN ĐÃ ĐĂNG KÝ                                       -->
-<!-- ========================================================================= -->
+<!-- MODAL: DANH SÁCH HỌC VIÊN ĐÃ ĐĂNG KÝ -->
 @if (isAttendeesOpen()) {
-  <div class="modal-backdrop" (click)="closeAttendeesModal()">
-    <div class="modal-dialog modal-large" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="pre-title">Danh Sách Học Viên Đăng Ký</div>
-          <h2 class="modal-title">{{ selectedScheduleForAttendees()?.className }}</h2>
-          <div class="modal-sub-meta">
-            {{ formatTime(selectedScheduleForAttendees()?.startTime ?? '') }} • {{ formatDate(selectedScheduleForAttendees()?.startTime ?? '') }} • {{ selectedScheduleForAttendees()?.roomName }}
-          </div>
-        </div>
-        <button type="button" class="btn-close-modal" (click)="closeAttendeesModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+  <zen-modal
+    [heading]="selectedScheduleForAttendees()?.className ?? 'Danh sách học viên'"
+    [subtitle]="formatTime(selectedScheduleForAttendees()?.startTime ?? '') + ' • ' + formatDate(selectedScheduleForAttendees()?.startTime ?? '') + ' • ' + (selectedScheduleForAttendees()?.roomName ?? '')"
+    icon="users"
+    size="xl"
+    (closed)="closeAttendeesModal()"
+  >
+    @if (isLoadingAttendees()) {
+      <zen-loading message="Đang tải danh sách học viên..." />
+    } @else if (attendeesList().length === 0) {
+      <zen-empty-state
+        icon="users"
+        heading="Chưa có học viên nào đặt chỗ cho ca học này"
+        [description]="'Ca học hiện vẫn còn ' + (selectedScheduleForAttendees()?.availableSlots ?? 0) + ' chỗ trống.'"
+      />
+    } @else {
+      <div class="zen-table-wrap attendees-table">
+        <table class="zen-table">
+          <thead>
+            <tr>
+              <th>Vị trí thảm</th>
+              <th>Mã booking</th>
+              <th>Họ tên học viên</th>
+              <th>Số điện thoại</th>
+              <th>Thời điểm đặt</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of attendeesList(); track item.id) {
+              <tr>
+                <td><zen-badge size="sm" tone="primary">Thảm #{{ item.matNumber || 'Tự do' }}</zen-badge></td>
+                <td><span class="zen-mono">{{ item.bookingCode }}</span></td>
+                <td><span class="cell-primary">{{ item.studentName }}</span></td>
+                <td>{{ item.studentPhone }}</td>
+                <td class="is-nowrap cell-muted">{{ formatTime(item.bookingTime) }} {{ formatDate(item.bookingTime) }}</td>
+                <td><zen-badge tone="success" dot>Đã Giữ Chỗ</zen-badge></td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
+    }
 
-      <div class="modal-body">
-        @if (isLoadingAttendees()) {
-          <div class="loading-state">
-            <div class="zen-spinner"></div>
-            <p>Đang tải danh sách học viên...</p>
-          </div>
-        } @else if (attendeesList().length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon-wrap">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeAttendeesModal()">Đóng Cửa Sổ</button>
+    </ng-container>
+  </zen-modal>
+}
+
+<!-- MODAL: THÊM BỘ MÔN MỚI -->
+@if (isCreateClassTypeOpen()) {
+  <zen-modal
+    heading="Thêm Bộ Môn Yoga Mới"
+    subtitle="Danh mục đào tạo dùng khi xếp lịch và mở khóa học."
+    icon="book"
+    (closed)="closeCreateClassTypeModal()"
+  >
+    <div class="zen-form-grid">
+      <label class="zen-field">
+        <span class="zen-label">Mã Bộ Môn (Code) <span class="zen-required">*</span></span>
+        <input
+          type="text"
+          class="zen-control"
+          placeholder="VD: KUNDALINI_YOGA"
+          [ngModel]="classTypeForm().code"
+          (ngModelChange)="classTypeForm().code = $event"
+        />
+      </label>
+
+      <label class="zen-field">
+        <span class="zen-label">Tên Bộ Môn <span class="zen-required">*</span></span>
+        <input
+          type="text"
+          class="zen-control"
+          placeholder="VD: Kundalini Yoga Khai Mở Năng Lượng"
+          [ngModel]="classTypeForm().name"
+          (ngModelChange)="classTypeForm().name = $event"
+        />
+      </label>
+
+      <label class="zen-field">
+        <span class="zen-label">Thời Lượng Tiêu Chuẩn (Phút) <span class="zen-required">*</span></span>
+        <input
+          type="number"
+          class="zen-control"
+          min="30"
+          max="180"
+          step="15"
+          [ngModel]="classTypeForm().defaultDurationMinutes"
+          (ngModelChange)="classTypeForm().defaultDurationMinutes = $event"
+        />
+      </label>
+
+      <label class="zen-field">
+        <span class="zen-label">Cấp Độ Cường Độ <span class="zen-required">*</span></span>
+        <select
+          class="zen-control"
+          [ngModel]="classTypeForm().intensityLevel"
+          (ngModelChange)="classTypeForm().intensityLevel = $event"
+        >
+          <option value="ALL_LEVELS">Mọi cấp độ (All Levels)</option>
+          <option value="BEGINNER">Cơ bản (Beginner)</option>
+          <option value="INTERMEDIATE">Trung cấp (Intermediate)</option>
+          <option value="ADVANCED">Nâng cao (Advanced)</option>
+        </select>
+      </label>
+
+      <label class="zen-field zen-field--full">
+        <span class="zen-label">Mô Tả Bộ Môn</span>
+        <textarea
+          class="zen-control"
+          rows="3"
+          placeholder="Mô tả trường phái yoga, kỹ thuật hít thở, lợi ích thể trạng..."
+          [ngModel]="classTypeForm().description"
+          (ngModelChange)="classTypeForm().description = $event"
+        ></textarea>
+      </label>
+    </div>
+
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeCreateClassTypeModal()" [disabled]="isSubmittingClassType()">Hủy Bỏ</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitCreateClassType()" [disabled]="isSubmittingClassType()">
+        @if (isSubmittingClassType()) {
+          <zen-loading inline />
+          <span>Đang lưu...</span>
+        } @else {
+          <span>Lưu Bộ Môn Mới</span>
+        }
+      </button>
+    </ng-container>
+  </zen-modal>
+}
+
+<!-- MODAL: CHI TIẾT KHUNG GIỜ VÀ DANH SÁCH PHÒNG HỌC -->
+@if (slotDetailsModalData(); as modalData) {
+  <zen-modal
+    [heading]="modalData.dateLabel + ' · ' + modalData.cluster.timeLabel"
+    [subtitle]="'Cơ sở: ' + getSelectedBranchName() + ' • ' + getOccupiedRoomCount(modalData.cluster.rooms) + '/' + modalData.cluster.rooms.length + ' phòng đang có ca học'"
+    icon="clock"
+    size="lg"
+    (closed)="closeSlotDetailsModal()"
+  >
+    <div class="zen-stack">
+      @for (roomItem of modalData.cluster.rooms; track roomItem.roomId) {
+        @if (roomItem.hasClass && roomItem.schedule; as sched) {
+          <div class="room-detail-card is-occupied">
+            <div class="zen-row zen-row--between">
+              <h4 class="zen-section-title">{{ roomItem.roomName }}</h4>
+              <zen-badge tone="success" dot>Đang có lịch</zen-badge>
             </div>
-            <h3>Chưa có học viên nào đặt chỗ cho ca học này</h3>
-            <p>Ca học hiện vẫn còn {{ selectedScheduleForAttendees()?.availableSlots }} chỗ trống.</p>
+
+            <div class="zen-row">
+              <span class="class-name-text">{{ sched.className }}</span>
+              @if (sched.courseClassId) {
+                <zen-badge size="sm" tone="primary">Khóa học · Buổi {{ sched.sessionNumber }}</zen-badge>
+              }
+            </div>
+
+            <div class="info-chips">
+              <span class="zen-row"><zen-icon name="clock" />{{ formatTime(sched.startTime) }} – {{ formatTime(sched.endTime) }}</span>
+              <span class="zen-row"><zen-icon name="user" />HLV: <strong class="zen-strong">{{ sched.instructorName }}</strong></span>
+              <span class="zen-row"><zen-icon name="users" />Sĩ số: <strong class="zen-strong">{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
+            </div>
+
+            @if (sched.sessionTitle) {
+              <div class="lesson-topic">
+                <span class="zen-text-muted">Nội dung bài học:</span>
+                <span class="zen-strong">{{ sched.sessionTitle }}</span>
+              </div>
+            }
+
+            <div class="room-card-actions">
+              <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="onSlotRoomViewAttendees(sched)">
+                <zen-icon name="check-square" />
+                <span>Danh Sách Học Viên & Điểm Danh</span>
+              </button>
+              @if (canCancelSchedule(sched)) {
+                <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelScheduleFromSlotModal(sched)" title="Hủy buổi học này">
+                  Hủy Ca
+                </button>
+              }
+            </div>
           </div>
         } @else {
-          <div class="table-responsive">
-            <table class="zen-table">
-              <thead>
-                <tr>
-                  <th>Vị Trí Thảm</th>
-                  <th>Mã Booking</th>
-                  <th>Họ Tên Học Viên</th>
-                  <th>Số Điện Thoại</th>
-                  <th>Thời Điểm Đặt</th>
-                  <th>Trạng Thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of attendeesList(); track item.id) {
-                  <tr>
-                    <td class="cell-mat">
-                      <span class="mat-badge">Thảm #{{ item.matNumber || 'Tự do' }}</span>
-                    </td>
-                    <td class="cell-code">
-                      <code>{{ item.bookingCode }}</code>
-                    </td>
-                    <td class="cell-name">
-                      <strong>{{ item.studentName }}</strong>
-                    </td>
-                    <td class="cell-phone">{{ item.studentPhone }}</td>
-                    <td class="cell-time">{{ formatTime(item.bookingTime) }} {{ formatDate(item.bookingTime) }}</td>
-                    <td class="cell-status">
-                      <span class="status-pill status-confirmed">Đã Giữ Chỗ</span>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+          <div class="room-detail-card is-vacant">
+            <div class="zen-row zen-row--between">
+              <h4 class="zen-section-title">{{ roomItem.roomName }}</h4>
+              <zen-badge>Chưa có lịch</zen-badge>
+            </div>
+            <div class="zen-row zen-row--between">
+              <div>
+                <p class="vacant-main-text">Phòng học đang trống trong khung giờ {{ modalData.cluster.timeLabel }}.</p>
+                <span class="zen-text-xs zen-text-muted">Bạn có thể xếp lịch ca học mới ngay cho phòng này.</span>
+              </div>
+              <button
+                type="button"
+                class="zen-btn zen-btn--secondary zen-btn--sm"
+                (click)="onSlotRoomCreateSchedule(modalData.dateIso, modalData.cluster.startTimeStr, roomItem.roomId)"
+              >
+                <zen-icon name="plus" />
+                <span>Xếp Lớp / Thêm Lịch Cho Phòng Này</span>
+              </button>
+            </div>
           </div>
         }
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-secondary" (click)="closeAttendeesModal()">
-          Đóng Cửa Sổ
-        </button>
-      </div>
+      }
     </div>
-  </div>
-}
 
-<!-- ========================================================================= -->
-<!-- MODAL: THÊM BỘ MÔN MỚI                                                    -->
-<!-- ========================================================================= -->
-@if (isCreateClassTypeOpen()) {
-  <div class="modal-backdrop" (click)="closeCreateClassTypeModal()">
-    <div class="modal-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="pre-title">Danh Mục Đào Tạo</div>
-          <h2 class="modal-title">Thêm Bộ Môn Yoga Mới</h2>
-        </div>
-        <button type="button" class="btn-close-modal" (click)="closeCreateClassTypeModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-field">
-            <label class="form-label">Mã Bộ Môn (Code) <span class="req">*</span></label>
-            <input
-              type="text"
-              class="form-input"
-              placeholder="VD: KUNDALINI_YOGA"
-              [ngModel]="classTypeForm().code"
-              (ngModelChange)="classTypeForm().code = $event"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-label">Tên Bộ Môn <span class="req">*</span></label>
-            <input
-              type="text"
-              class="form-input"
-              placeholder="VD: Kundalini Yoga Khai Mở Năng Lượng"
-              [ngModel]="classTypeForm().name"
-              (ngModelChange)="classTypeForm().name = $event"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-label">Thời Lượng Tiêu Chuẩn (Phút) <span class="req">*</span></label>
-            <input
-              type="number"
-              class="form-input"
-              min="30"
-              max="180"
-              step="15"
-              [ngModel]="classTypeForm().defaultDurationMinutes"
-              (ngModelChange)="classTypeForm().defaultDurationMinutes = $event"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-label">Cấp Độ Cường Độ <span class="req">*</span></label>
-            <select
-              class="form-input form-select"
-              [ngModel]="classTypeForm().intensityLevel"
-              (ngModelChange)="classTypeForm().intensityLevel = $event"
-            >
-              <option value="ALL_LEVELS">Mọi cấp độ (All Levels)</option>
-              <option value="BEGINNER">Cơ bản (Beginner)</option>
-              <option value="INTERMEDIATE">Trung cấp (Intermediate)</option>
-              <option value="ADVANCED">Nâng cao (Advanced)</option>
-            </select>
-          </div>
-
-          <div class="form-field full-width">
-            <label class="form-label">Mô Tả Bộ Môn</label>
-            <textarea
-              class="form-input form-textarea"
-              rows="3"
-              placeholder="Mô tả trường phái yoga, kỹ thuật hít thở, lợi ích thể trạng..."
-              [ngModel]="classTypeForm().description"
-              (ngModelChange)="classTypeForm().description = $event"
-            ></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" (click)="closeCreateClassTypeModal()" [disabled]="isSubmittingClassType()">
-          Hủy Bỏ
-        </button>
-        <button type="button" class="btn-primary" (click)="submitCreateClassType()" [disabled]="isSubmittingClassType()">
-          @if (isSubmittingClassType()) {
-            <span>Đang lưu...</span>
-          } @else {
-            <span>Lưu Bộ Môn Mới</span>
-          }
-        </button>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- ========================================================================= -->
-<!-- MODAL: CHI TIẾT KHUNG GIỜ VÀ DANH SÁCH PHÒNG HỌC                          -->
-<!-- ========================================================================= -->
-@if (slotDetailsModalData(); as modalData) {
-  <div class="modal-backdrop" (click)="closeSlotDetailsModal()">
-    <div class="modal-dialog modal-large slot-details-modal-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="pre-title">CHI TIẾT KHUNG GIỜ PHÒNG HỌC</div>
-          <h2 class="modal-title">{{ modalData.dateLabel }} · {{ modalData.cluster.timeLabel }}</h2>
-          <div class="modal-sub-meta">
-            <span>Cơ sở: <strong>{{ getSelectedBranchName() }}</strong></span>
-            <span class="meta-sep">•</span>
-            <span class="meta-stats">{{ getOccupiedRoomCount(modalData.cluster.rooms) }}/{{ modalData.cluster.rooms.length }} phòng đang có ca học</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close-modal" (click)="closeSlotDetailsModal()" aria-label="Đóng">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body slot-details-modal-body">
-        <div class="slot-rooms-details-list">
-          @for (roomItem of modalData.cluster.rooms; track roomItem.roomId) {
-            @if (roomItem.hasClass && roomItem.schedule; as sched) {
-              <!-- Phòng ĐÃ CÓ LỊCH: Hiện chi tiết lịch của phòng đó -->
-              <div class="room-detail-card room-card-occupied">
-                <div class="room-card-header">
-                  <div class="room-identity-group">
-                    <span class="room-status-indicator indicator-green"></span>
-                    <h4 class="room-card-title">{{ roomItem.roomName }}</h4>
-                  </div>
-                  <span class="room-status-badge badge-occupied">Đang có lịch</span>
-                </div>
-
-                <div class="room-card-content">
-                  <div class="class-main-info">
-                    <div class="class-title-and-course">
-                      <h3 class="class-name-text">{{ sched.className }}</h3>
-                      @if (sched.courseClassId) {
-                        <span class="class-course-tag">Khóa học · Buổi {{ sched.sessionNumber }}</span>
-                      }
-                    </div>
-
-                    <div class="class-info-chips">
-                      <div class="info-chip">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <span>{{ formatTime(sched.startTime) }} – {{ formatTime(sched.endTime) }}</span>
-                      </div>
-
-                      <div class="info-chip">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        <span>HLV: <strong>{{ sched.instructorName }}</strong></span>
-                      </div>
-
-                      <div class="info-chip">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                        </svg>
-                        <span>Sĩ số: <strong>{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
-                      </div>
-                    </div>
-
-                    @if (sched.sessionTitle) {
-                      <div class="session-lesson-topic">
-                        <span class="lesson-label">Nội dung bài học:</span>
-                        <span class="lesson-title">{{ sched.sessionTitle }}</span>
-                      </div>
-                    }
-                  </div>
-
-                  <div class="room-card-actions">
-                    <button
-                      type="button"
-                      class="btn-attendees-action"
-                      (click)="onSlotRoomViewAttendees(sched)"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <polyline points="16 11 18 13 22 9"></polyline>
-                      </svg>
-                      <span>Danh Sách Học Viên & Điểm Danh</span>
-                    </button>
-
-                    @if (canCancelSchedule(sched)) {
-                      <button
-                        type="button"
-                        class="btn-cancel-action"
-                        (click)="cancelScheduleFromSlotModal(sched)"
-                        title="Hủy buổi học này"
-                      >
-                        Hủy Ca
-                      </button>
-                    }
-                  </div>
-                </div>
-              </div>
-            } @else {
-              <!-- Phòng CHƯA CÓ LỊCH: Cho phép thêm lịch -->
-              <div class="room-detail-card room-card-vacant">
-                <div class="room-card-header">
-                  <div class="room-identity-group">
-                    <span class="room-status-indicator indicator-muted"></span>
-                    <h4 class="room-card-title">{{ roomItem.roomName }}</h4>
-                  </div>
-                  <span class="room-status-badge badge-vacant">Chưa có lịch</span>
-                </div>
-
-                <div class="vacant-card-content">
-                  <div class="vacant-text-group">
-                    <p class="vacant-main-text">Phòng học đang trống trong khung giờ {{ modalData.cluster.timeLabel }}.</p>
-                    <span class="vacant-sub-text">Bạn có thể xếp lịch ca học mới ngay cho phòng này.</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    class="btn-add-schedule-action"
-                    (click)="onSlotRoomCreateSchedule(modalData.dateIso, modalData.cluster.startTimeStr, roomItem.roomId)"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    <span>+ Xếp Lớp / Thêm Lịch Cho Phòng Này</span>
-                  </button>
-                </div>
-              </div>
-            }
-          }
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" (click)="closeSlotDetailsModal()">
-          Đóng
-        </button>
-      </div>
-    </div>
-  </div>
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeSlotDetailsModal()">Đóng</button>
+    </ng-container>
+  </zen-modal>
 }

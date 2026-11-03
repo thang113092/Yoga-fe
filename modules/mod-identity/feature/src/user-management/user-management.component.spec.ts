@@ -313,7 +313,7 @@ describe('UserManagementComponent', () => {
     await fixture.whenStable();
 
     // Check header title for receptionist
-    const headerTitle = fixture.nativeElement.querySelector('.mgmt-header h2');
+    const headerTitle = fixture.nativeElement.querySelector('.mgmt-header h1');
     expect(headerTitle.textContent.trim()).toBe('Danh Sách Học Viên');
 
     // Check create button text for receptionist
