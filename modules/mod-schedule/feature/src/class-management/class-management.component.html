@@ -14,13 +14,13 @@
           <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
           <span>Làm Mới</span>
         </button>
-        @if (!auth.isReceptionist() && !auth.isInstructor()) {
+        @if (canCreateSchedule()) {
           <button type="button" class="zen-btn zen-btn--primary" (click)="openCreateScheduleModal()" title="Mở form xếp ca học mới">
             <zen-icon name="plus" />
             <span>Xếp Lịch Mới</span>
           </button>
         }
-      } @else if (!auth.isReceptionist() && !auth.isInstructor()) {
+      } @else if (!auth.isReceptionist() && !auth.isInstructor() && !auth.isStudent()) {
         <button type="button" class="zen-btn zen-btn--primary" (click)="openCreateClassTypeModal()">
           <zen-icon name="plus" />
           <span>Thêm Bộ Môn Mới</span>
@@ -227,6 +227,7 @@
 
             @for (col of dayRoomColumns(); track col.roomId) {
               <div class="room-track"
+                   [class.is-readonly]="!canCreateSchedule()"
                    (click)="onRoomTrackClick($event, col.roomId)"
                    [title]="'Nhấp vào vùng trống để xếp lịch mới cho phòng ' + col.roomName">
                 @for (item of col.items; track item.schedule.id) {
@@ -285,6 +286,7 @@
             @for (day of weekColumns(); track day.iso) {
               <div class="day-track"
                    [class.is-today]="isTodayDate(day.iso)"
+                   [class.is-readonly]="!canCreateSchedule()"
                    (click)="onDayTrackClick($event, day.iso)"
                    [title]="'Nhấp vào vùng trống để xếp lịch cho ngày ' + formatDisplayDate(day.iso)">
                 @for (item of day.items; track item.schedule.id) {
@@ -339,7 +341,7 @@
                 <zen-badge size="sm"><span class="zen-mono">{{ ct.code }}</span></zen-badge>
                 <zen-badge size="sm" tone="info">{{ getIntensityLabel(ct.intensityLevel) }}</zen-badge>
               </div>
-              @if (!auth.isReceptionist() && !auth.isInstructor()) {
+              @if (!auth.isReceptionist() && !auth.isInstructor() && !auth.isStudent()) {
                 <button
                   type="button"
                   class="zen-btn zen-btn--ghost zen-btn--sm"
@@ -673,16 +675,20 @@
             <div class="zen-row zen-row--between">
               <div>
                 <p class="vacant-main-text">Phòng học đang trống trong khung giờ {{ modalData.cluster.timeLabel }}.</p>
-                <span class="zen-text-xs zen-text-muted">Bạn có thể xếp lịch ca học mới ngay cho phòng này.</span>
+                @if (canCreateSchedule()) {
+                  <span class="zen-text-xs zen-text-muted">Bạn có thể xếp lịch ca học mới ngay cho phòng này.</span>
+                }
               </div>
-              <button
-                type="button"
-                class="zen-btn zen-btn--secondary zen-btn--sm"
-                (click)="onSlotRoomCreateSchedule(modalData.dateIso, modalData.cluster.startTimeStr, roomItem.roomId)"
-              >
-                <zen-icon name="plus" />
-                <span>Xếp Lớp / Thêm Lịch Cho Phòng Này</span>
-              </button>
+              @if (canCreateSchedule()) {
+                <button
+                  type="button"
+                  class="zen-btn zen-btn--secondary zen-btn--sm"
+                  (click)="onSlotRoomCreateSchedule(modalData.dateIso, modalData.cluster.startTimeStr, roomItem.roomId)"
+                >
+                  <zen-icon name="plus" />
+                  <span>Xếp Lớp / Thêm Lịch Cho Phòng Này</span>
+                </button>
+              }
             </div>
           </div>
         }

@@ -34,19 +34,6 @@
   background: var(--color-surface-variant);
 }
 
-.plan-price {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: auto;
-}
-
-.plan-price-value {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  color: var(--color-primary);
-  font-variant-numeric: tabular-nums;
-}
+.plan-price { margin-top: auto; }
 
 .zen-check + .zen-check { margin-top: var(--spacing-sm); }

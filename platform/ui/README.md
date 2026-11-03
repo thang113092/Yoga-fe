@@ -77,6 +77,7 @@ import { ZEN_UI } from '@yoga/platform/ui';
 - **Form:** `zen-form-grid`, `zen-field(--full)`, `zen-label`, `zen-required`, `zen-control` (input/select/textarea, `.is-invalid`), `zen-hint`, `zen-error`, `zen-check`
 - **Bảng:** `zen-table-wrap`, `zen-table(--compact)`; trong ô: `cell-primary`, `cell-sub`, `cell-muted`; cột: `is-numeric`, `is-center`, `is-actions`, `is-nowrap`; dòng: `is-selected`; `zen-cell-user`
 - **Chọn nhanh:** `zen-chip(.is-active)`, `zen-segmented > button(.is-active)`
+- **Số tiền lớn:** `zen-amount` (+ `zen-amount__unit` cho ký hiệu ₫, `zen-amount--md` cỡ vừa)
 - **Chữ:** `zen-eyebrow`, `zen-section-title`, `zen-text-muted`, `zen-text-secondary`, `zen-text-sm`, `zen-text-xs`, `zen-num`, `zen-mono`, `zen-strong`, `zen-price`, `zen-truncate`
 - **Khác:** `zen-dl` (danh sách mô tả), `zen-divider`, `zen-skeleton`, `zen-spin`
 

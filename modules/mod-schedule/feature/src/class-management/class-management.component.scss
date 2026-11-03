@@ -250,7 +250,10 @@
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
 
-  &:hover { background-color: var(--color-surface-hover); }
+  &:not(.is-readonly):hover { background-color: var(--color-surface-hover); }
+
+  /* Lễ tân / HLV: chỉ xem, không tạo lịch khi bấm vào ô trống */
+  &.is-readonly { cursor: default; }
 }
 .day-track.is-today { background-color: var(--color-primary-soft); }
 

@@ -272,8 +272,7 @@
                   <h3 class="plan-title">{{ plan.name }}</h3>
                   <p class="plan-desc">{{ plan.description }}</p>
                   <div class="plan-price-row">
-                    <span class="zen-price plan-price">{{ plan.price | number:'1.0-0' }}</span>
-                    <span class="zen-text-xs zen-text-muted">₫</span>
+                    <span class="zen-amount zen-amount--md">{{ plan.price | number:'1.0-0' }}<span class="zen-amount__unit">₫</span></span>
                   </div>
                 </div>
               }

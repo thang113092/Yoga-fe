@@ -832,6 +832,11 @@ export class ClassManagementComponent implements OnInit {
     this.fromDate.set(weekRange.from);
     this.toDate.set(weekRange.to);
     this.route.data.subscribe(data => this.activeTab.set(data['trainingTab'] === 'class-types' ? 'class-types' : 'schedules'));
+    // Học viên chỉ xem danh mục bộ môn: không gọi các API dành cho nhân viên.
+    if (this.auth.isStudent()) {
+      this.loadClassTypes();
+      return;
+    }
     if (this.auth.isInstructor()) {
       const myId = this.auth.currentUserId();
       if (myId) {
@@ -1047,7 +1052,11 @@ export class ClassManagementComponent implements OnInit {
     return false;
   }
 
+  /** Chỉ Ban Giám Đốc và Quản Lý Cơ Sở được xếp lịch; Lễ tân và HLV chỉ xem. */
+  readonly canCreateSchedule = computed(() => !this.auth.isReceptionist() && !this.auth.isInstructor());
+
   openCreateScheduleForSlot(date: string, startTimeStr: string, roomId?: string): void {
+    if (!this.canCreateSchedule()) return;
     this.openCreateScheduleModal();
     let curBranch = this.scheduleForm().branchId;
     if (roomId) {

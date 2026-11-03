@@ -71,7 +71,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: isSuperAdminSig,
             isBranchManager: isBranchManagerSig,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'user-1',
             userHomeBranchId: homeBranchSig
           }
@@ -126,7 +128,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: isSuperAdminSig,
             isBranchManager: isBranchManagerSig,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'user-1',
             userHomeBranchId: homeBranchSig
           }
@@ -175,7 +179,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => true,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'admin-1',
             userHomeBranchId: () => null
           }
@@ -254,7 +260,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => false,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => true,
+            isStudent: () => false,
             currentUserId: () => 'ins-1',
             userFullName: () => 'An Yên Master',
             userHomeBranchId: () => 'branch-1',
@@ -295,6 +303,15 @@ describe('ClassManagementComponent', () => {
     expect(comp.selectedInstructorId()).toBe('ALL');
     expect(comp.dateFilter()).toBe('');
 
+    // HLV chỉ xem lịch: bấm vào ô trống không mở form tạo lớp
+    expect(comp.canCreateSchedule()).toBe(false);
+    const track = document.createElement('div');
+    track.classList.add('day-track');
+    comp.onDayTrackClick({ target: track, clientY: 288 } as unknown as MouseEvent, '2026-10-10');
+    track.classList.replace('day-track', 'room-track');
+    comp.onRoomTrackClick({ target: track, clientY: 288 } as unknown as MouseEvent, 'room-1');
+    expect(comp.isCreateScheduleOpen()).toBe(false);
+
     comp.resetFilters();
     expect(comp.selectedInstructorId()).toBe('ins-1');
     expect(comp.dateFilter()).toBe(todayStr);
@@ -311,7 +328,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => true,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'admin-1',
             userHomeBranchId: () => null
           }
@@ -376,7 +395,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => true,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'admin-1',
             userHomeBranchId: () => null
           }
@@ -484,7 +505,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => true,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'admin-1',
             userHomeBranchId: () => null
           }
@@ -594,7 +617,9 @@ describe('ClassManagementComponent', () => {
           useValue: {
             isSuperAdmin: () => true,
             isBranchManager: () => false,
+            isReceptionist: () => false,
             isInstructor: () => false,
+            isStudent: () => false,
             currentUserId: () => 'admin-1',
             userHomeBranchId: () => null
           }

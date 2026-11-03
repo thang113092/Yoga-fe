@@ -135,8 +135,7 @@
   line-height: var(--leading-normal);
   color: var(--color-text-muted);
 }
-.plan-price-row { display: flex; align-items: baseline; gap: 4px; }
-.plan-price { font-size: var(--text-lg); }
+.plan-price-row { display: flex; align-items: baseline; }
 
 /* ---------- Bước 3: thanh toán ---------- */
 .order-breakdown {

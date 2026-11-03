@@ -79,6 +79,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Số tiền nổi bật (giá gói, tổng thanh toán): <span class="zen-amount">1.500.000<span class="zen-amount__unit">₫</span></span> */
+.zen-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+
+  &__unit {
+    font-size: 0.66em;
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0;
+  }
+
+  &--md { font-size: var(--text-xl); }
+}
+
 /* ---------- Buttons ---------- */
 .zen-btn {
   --btn-h: var(--control-height-md);

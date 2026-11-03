@@ -4,7 +4,10 @@ import { roleGuard } from '@yoga/platform/auth';
 export const SCHEDULE_ROUTES: Routes = [
   ...(['subjects', 'timetable'] as const).map(path => ({
     path, data: {trainingTab: path === 'subjects' ? 'class-types' : 'schedules'},
-    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR'])],
+    // Học viên được xem danh mục bộ môn (chỉ đọc); lịch học vẫn chỉ dành cho nhân viên.
+    canActivate: [roleGuard(path === 'subjects'
+      ? ['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR', 'STUDENT']
+      : ['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR'])],
     loadComponent: () => import('./class-management/class-management.component').then(m => m.ClassManagementComponent),
     title: path === 'subjects' ? 'Bộ môn - An Yên' : 'Lịch học - An Yên'
   })),
