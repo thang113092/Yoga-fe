@@ -1,0 +1,46 @@
+<div class="online-panel">
+  <div class="zen-row zen-row--between">
+    <div class="zen-row">
+      <zen-icon name="monitor" [size]="16" />
+      <strong>Phòng học Zoom</strong>
+      @if (session(); as os) {
+        <zen-badge size="sm" [tone]="statusTone(os.meetingStatus)" dot>{{ statusLabel(os.meetingStatus) }}</zen-badge>
+      }
+    </div>
+    <div class="zen-row">
+      <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="load()" [disabled]="loading()" title="Tải lại trạng thái">
+        <zen-icon name="refresh" [size]="14" />
+      </button>
+      @if (session()?.providerConfigured && canResync()) {
+        <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="resync()" [disabled]="syncing()">
+          {{ syncing() ? 'Đang đồng bộ...' : 'Đồng bộ lại' }}
+        </button>
+      }
+      @if (session()?.startUrl; as url) {
+        <a class="zen-btn zen-btn--primary zen-btn--sm" [href]="url" target="_blank" rel="noopener noreferrer">
+          <zen-icon name="play" [size]="14" /> Mở phòng (host)
+        </a>
+      }
+    </div>
+  </div>
+  @if (loading() && !session()) {
+    <zen-loading inline />
+  }
+  @if (session(); as os) {
+    @if (!os.providerConfigured) {
+      <zen-alert tone="warning">Hệ thống chưa cấu hình Zoom (ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET). Học viên vẫn đặt chỗ được nhưng chưa vào lớp được.</zen-alert>
+    } @else if (os.lastError && os.meetingStatus !== 'CANCELLED') {
+      <zen-alert tone="danger">Đồng bộ Zoom lỗi ({{ os.syncAttempts }} lần): {{ os.lastError }}. Hệ thống tự thử lại; có thể bấm "Đồng bộ lại".</zen-alert>
+    }
+    @if (os.personalLinks === false) {
+      <zen-alert tone="warning">Chế độ thử (Zoom Basic): mọi học viên dùng chung link phòng, hủy chỗ không thu hồi được link và buổi học bị Zoom giới hạn 40 phút.</zen-alert>
+    }
+    <p class="zen-text-xs zen-text-muted">
+      {{ os.registeredCount }} học viên đã có link{{ os.personalLinks === false ? '' : ' riêng' }}
+      @if (os.pendingCount > 0) { · {{ os.pendingCount }} đang chờ tạo link }
+      @if (!os.startUrl && os.meetingStatus !== 'CANCELLED') {
+        · Link host mở lúc {{ os.hostLinkOpensAt | date:'HH:mm dd/MM':'+0700' }} cho HLV phụ trách và quản lý
+      }
+    </p>
+  }
+</div>

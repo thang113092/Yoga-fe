@@ -1,14 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@yoga/platform/api';
 import { Observable } from 'rxjs';
-import { BranchItem, ClassSchedule, ClassTypeItem, CreateClassTypeReq, CreateScheduleReq, InstructorItem, RoomItem, ScheduleAttendee, StudentPassItem } from './schedule.models';
+import { BranchItem, ClassSchedule, DeliveryMode, ClassTypeItem, CreateClassTypeReq, CreateScheduleReq, InstructorItem, RoomItem, ScheduleAttendee, StudentPassItem } from './schedule.models';
 
 @Injectable({ providedIn: 'root' })
 export class ScheduleApi {
   private readonly api = inject(ApiClient);
 
-  getSchedules(branchId?: string, start?: string, end?: string, instructorId?: string): Observable<ClassSchedule[]> {
+  getSchedules(branchId?: string, start?: string, end?: string, instructorId?: string, deliveryMode?: DeliveryMode): Observable<ClassSchedule[]> {
     const params: Record<string, string | number | boolean> = {};
+    if (deliveryMode) params['deliveryMode'] = deliveryMode;
     if (branchId) params['branchId'] = branchId;
     if (instructorId) params['instructorId'] = instructorId;
     if (start) params['start'] = start;

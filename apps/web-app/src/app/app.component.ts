@@ -73,6 +73,10 @@ import {
                   <zen-icon class="nav-icon" name="calendar" />
                   <span>Lịch Học</span>
                 </a>
+                <a routerLink="/schedule/online" routerLinkActive="active" class="nav-tab">
+                  <zen-icon class="nav-icon" name="monitor" />
+                  <span>Lớp Online</span>
+                </a>
               }
               <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
                 <zen-icon class="nav-icon" name="graduation-cap" />
@@ -435,6 +439,10 @@ import {
                 <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
                   <zen-icon name="calendar" />
                   <span>Lịch Học</span>
+                </a>
+                <a routerLink="/schedule/online" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                  <zen-icon name="monitor" />
+                  <span>Lớp Online</span>
                 </a>
               }
 

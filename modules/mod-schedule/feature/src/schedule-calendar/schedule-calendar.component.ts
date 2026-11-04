@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '@yoga/platform/auth';
 import { ZenConfirmService, ZenToastService } from '@yoga/platform/api';
@@ -10,6 +10,7 @@ import {
   BranchItem,
   ClassSchedule,
   CreateBookingReq,
+  OnlineClassApi,
   ScheduleApi,
   StudentBookingDetail,
   StudentPassItem,
@@ -32,6 +33,14 @@ export class ScheduleCalendarComponent implements OnInit {
   private readonly waitlistApi = inject(WaitlistApi);
   private readonly confirmService = inject(ZenConfirmService);
   private readonly toast = inject(ZenToastService);
+  private readonly onlineApi = inject(OnlineClassApi);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Students may enter an online class this many minutes before it starts (backend: yoga.online.join-window-minutes). */
+  static readonly JOIN_LEAD_MINUTES = 15;
+  /** Ticks every 30 s so the join button appears without reloading. */
+  readonly now = signal(Date.now());
+  readonly joiningBookingId = signal<string | null>(null);
 
   protected readonly auth = inject(AuthService);
   get currentStudentId(): string { return this.auth.currentUserId() ?? ''; }
@@ -243,6 +252,8 @@ export class ScheduleCalendarComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const timer = setInterval(() => this.now.set(Date.now()), 30_000);
+    this.destroyRef.onDestroy(() => clearInterval(timer));
     this.loadBranches();
     this.loadStudentPasses();
     this.loadSchedules();
@@ -414,7 +425,9 @@ export class ScheduleCalendarComponent implements OnInit {
       next: (booking) => {
         this.isSubmittingBooking.set(false);
         this.closeBookingModal();
-        this.successMessage.set(`Đặt chỗ thành công! Mã booking: ${booking.bookingCode}. Vị trí thảm số ${booking.matNumber ?? 'được sắp xếp tại phòng'}. Hệ thống đã giữ 1 lượt tập.`);
+        this.successMessage.set(this.isOnline(schedule)
+          ? `Đặt chỗ lớp online thành công! Mã booking: ${booking.bookingCode}. Nút "Vào lớp" sẽ mở trong mục Lịch đã đặt từ ${ScheduleCalendarComponent.JOIN_LEAD_MINUTES} phút trước giờ học.`
+          : `Đặt chỗ thành công! Mã booking: ${booking.bookingCode}. Vị trí thảm số ${booking.matNumber ?? 'được sắp xếp tại phòng'}. Hệ thống đã giữ 1 lượt tập.`);
 
         // Nạp lại dữ liệu đồng bộ từ Database
         this.loadStudentPasses();
@@ -545,10 +558,57 @@ export class ScheduleCalendarComponent implements OnInit {
         if (p.startDate && p.startDate > date) return false;
         if (p.endDate && p.endDate < date) return false;
       }
-      if (!p.isAllBranches && schedule.branchId && p.registeredBranchId !== schedule.branchId) {
+      // Online classes accept passes of every branch.
+      if (!this.isOnline(schedule) && !p.isAllBranches && schedule.branchId && p.registeredBranchId !== schedule.branchId) {
         return false;
       }
       return true;
+    });
+  }
+
+  isOnline(item: { deliveryMode?: string } | null | undefined): boolean {
+    return item?.deliveryMode === 'ONLINE';
+  }
+
+  /** Join opens shortly before class and stays open until it ends, so a dropped connection can rejoin. */
+  canJoinOnline(b: StudentBookingDetail): boolean {
+    if (!this.isOnline(b) || (b.status !== 'CONFIRMED' && b.status !== 'ATTENDED')) return false;
+    const now = this.now();
+    return now >= Date.parse(b.startTime) - ScheduleCalendarComponent.JOIN_LEAD_MINUTES * 60_000 && now < Date.parse(b.endTime);
+  }
+
+  isUpcoming(b: StudentBookingDetail): boolean {
+    return this.now() < Date.parse(b.startTime);
+  }
+
+  joinOpensLabel(b: StudentBookingDetail): string {
+    return this.formatTime(new Date(Date.parse(b.startTime) - ScheduleCalendarComponent.JOIN_LEAD_MINUTES * 60_000).toISOString());
+  }
+
+  joinOnline(b: StudentBookingDetail): void {
+    if (this.joiningBookingId()) return;
+    // Open the tab inside the click so pop-up blockers allow it; the link is filled in once the backend answers.
+    const tab = window.open('', '_blank');
+    this.joiningBookingId.set(b.id);
+    this.onlineApi.join(b.id).subscribe({
+      next: (res) => {
+        this.joiningBookingId.set(null);
+        if (tab) {
+          tab.opener = null;
+          tab.location.href = res.joinUrl;
+        } else {
+          window.location.href = res.joinUrl;
+        }
+        if (b.status === 'CONFIRMED') {
+          this.toast.success(`Đã điểm danh lớp ${b.className}. Chúc bạn buổi tập vui vẻ!`);
+          this.loadMyBookings();
+        }
+      },
+      error: (err) => {
+        this.joiningBookingId.set(null);
+        tab?.close();
+        this.toast.error(err?.error?.message || 'Không thể vào lớp online. Vui lòng thử lại.');
+      }
     });
   }
 

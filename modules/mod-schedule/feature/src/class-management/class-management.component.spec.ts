@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ZenConfirmService, ZenToastService } from '@yoga/platform/api';
-import { ScheduleApi } from '@yoga/mod-schedule/data-access';
+import { OnlineClassApi, ScheduleApi } from '@yoga/mod-schedule/data-access';
 import { ClassManagementComponent } from './class-management.component';
 
 describe('ClassManagementComponent', () => {
@@ -79,6 +79,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -136,6 +137,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -187,6 +189,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -270,6 +273,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -336,6 +340,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -403,6 +408,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -513,6 +519,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]
@@ -625,6 +632,7 @@ describe('ClassManagementComponent', () => {
           }
         },
         { provide: ScheduleApi, useValue: scheduleApiMock },
+        { provide: OnlineClassApi, useValue: { getSession: vi.fn(), resync: vi.fn() } },
         { provide: ZenConfirmService, useValue: confirmMock },
         { provide: ZenToastService, useValue: toastMock }
       ]

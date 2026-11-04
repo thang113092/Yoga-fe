@@ -148,7 +148,11 @@
               <div>
                 <p class="room-name">{{ room.name }}</p>
                 <div class="room-meta">
-                  <span><zen-icon name="layers" [size]="12" />{{ room.floor || 'Chưa định vị tầng' }}</span>
+                  @if (room.roomType === 'VIRTUAL') {
+                    <span><zen-icon name="monitor" [size]="12" />Online · Zoom: {{ room.liveHostAccount || 'tài khoản mặc định' }}</span>
+                  } @else {
+                    <span><zen-icon name="layers" [size]="12" />{{ room.floor || 'Chưa định vị tầng' }}</span>
+                  }
                   <span><zen-icon name="users" [size]="12" />Sức chứa: <strong>{{ room.maxCapacity }}</strong> thảm tập</span>
                 </div>
               </div>
@@ -363,6 +367,34 @@
           [disabled]="isSubmittingRoom()"
         />
       </div>
+
+      <div class="zen-field">
+        <span class="zen-label">Loại phòng</span>
+        <zen-select
+          name="rRoomType"
+          [options]="roomTypeOptions"
+          [ngModel]="rFormRoomType()"
+          (ngModelChange)="rFormRoomType.set($event)"
+          [disabled]="isSubmittingRoom() || isEditingRoom()"
+        />
+        @if (isEditingRoom()) {
+          <span class="zen-hint">Loại phòng không đổi được sau khi tạo.</span>
+        }
+      </div>
+
+      @if (rFormRoomType() === 'VIRTUAL') {
+        <div class="zen-field">
+          <label class="zen-label" for="rLiveHost">Tài khoản Zoom host</label>
+          <zen-input
+            id="rLiveHost" name="rLiveHost"
+            placeholder="VD: zoom1@anyen.vn (để trống: dùng tài khoản mặc định)"
+            [ngModel]="rFormLiveHost()"
+            (ngModelChange)="rFormLiveHost.set($event)"
+            [disabled]="isSubmittingRoom()"
+          />
+          <span class="zen-hint">Phòng online = một license Zoom. Hai lớp không thể dùng cùng phòng online trong cùng khung giờ.</span>
+        </div>
+      }
 
       <div class="zen-field">
         <label class="zen-label" for="rCapacity">Sức Chứa Tối Đa (Số Thảm Tập)<span class="zen-required">*</span></label>

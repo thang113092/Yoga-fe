@@ -1,0 +1,220 @@
+<div class="zen-page">
+  <zen-page-header
+    eyebrow="Quản trị lớp học"
+    heading="Lớp học online"
+    [subtitle]="ownClassesOnly() ? 'Các lớp online bạn phụ trách, phòng Zoom và học viên đã đặt chỗ.' : 'Lớp livestream qua Zoom của từng cơ sở: tạo lớp, theo dõi phòng Zoom và học viên.'"
+  >
+    @if (canManage()) {
+      <button actions type="button" class="zen-btn zen-btn--primary" (click)="openCreate()" [disabled]="!branches().length">
+        <zen-icon name="plus" />
+        <span>Tạo lớp online</span>
+      </button>
+    }
+  </zen-page-header>
+
+  @if (error()) {
+    <zen-alert tone="danger" dismissible (dismissed)="error.set(null)">{{ error() }}</zen-alert>
+  }
+
+  <div class="online-stats">
+    <zen-stat-card label="Lớp online" [value]="stats().total" icon="monitor" />
+    <zen-stat-card label="Đang diễn ra" [value]="stats().live" icon="play" tone="info" />
+    <zen-stat-card label="Lượt đặt chỗ" [value]="stats().booked" icon="users" tone="success" />
+  </div>
+
+  <zen-card padding="none">
+    <zen-toolbar>
+      <zen-search
+        class="zen-toolbar-grow"
+        placeholder="Tìm theo lớp, huấn luyện viên, cơ sở..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+      @if (!ownClassesOnly() && branchOptions().length > 1) {
+        <zen-select
+          class="zen-toolbar-item"
+          [options]="branchOptions()"
+          [ngModel]="branchFilter()"
+          (ngModelChange)="onBranchFilter($event)"
+          placeholder="Chọn cơ sở..."
+        />
+      }
+      <label class="date-filter">
+        <span class="zen-text-xs zen-text-muted">Từ</span>
+        <input type="date" class="zen-control" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event); load()" />
+      </label>
+      <label class="date-filter">
+        <span class="zen-text-xs zen-text-muted">Đến</span>
+        <input type="date" class="zen-control" [ngModel]="toDate()" (ngModelChange)="toDate.set($event); load()" />
+      </label>
+      <div toolbar-end class="zen-row">
+        <label class="zen-row zen-text-sm cancelled-toggle">
+          <input type="checkbox" [ngModel]="showCancelled()" (ngModelChange)="showCancelled.set($event)" />
+          Hiện lớp đã hủy
+        </label>
+        <button type="button" class="zen-btn zen-btn--outline" (click)="load()" [disabled]="loading()" title="Tải lại">
+          <zen-icon name="refresh" [class.zen-spin]="loading()" />
+          <span>Làm mới</span>
+        </button>
+      </div>
+    </zen-toolbar>
+
+    @if (loading()) {
+      <zen-loading message="Đang tải lớp online..." />
+    } @else if (!visibleSchedules().length) {
+      <zen-empty-state
+        icon="monitor"
+        heading="Chưa có lớp online trong khoảng ngày này"
+        [description]="canManage() ? 'Bấm &quot;Tạo lớp online&quot; để mở lớp livestream cho cơ sở.' : 'Lớp online do quản lý cơ sở tạo sẽ hiện ở đây.'"
+      />
+    } @else {
+      <div class="zen-table-wrap">
+        <table class="zen-table">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Lớp học</th>
+              <th>Cơ sở · Phòng online</th>
+              <th>Huấn luyện viên</th>
+              <th>Sĩ số</th>
+              <th>Trạng thái</th>
+              <th class="is-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of visibleSchedules(); track s.id) {
+              <tr [class.is-muted]="s.status === 'CANCELLED'">
+                <td class="is-nowrap">
+                  <span class="cell-primary">{{ s.startTime | date:'EEE dd/MM':'+0700' }}</span>
+                  <span class="cell-sub">{{ s.startTime | date:'HH:mm':'+0700' }} – {{ s.endTime | date:'HH:mm':'+0700' }}</span>
+                </td>
+                <td class="is-wrap"><span class="cell-primary">{{ s.className }}</span></td>
+                <td class="is-wrap">
+                  <span class="cell-primary">{{ s.branchName }}</span>
+                  <span class="cell-sub"><zen-icon name="monitor" [size]="12" /> {{ s.roomName }}</span>
+                </td>
+                <td>{{ s.instructorName }}</td>
+                <td class="is-nowrap"><span class="zen-num"><span class="zen-strong">{{ s.bookedCount }}</span> / {{ s.maxCapacity }}</span></td>
+                <td><zen-badge [tone]="statusTone(s)" dot>{{ statusLabel(s) }}</zen-badge></td>
+                <td class="is-actions">
+                  <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="open(s)">
+                    <zen-icon name="eye" />
+                    <span>Chi tiết</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </zen-card>
+</div>
+
+@if (selected(); as s) {
+  <zen-modal
+    [heading]="s.className"
+    [subtitle]="formatDateTime(s.startTime) + ' – ' + (s.endTime | date:'HH:mm':'+0700') + ' · ' + s.branchName + ' · HLV ' + s.instructorName"
+    icon="monitor"
+    size="lg"
+    (closed)="close()"
+  >
+    <div class="zen-stack">
+      @if (s.status !== 'CANCELLED') {
+        <yoga-online-session-panel [scheduleId]="s.id" />
+      } @else {
+        <zen-alert tone="neutral">Lớp đã hủy; phòng Zoom đã được xóa.</zen-alert>
+      }
+
+      <div>
+        <p class="zen-section-title">Học viên ({{ s.bookedCount }}/{{ s.maxCapacity }})</p>
+        @if (loadingAttendees()) {
+          <zen-loading inline />
+        } @else if (!attendees().length) {
+          <p class="zen-text-sm zen-text-muted">Chưa có học viên đặt chỗ.</p>
+        } @else {
+          <div class="zen-table-wrap">
+            <table class="zen-table">
+              <thead><tr><th>Học viên</th><th>Điện thoại</th><th>Trạng thái</th><th>Vào lớp lúc</th></tr></thead>
+              <tbody>
+                @for (a of attendees(); track a.id) {
+                  <tr>
+                    <td>{{ a.studentName }}</td>
+                    <td class="zen-mono">{{ a.studentPhone }}</td>
+                    <td><zen-badge size="sm" [tone]="attendeeTone(a.status)">{{ attendeeLabel(a.status) }}</zen-badge></td>
+                    <td>{{ a.checkedInAt ? (a.checkedInAt | date:'HH:mm dd/MM':'+0700') : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+
+    <ng-container modal-footer>
+      @if (canCancel(s)) {
+        <button type="button" class="zen-btn zen-btn--danger-outline" (click)="cancel(s)" [disabled]="cancelling()">
+          {{ cancelling() ? 'Đang hủy...' : 'Hủy lớp' }}
+        </button>
+      }
+      <button type="button" class="zen-btn zen-btn--outline" (click)="close()">Đóng</button>
+    </ng-container>
+  </zen-modal>
+}
+
+@if (formOpen() && form(); as f) {
+  <zen-modal heading="Tạo lớp online" subtitle="Lớp livestream qua Zoom của cơ sở." icon="monitor" size="lg" (closed)="closeCreate()">
+    <div class="zen-stack">
+      @if (formError()) {
+        <zen-alert tone="danger">{{ formError() }}</zen-alert>
+      }
+      <div class="form-grid">
+        <div class="zen-field">
+          <span class="zen-label">Cơ sở <span class="zen-required">*</span></span>
+          <zen-select [options]="formBranchOptions()" [ngModel]="f.branchId" (ngModelChange)="patchForm({ branchId: $event })" placeholder="Chọn cơ sở..." />
+        </div>
+        <div class="zen-field">
+          <span class="zen-label">Phòng online <span class="zen-required">*</span></span>
+          <zen-select [options]="formRoomOptions()" [ngModel]="f.roomId" (ngModelChange)="patchForm({ roomId: $event })" placeholder="Chọn phòng online..." />
+          @if (f.branchId && !formRooms().length) {
+            <span class="zen-hint">Cơ sở chưa có phòng online đang hoạt động. Quản trị hệ thống thêm ở Chi Nhánh → Phòng tập.</span>
+          }
+        </div>
+        <div class="zen-field">
+          <span class="zen-label">Bộ môn <span class="zen-required">*</span></span>
+          <zen-select [options]="formTypeOptions()" [ngModel]="f.classTypeId" (ngModelChange)="patchForm({ classTypeId: $event })" placeholder="Chọn bộ môn..." />
+        </div>
+        <div class="zen-field">
+          <span class="zen-label">Huấn luyện viên <span class="zen-required">*</span></span>
+          <zen-select [options]="formInstructorOptions()" [ngModel]="f.instructorId" (ngModelChange)="patchForm({ instructorId: $event })" placeholder="Chọn huấn luyện viên..." />
+        </div>
+        <label class="zen-field">
+          <span class="zen-label">Ngày <span class="zen-required">*</span></span>
+          <input type="date" class="zen-control" [ngModel]="f.date" (ngModelChange)="patchForm({ date: $event })" />
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Giờ bắt đầu <span class="zen-required">*</span></span>
+          <input type="time" class="zen-control" [ngModel]="f.time" (ngModelChange)="patchForm({ time: $event })" />
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Thời lượng (phút)</span>
+          <input type="number" class="zen-control" min="15" max="240" step="5" [ngModel]="f.durationMinutes" (ngModelChange)="patchForm({ durationMinutes: $event })" />
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Sĩ số tối đa</span>
+          <input type="number" class="zen-control" min="1" [max]="selectedFormRoom()?.maxCapacity ?? 100" [ngModel]="f.maxCapacity" (ngModelChange)="patchForm({ maxCapacity: $event })" />
+        </label>
+      </div>
+      <zen-alert tone="info">
+        Mỗi tài khoản Zoom chỉ dạy được một lớp tại một thời điểm. Các phòng online chưa khai báo tài khoản Zoom riêng dùng chung tài khoản mặc định, nên lớp online của mọi cơ sở trên tài khoản đó không được trùng giờ. Zoom Basic giới hạn 40 phút mỗi buổi.
+      </zen-alert>
+    </div>
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeCreate()" [disabled]="saving()">Hủy bỏ</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submit()" [disabled]="saving()">
+        {{ saving() ? 'Đang tạo...' : 'Tạo lớp online' }}
+      </button>
+    </ng-container>
+  </zen-modal>
+}

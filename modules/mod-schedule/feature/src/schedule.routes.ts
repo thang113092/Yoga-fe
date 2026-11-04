@@ -12,6 +12,12 @@ export const SCHEDULE_ROUTES: Routes = [
     title: path === 'subjects' ? 'Bộ môn - An Yên' : 'Lịch học - An Yên'
   })),
   {
+    path: 'online',
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR'])],
+    loadComponent: () => import('./online-classes/online-classes.component').then(m => m.OnlineClassesComponent),
+    title: 'Lớp học online - An Yên'
+  },
+  {
     path: 'courses',
     canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST', 'INSTRUCTOR', 'STUDENT'])],
     loadComponent: () => import('./courses/courses.component').then(m => m.CoursesComponent),

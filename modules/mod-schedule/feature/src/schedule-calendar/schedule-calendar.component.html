@@ -142,9 +142,14 @@
                 <strong class="time-range">{{ schedule.startTime | date:'HH:mm' }} – {{ schedule.endTime | date:'HH:mm' }}</strong>
                 <span class="zen-text-xs zen-text-muted">{{ getDurationMinutes(schedule.startTime, schedule.endTime) }} phút</span>
               </div>
-              <zen-badge size="sm" [tone]="categoryTone(getCategoryBadge(schedule.className).type)">
-                {{ getCategoryBadge(schedule.className).label }}
-              </zen-badge>
+              <div class="zen-row">
+                @if (isOnline(schedule)) {
+                  <zen-badge size="sm" tone="info"><zen-icon name="monitor" [size]="12" /> Online</zen-badge>
+                }
+                <zen-badge size="sm" [tone]="categoryTone(getCategoryBadge(schedule.className).type)">
+                  {{ getCategoryBadge(schedule.className).label }}
+                </zen-badge>
+              </div>
             </div>
 
             <div class="card-date">
@@ -164,7 +169,7 @@
               </div>
 
               <div class="card-location" [title]="(schedule.branchName ? schedule.branchName + ' · ' : '') + schedule.roomName">
-                <zen-icon name="map-pin" [size]="13" />
+                <zen-icon [name]="isOnline(schedule) ? 'monitor' : 'map-pin'" [size]="13" />
                 <span class="zen-truncate">
                   @if (schedule.branchName) {
                     <span class="zen-strong">{{ schedule.branchName }}</span> ·
@@ -284,13 +289,35 @@
                 </div>
                 <div class="booking-meta">
                   <span><zen-icon name="clock" [size]="14" />{{ b.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ b.endTime | date:'HH:mm' }}</span>
-                  <span><zen-icon name="map-pin" [size]="14" />{{ b.roomName }} · {{ b.branchName }}</span>
+                  @if (isOnline(b)) {
+                    <span><zen-icon name="monitor" [size]="14" />Học online qua Zoom</span>
+                  } @else {
+                    <span><zen-icon name="map-pin" [size]="14" />{{ b.roomName }} · {{ b.branchName }}</span>
+                  }
                   <span><zen-icon name="user" [size]="14" />HLV: <strong>{{ b.instructorName }}</strong></span>
-                  <zen-badge size="sm" tone="primary">Thảm số {{ b.matNumber || 1 }}</zen-badge>
+                  @if (isOnline(b)) {
+                    <zen-badge size="sm" tone="info">Online</zen-badge>
+                  } @else {
+                    <zen-badge size="sm" tone="primary">Thảm số {{ b.matNumber || 1 }}</zen-badge>
+                  }
                 </div>
               </div>
 
               <div class="booking-actions">
+                @if (canJoinOnline(b)) {
+                  <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="joinOnline(b)"
+                          [disabled]="joiningBookingId() === b.id" title="Mở lớp học trên Zoom và điểm danh">
+                    @if (joiningBookingId() === b.id) {
+                      <zen-loading inline />
+                      <span>Đang mở lớp...</span>
+                    } @else {
+                      <zen-icon name="play" [size]="14" />
+                      {{ b.status === 'ATTENDED' ? 'Vào lại lớp' : 'Vào lớp' }}
+                    }
+                  </button>
+                } @else if (isOnline(b) && b.status === 'CONFIRMED' && isUpcoming(b)) {
+                  <span class="zen-text-xs zen-text-muted">Nút vào lớp mở lúc {{ joinOpensLabel(b) }}</span>
+                }
                 @if (b.status === 'CONFIRMED' && b.canCancel) {
                   <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelBooking(b)" title="Hủy ca để nhận lại 1 lượt tập vào thẻ">
                     Hủy ca (hoàn lượt)
@@ -373,12 +400,22 @@
         } @else {
           <zen-alert tone="danger">Học viên chưa có thẻ tập đang hoạt động. Vui lòng liên hệ tiếp tân hoặc mua thẻ trước khi đặt chỗ.</zen-alert>
         }
-        <span class="zen-hint">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</span>
+        @if (isOnline(m)) {
+          <span class="zen-hint">Lớp online: mọi thẻ tập đang hoạt động đều dùng được, không phụ thuộc cơ sở đăng ký.</span>
+        } @else {
+          <span class="zen-hint">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</span>
+        }
       </div>
 
-      <zen-alert tone="info" heading="Chính sách giữ & hoàn lượt">
-        Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.
-      </zen-alert>
+      @if (isOnline(m)) {
+        <zen-alert tone="info" heading="Học online qua Zoom">
+          Hệ thống giữ 1 lượt tập trong thẻ. Từ 15 phút trước giờ học, vào "Lịch đã đặt của tôi" và bấm "Vào lớp": hệ thống tự điểm danh và mở Zoom bằng link riêng của bạn. Có thể hủy trước giờ học để nhận lại lượt.
+        </zen-alert>
+      } @else {
+        <zen-alert tone="info" heading="Chính sách giữ & hoàn lượt">
+          Hệ thống sẽ giữ 1 lượt tập trong thẻ. Bạn có thể tự do hủy trước giờ học để nhận lại lượt tập tự động. Cửa sổ điểm danh mở trước ca học 30 phút.
+        </zen-alert>
+      }
     </div>
 
     <ng-container modal-footer>

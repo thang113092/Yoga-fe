@@ -78,6 +78,13 @@ export class BranchListComponent implements OnInit {
   readonly rFormFloor = signal<string>('');
   readonly rFormMaxCapacity = signal<number>(20);
   readonly rFormIsActive = signal<boolean>(true);
+  readonly rFormLiveHost = signal<string>('');
+  /** VIRTUAL = online room (one Zoom licence); chosen on creation only. */
+  readonly rFormRoomType = signal<'PHYSICAL' | 'VIRTUAL'>('PHYSICAL');
+  readonly roomTypeOptions = [
+    { value: 'PHYSICAL', label: 'Phòng tập', sublabel: 'Phòng tại cơ sở' },
+    { value: 'VIRTUAL', label: 'Phòng online', sublabel: 'Một tài khoản Zoom (license) cho lớp online' }
+  ];
 
   // Filtered branches computed
   readonly filteredBranches = computed(() => {
@@ -301,6 +308,8 @@ export class BranchListComponent implements OnInit {
     this.rFormFloor.set('');
     this.rFormMaxCapacity.set(20);
     this.rFormIsActive.set(true);
+    this.rFormLiveHost.set('');
+    this.rFormRoomType.set('PHYSICAL');
     this.isRoomModalOpen.set(true);
   }
 
@@ -311,6 +320,8 @@ export class BranchListComponent implements OnInit {
     this.rFormFloor.set(room.floor || '');
     this.rFormMaxCapacity.set(room.maxCapacity);
     this.rFormIsActive.set(room.isActive);
+    this.rFormLiveHost.set(room.liveHostAccount || '');
+    this.rFormRoomType.set(room.roomType === 'VIRTUAL' ? 'VIRTUAL' : 'PHYSICAL');
     this.isRoomModalOpen.set(true);
   }
 
@@ -343,7 +354,8 @@ export class BranchListComponent implements OnInit {
         name,
         floor: this.rFormFloor().trim() || undefined,
         maxCapacity: capacity,
-        isActive: this.rFormIsActive()
+        isActive: this.rFormIsActive(),
+        liveHostAccount: this.rFormRoomType() === 'VIRTUAL' ? this.rFormLiveHost().trim() || undefined : undefined
       };
 
       this.branchApi.updateRoom(roomId, req).subscribe({
@@ -364,7 +376,9 @@ export class BranchListComponent implements OnInit {
         name,
         floor: this.rFormFloor().trim() || undefined,
         maxCapacity: capacity,
-        isActive: this.rFormIsActive()
+        isActive: this.rFormIsActive(),
+        liveHostAccount: this.rFormRoomType() === 'VIRTUAL' ? this.rFormLiveHost().trim() || undefined : undefined,
+        roomType: this.rFormRoomType()
       };
 
       this.branchApi.createRoom(branch.id, req).subscribe({

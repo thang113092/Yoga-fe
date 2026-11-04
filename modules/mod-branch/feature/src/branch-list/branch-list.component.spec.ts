@@ -217,7 +217,8 @@ describe('BranchListComponent', () => {
       name: 'Phòng Trúc Xanh',
       floor: 'Tầng 4',
       maxCapacity: 18,
-      isActive: true
+      isActive: true,
+      roomType: 'PHYSICAL'
     });
     expect(mockToastService.success).toHaveBeenCalled();
     expect(component.isRoomModalOpen()).toBe(false);

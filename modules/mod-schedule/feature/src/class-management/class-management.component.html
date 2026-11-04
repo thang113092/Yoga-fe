@@ -489,6 +489,9 @@
     size="xl"
     (closed)="closeAttendeesModal()"
   >
+    @if (selectedScheduleForAttendees()?.deliveryMode === 'ONLINE') {
+      <yoga-online-session-panel class="online-panel-host" [scheduleId]="selectedScheduleForAttendees()!.id" />
+    }
     @if (isLoadingAttendees()) {
       <zen-loading message="Đang tải danh sách học viên..." />
     } @else if (attendeesList().length === 0) {
@@ -638,6 +641,9 @@
               <span class="class-name-text">{{ sched.className }}</span>
               @if (sched.courseClassId) {
                 <zen-badge size="sm" tone="primary">Khóa học · Buổi {{ sched.sessionNumber }}</zen-badge>
+              }
+              @if (sched.deliveryMode === 'ONLINE') {
+                <zen-badge size="sm" tone="info"><zen-icon name="monitor" [size]="12" /> Online</zen-badge>
               }
             </div>
 

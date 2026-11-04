@@ -437,3 +437,9 @@
   .week-strip { justify-content: center; }
   .week-strip-days { overflow-x: auto; }
 }
+
+// Online (Zoom) class controls inside the attendees modal
+.online-panel-host {
+  display: block;
+  margin-bottom: 16px;
+}

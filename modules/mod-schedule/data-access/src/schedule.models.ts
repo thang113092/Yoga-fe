@@ -15,7 +15,11 @@ export interface ClassSchedule {
   bookedCount: number;
   availableSlots: number;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  /** ONLINE for classes taught in a virtual room (Zoom). */
+  deliveryMode?: DeliveryMode;
 }
+
+export type DeliveryMode = 'IN_PERSON' | 'ONLINE';
 
 export interface Booking {
   id: string;
@@ -66,6 +70,9 @@ export interface BranchItem {
   name: string;
   address: string;
   phone: string;
+  /** Retired V12 branch that held online classes; online classes now belong to each studio branch. */
+  isVirtual?: boolean;
+  isActive?: boolean;
 }
 
 export interface StudentPassItem {
@@ -95,6 +102,7 @@ export interface StudentBookingDetail {
   status: 'CONFIRMED' | 'ATTENDED' | 'CANCELLED' | 'NO_SHOW';
   bookingTime: string;
   canCancel: boolean;
+  deliveryMode?: DeliveryMode;
 }
 
 export interface WaitlistJoinReq {
@@ -153,6 +161,8 @@ export interface RoomItem {
   floor?: string;
   maxCapacity: number;
   isActive: boolean;
+  roomType?: 'PHYSICAL' | 'VIRTUAL';
+  liveHostAccount?: string | null;
 }
 
 export interface InstructorItem {
@@ -210,3 +220,30 @@ export interface WorkoutHistoryItem {
   notes?: string;
 }
 
+
+export interface OnlineJoinResp {
+  bookingId: string;
+  scheduleId: string;
+  joinUrl: string;
+  startTime: string;
+  endTime: string;
+}
+
+export type OnlineMeetingStatus = 'PENDING' | 'READY' | 'UPDATE_PENDING' | 'CANCEL_PENDING' | 'CANCELLED' | 'STARTED' | 'ENDED' | 'MISSING';
+
+export interface OnlineSessionInfo {
+  scheduleId: string;
+  providerConfigured: boolean;
+  meetingStatus: OnlineMeetingStatus;
+  lastError?: string | null;
+  syncAttempts: number;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  registeredCount: number;
+  pendingCount: number;
+  /** Zoom host link; only for the class instructor or managers, from an hour before class. */
+  startUrl?: string | null;
+  hostLinkOpensAt: string;
+  /** false: Zoom Basic test mode, every student gets the same meeting link. */
+  personalLinks?: boolean;
+}
