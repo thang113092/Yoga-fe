@@ -3,12 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
-import { CheckoutQuote, MembershipResp, MembershipApi, MembershipPlan, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
+import { CheckoutQuote, MembershipResp, MembershipApi, MembershipPlan, OnlinePaymentResp, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
+import { QrCodeComponent } from '@yoga/platform/api';
 import { ZEN_UI } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
 interface CheckoutDraft { actorId: string; key: string; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
-@Component({ selector: 'yoga-pos-checkout', standalone: true, imports: [CommonModule, FormsModule, RouterModule, ...ZEN_UI], templateUrl: './pos-checkout.component.html', styleUrl: './pos-checkout.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
+const ONLINE_POLL_MS = 3000;
+/** Minimum gap between automatic gateway checks once a VietQR has run out of time. */
+const EXPIRY_REFRESH_MS = 5000;
+@Component({ selector: 'yoga-pos-checkout', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, ...ZEN_UI], templateUrl: './pos-checkout.component.html', styleUrl: './pos-checkout.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
 export class PosCheckoutComponent implements OnInit, OnDestroy {
   private readonly membershipApi = inject(MembershipApi);
   private readonly posApi = inject(PosApi);
@@ -59,6 +63,27 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   private quoteVersion = 0;
   private searchVersion = 0;
 
+  // Dynamic VietQR: the server confirms the payment through the gateway; the counter only watches it.
+  protected readonly onlinePayment = signal<OnlinePaymentResp | null>(null);
+  protected readonly onlineOpen = computed(() => this.onlinePayment()?.status === 'CREATED');
+  private readonly now = signal(Date.now());
+  protected readonly onlineSecondsLeft = computed(() => {
+    const online = this.onlinePayment();
+    return online ? Math.max(0, Math.floor((Date.parse(online.expiresAt) - this.now()) / 1000)) : 0;
+  });
+  protected readonly onlineCountdown = computed(() => {
+    const s = this.onlineSecondsLeft();
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  });
+  /** After a VietQR attempt closes (or never opened) the cashier may collect the same order another way. */
+  protected readonly canSwitchMethod = computed(() => {
+    const draft = this.pendingCheckout();
+    return !!draft?.order && draft.paymentRequest.paymentMethod === 'PAYOS' && !this.onlineOpen() && !this.isProcessing();
+  });
+  private onlinePollTimer: ReturnType<typeof setTimeout> | null = null;
+  private onlineClockTimer: ReturnType<typeof setInterval> | null = null;
+  private lastExpiryRefresh = 0;
+
   refreshQuote(): void {
     const student = this.resolvedStudent(); const plan = this.selectedPlan(); const branch = this.selectedBranchId;
     const version = ++this.quoteVersion;
@@ -89,6 +114,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
       case 'CASH': return 'Tiền mặt';
       case 'POS_CARD': return 'Quẹt thẻ máy POS';
       case 'BANK_TRANSFER_QR': return 'Chuyển khoản QR ngân hàng';
+      case 'PAYOS': return 'VietQR động (PayOS)';
       default: return method || '—';
     }
   }
@@ -116,12 +142,12 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   }
 
   cancelPendingCheckout(): void {
-    if (this.isProcessing()) return;
+    if (this.isProcessing() || this.onlineOpen()) return;
     const draft = this.pendingCheckout(); const membership = this.pendingMembership();
     if (!draft && !membership) return;
     this.isProcessing.set(true);
     const cancel = (orderId: string) => this.posApi.cancelPendingOrder(orderId).subscribe({
-      next: () => { this.pendingCheckout.set(null); try { localStorage.removeItem(this.storageKey()); } catch {} this.isProcessing.set(false); this.refreshQuote(); },
+      next: () => { this.pendingCheckout.set(null); this.clearOnline(); try { localStorage.removeItem(this.storageKey()); } catch {} this.isProcessing.set(false); this.refreshQuote(); },
       error: err => this.fail(err, 'Chưa hủy được đơn. Cần đối soát trước khi tạo giao dịch khác.')
     });
     if (draft?.order) { cancel(draft.order.orderId); return; }
@@ -147,6 +173,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
     if (this.copyTimeout) clearTimeout(this.copyTimeout);
+    this.stopOnlineTimers();
     ++this.quoteVersion; ++this.searchVersion;
   }
   loadPlans(): void {
@@ -162,7 +189,15 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     });
   }
   selectPlan(id: string): void { if (!this.pendingCheckout() && !this.isProcessing()) { this.selectedPlanId.set(id); this.refreshQuote(); } }
-  setPaymentMethod(method: PaymentMethod): void { if (!this.pendingCheckout() && !this.isProcessing()) this.paymentMethod.set(method); }
+  setPaymentMethod(method: PaymentMethod): void {
+    if (this.canSwitchMethod()) {
+      // A new key: the closed VietQR attempt stays on record and must not be replayed.
+      const draft = this.pendingCheckout()!;
+      this.saveDraft({ ...draft, paymentRequest: { ...draft.paymentRequest, paymentMethod: method, idempotencyKey: crypto.randomUUID() } });
+      this.paymentMethod.set(method); this.errorMessage.set(null); return;
+    }
+    if (!this.pendingCheckout() && !this.isProcessing()) this.paymentMethod.set(method);
+  }
 
   onSearchQueryChange(val: string): void {
     if (this.pendingCheckout() || this.isProcessing()) return;
@@ -239,8 +274,18 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
 
   handleCheckout(): void {
     if (this.isProcessing()) return;
-    const draft = this.pendingCheckout();
-    if (draft) { this.isProcessing.set(true); this.errorMessage.set(null); this.completeCheckout(draft); return; }
+    let draft = this.pendingCheckout();
+    if (draft) {
+      if (this.onlineOpen()) return;
+      const method = draft.paymentRequest.paymentMethod;
+      if ((method === 'POS_CARD' || method === 'BANK_TRANSFER_QR') && !draft.paymentRequest.transactionReference) {
+        if (!this.transactionReference.trim()) { this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.'); return; }
+        draft = { ...draft, paymentRequest: { ...draft.paymentRequest, transactionReference: this.transactionReference.trim() } };
+      }
+      // The previous VietQR closed unpaid: open a fresh attempt for the same order.
+      if (method === 'PAYOS' && this.onlinePayment()) draft = { ...draft, paymentRequest: { ...draft.paymentRequest, idempotencyKey: crypto.randomUUID() } };
+      this.saveDraft(draft); this.isProcessing.set(true); this.errorMessage.set(null); this.completeCheckout(draft); return;
+    }
     const plan = this.selectedPlan(); const student = this.resolvedStudent();
     const quote = this.quote(); const actorId = this.auth.currentUserId();
     if (!plan || !student || !actorId || !this.selectedBranchId || !quote || this.isLoadingQuote() || quote.issue) {
@@ -249,7 +294,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     if (this.adjustmentInvalid() || this.useCreditAdjustment() && !this.adjustmentReason.trim()) {
       this.errorMessage.set('Nhập giá trị điều chỉnh hợp lệ và lý do phê duyệt.'); return;
     }
-    if (this.amountDue() > 0 && this.paymentMethod() !== 'CASH' && !this.transactionReference.trim()) {
+    if (this.amountDue() > 0 && this.paymentMethod() !== 'CASH' && this.paymentMethod() !== 'PAYOS' && !this.transactionReference.trim()) {
       this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.'); return;
     }
     this.isProcessing.set(true); this.errorMessage.set(null);
@@ -275,6 +320,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   }
   private pay(draft: CheckoutDraft): void {
     const order = draft.order!;
+    if (draft.paymentRequest.paymentMethod === 'PAYOS') { this.startOnline(draft); return; }
     this.posApi.processPayment({ ...draft.paymentRequest, orderId: order.orderId }).subscribe({
       next: payment => {
         if (payment.paymentStatus !== 'SUCCESS' || payment.orderId !== order.orderId) { this.fail(null, 'Thanh toán chưa được xác nhận.'); return; }
@@ -283,6 +329,83 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
       }, error: err => this.fail(err, 'Chưa xác nhận được kết quả thanh toán. Thử lại cùng đơn và mã giao dịch; không thu tiền lần nữa.')
     });
   }
+  private startOnline(draft: CheckoutDraft): void {
+    this.posApi.startOnlinePayment(draft.order!.orderId, draft.paymentRequest.idempotencyKey).subscribe({
+      next: online => this.showOnline(online),
+      error: err => this.fail(err, 'Chưa tạo được mã VietQR. Thử lại hoặc chọn phương thức khác.')
+    });
+  }
+
+  refreshOnline(): void {
+    const online = this.onlinePayment(); if (!online || this.isProcessing()) return;
+    this.isProcessing.set(true);
+    this.posApi.refreshOnlinePayment(online.id).subscribe({ next: r => this.showOnline(r), error: err => this.fail(err, 'Chưa kiểm tra được cổng thanh toán. Thử lại sau ít giây.') });
+  }
+
+  cancelOnline(): void {
+    const online = this.onlinePayment(); if (!online || !this.onlineOpen() || this.isProcessing()) return;
+    this.isProcessing.set(true);
+    this.posApi.cancelOnlinePayment(online.id).subscribe({
+      next: r => {
+        this.showOnline(r);
+        // Hủy thanh toán = hủy luôn đơn chờ, để quầy được tìm/chọn học viên khác ngay.
+        if (r.status === 'CANCELLED') this.cancelPendingCheckout();
+      },
+      error: err => this.fail(err, 'Chưa hủy được mã. Khách có thể vừa thanh toán; bấm Kiểm tra lại.')
+    });
+  }
+
+  private showOnline(online: OnlinePaymentResp): void {
+    const draft = this.pendingCheckout();
+    if (draft?.order && online.orderId !== draft.order.orderId) { this.fail(null, 'Mã thanh toán không thuộc đơn đang xử lý.'); return; }
+    this.onlinePayment.set(online); this.isProcessing.set(false); this.now.set(Date.now());
+    this.stopOnlineTimers();
+    switch (online.status) {
+      case 'CREATED':
+        this.errorMessage.set(null);
+        this.onlineClockTimer = setInterval(() => {
+          this.now.set(Date.now());
+          // The server only closes an expired link on its periodic job: ask the gateway as soon as time is up.
+          if (this.onlineSecondsLeft() === 0 && !this.isProcessing() && Date.now() - this.lastExpiryRefresh >= EXPIRY_REFRESH_MS) {
+            this.lastExpiryRefresh = Date.now(); this.refreshOnline();
+          }
+        }, 1000);
+        this.onlinePollTimer = setTimeout(() => this.pollOnline(online.id), ONLINE_POLL_MS);
+        return;
+      case 'PAID':
+        if (draft?.order) this.successReceipt.set({ order: draft.order, payment: { paymentId: online.paymentId, paymentCode: `PAYOS-${online.providerOrderCode}`, orderId: online.orderId,
+          amount: online.amount, paymentMethod: 'PAYOS', paymentStatus: 'SUCCESS', paymentTime: online.paidAt ?? new Date().toISOString(), activatedMembershipCode: online.activatedMembershipCode ?? '' } });
+        this.pendingCheckout.set(null); this.clearOnline();
+        try { localStorage.removeItem(this.storageKey()); } catch { /* storage unavailable */ }
+        return;
+      case 'NEEDS_RECONCILIATION':
+      case 'RESOLVED':
+        // Money reached the gateway but the order was not activated: never collect again at the counter.
+        this.pendingCheckout.set(null);
+        try { localStorage.removeItem(this.storageKey()); } catch { /* storage unavailable */ }
+        this.errorMessage.set('Cổng đã nhận tiền nhưng chưa kích hoạt được thẻ. Không thu thêm; quản lý xử lý tại mục "Tiền VietQR chờ đối soát" ở trang Đơn hàng.');
+        return;
+      default:
+        this.errorMessage.set(online.status === 'EXPIRED' ? 'Mã VietQR đã hết hạn. Tạo mã mới hoặc chọn cách thu khác.' : 'Đã hủy mã VietQR. Tạo mã mới hoặc chọn cách thu khác.');
+    }
+  }
+
+  private pollOnline(id: string): void {
+    this.onlinePollTimer = null;
+    this.posApi.getOnlinePayment(id).subscribe({
+      next: online => { if (this.onlinePayment()?.id === id) this.showOnline(online); },
+      // Network blips must not stop watching a link the customer may be paying.
+      error: () => { if (this.onlinePayment()?.id === id && this.onlineOpen()) this.onlinePollTimer = setTimeout(() => this.pollOnline(id), ONLINE_POLL_MS); }
+    });
+  }
+
+  private stopOnlineTimers(): void {
+    if (this.onlinePollTimer) { clearTimeout(this.onlinePollTimer); this.onlinePollTimer = null; }
+    if (this.onlineClockTimer) { clearInterval(this.onlineClockTimer); this.onlineClockTimer = null; }
+  }
+
+  private clearOnline(): void { this.stopOnlineTimers(); this.onlinePayment.set(null); }
+
   private fail(err: any, fallback: string): void { this.errorMessage.set(err?.error?.message || fallback); this.isProcessing.set(false); }
   private storageKey(): string { return 'yoga_checkout_' + this.auth.currentUserId(); }
   private saveDraft(draft: CheckoutDraft): void { this.pendingCheckout.set(draft); try { localStorage.setItem(this.storageKey(), JSON.stringify(draft)); } catch { /* retry remains available in this tab */ } }
@@ -293,11 +416,15 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
       if (draft.actorId !== this.auth.currentUserId() || !draft.key || !draft.orderRequest?.studentId || !draft.paymentRequest?.idempotencyKey) return;
       this.pendingCheckout.set(draft); this.branchId.set(draft.orderRequest.branchId); this.selectedPlanId.set(draft.orderRequest.planId); this.paymentMethod.set(draft.paymentRequest.paymentMethod);
       this.errorMessage.set('Có giao dịch chưa được xác nhận. Thử lại để đối soát cùng đơn; không thu thêm tiền.');
+      // A VietQR may still be open for this order: show it again (same key returns the same link) instead of
+      // offering a cancel that the server would refuse while the customer can still pay.
+      if (draft.order && draft.paymentRequest.paymentMethod === 'PAYOS') { this.isProcessing.set(true); this.startOnline(draft); }
     } catch { this.errorMessage.set('Không đọc được giao dịch đang chờ. Liên hệ quản lý để đối soát trước khi thu tiền.'); }
   }
   resetForm(): void {
     if (this.pendingCheckout() || this.isProcessing()) return;
     this.successReceipt.set(null);
+    this.clearOnline();
     this.copiedCode.set(false);
     if (this.copyTimeout) {
       clearTimeout(this.copyTimeout);

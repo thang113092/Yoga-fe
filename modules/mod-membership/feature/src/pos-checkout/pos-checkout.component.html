@@ -120,7 +120,7 @@
     <div class="pos-layout">
       <div class="zen-stack zen-stack--lg">
         <!-- 1. Student lookup -->
-        <zen-card>
+        <zen-card class="student-lookup-card">
           <div class="step-head">
             <zen-badge tone="primary" size="sm">Bước 1</zen-badge>
             <h2 class="zen-section-title">Thông Tin Học Viên</h2>
@@ -334,8 +334,41 @@
                 <button type="button" class="method-btn" [class.active]="paymentMethod() === 'POS_CARD'" (click)="setPaymentMethod('POS_CARD')">
                   <zen-icon name="credit-card" [size]="20" /><span>Quẹt thẻ POS</span>
                 </button>
+                <button type="button" class="method-btn" [class.active]="paymentMethod() === 'PAYOS'" (click)="setPaymentMethod('PAYOS')">
+                  <zen-icon name="qr" [size]="20" /><span>VietQR động</span>
+                </button>
               </div>
+              @if (canSwitchMethod()) {
+                <p class="zen-text-xs zen-text-muted">Có thể chọn cách thu khác cho cùng đơn này.</p>
+              }
             </div>
+
+            @if (paymentMethod() === 'PAYOS') {
+              <div class="online-pay-box" aria-live="polite">
+                @if (onlinePayment(); as online) {
+                  @if (onlineOpen() && online.qrPayload) {
+                    <div class="online-qr"><yoga-qr-code [value]="online.qrPayload" /></div>
+                    <dl class="qr-instructions">
+                      <div><dt>Số tiền</dt><dd class="zen-num">{{ online.amount | number:'1.0-0' }} ₫</dd></div>
+                      <div><dt>Mã thanh toán</dt><dd class="zen-mono">{{ online.providerOrderCode }}</dd></div>
+                      <div><dt>Còn hiệu lực</dt><dd class="zen-num">{{ onlineCountdown() }}</dd></div>
+                    </dl>
+                    <p class="online-waiting zen-text-sm"><zen-icon name="refresh" [size]="14" class="zen-spin" /> Đang chờ khách quét mã. Thẻ được kích hoạt tự động khi ngân hàng báo đã nhận tiền.</p>
+                    <div class="online-actions">
+                      <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="refreshOnline()" [disabled]="isProcessing()">Kiểm tra lại</button>
+                      @if (online.checkoutUrl) {
+                        <a class="zen-btn zen-btn--ghost zen-btn--sm" [href]="online.checkoutUrl" target="_blank" rel="noopener">Mở trang thanh toán</a>
+                      }
+                      <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelOnline()" [disabled]="isProcessing()">Hủy thanh toán</button>
+                    </div>
+                  } @else if (online.status === 'NEEDS_RECONCILIATION' || online.status === 'RESOLVED') {
+                    <zen-alert tone="danger">Đã nhận {{ online.amount | number:'1.0-0' }} ₫ qua mã {{ online.providerOrderCode }} nhưng chưa kích hoạt thẻ. Không thu thêm tiền.</zen-alert>
+                  }
+                } @else {
+                  <p class="zen-text-sm zen-text-muted">Bấm xác nhận để tạo mã VietQR đúng số tiền {{ amountDue() | number:'1.0-0' }} ₫. Khách quét bằng app ngân hàng; hệ thống tự xác nhận, không cần nhập mã chứng từ.</p>
+                }
+              </div>
+            }
 
             @if (paymentMethod() === 'BANK_TRANSFER_QR') {
               <div class="qr-payment-box">
@@ -353,10 +386,12 @@
               </div>
             }
 
-            <div class="zen-field">
-              <label class="zen-label" for="transactionRef">Mã chứng từ đã xác nhận (thẻ/chuyển khoản)</label>
-              <input class="zen-control" id="transactionRef" [(ngModel)]="transactionReference" [disabled]="isProcessing() || !!pendingCheckout()" />
-            </div>
+            @if (paymentMethod() !== 'PAYOS') {
+              <div class="zen-field">
+                <label class="zen-label" for="transactionRef">Mã chứng từ đã xác nhận (thẻ/chuyển khoản)</label>
+                <input class="zen-control" id="transactionRef" [(ngModel)]="transactionReference" [disabled]="isProcessing() || (!!pendingCheckout() && (!pendingCheckout()?.order || !!pendingCheckout()?.paymentRequest?.transactionReference))" />
+              </div>
+            }
             <div class="zen-field">
               <label class="zen-label" for="pos-notes">Ghi chú giao dịch</label>
               <textarea class="zen-control" [disabled]="isProcessing() || !!pendingCheckout()"
@@ -370,21 +405,25 @@
             @if (currentMembership()) {
               <zen-alert tone="info">Thẻ cũ được thay thế khi giao dịch thành công. Giá trị chưa dùng được khấu trừ; số buổi và thời hạn áp dụng theo gói mới. Các lịch phù hợp sẽ được giữ lại.</zen-alert>
             }
-            @if (pendingCheckout()) {
+            @if (pendingCheckout() && !onlineOpen()) {
               <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--block" (click)="cancelPendingCheckout()" [disabled]="isProcessing()">Hủy đơn chưa thanh toán</button>
             }
-            <button
-              type="button"
-              class="zen-btn zen-btn--primary zen-btn--lg zen-btn--block btn-checkout-submit"
-              [disabled]="isProcessing() || (!pendingCheckout() && (!resolvedStudent() || !selectedPlan() || !selectedBranchId || isLoadingQuote() || !quote() || !!quote()?.issue || adjustmentInvalid() || (useCreditAdjustment() && !adjustmentReason.trim())))"
-              (click)="handleCheckout()"
-            >
-              @if (isProcessing()) {
-                <zen-icon name="refresh" class="zen-spin" /> Đang xác nhận thu tiền & kích hoạt...
-              } @else {
-                {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
-              }
-            </button>
+            @if (!onlineOpen()) {
+              <button
+                type="button"
+                class="zen-btn zen-btn--primary zen-btn--lg zen-btn--block btn-checkout-submit"
+                [disabled]="isProcessing() || (!pendingCheckout() && (!resolvedStudent() || !selectedPlan() || !selectedBranchId || isLoadingQuote() || !quote() || !!quote()?.issue || adjustmentInvalid() || (useCreditAdjustment() && !adjustmentReason.trim())))"
+                (click)="handleCheckout()"
+              >
+                @if (isProcessing()) {
+                  <zen-icon name="refresh" class="zen-spin" /> Đang xác nhận thu tiền & kích hoạt...
+                } @else if (paymentMethod() === 'PAYOS' && amountDue() > 0) {
+                  {{ onlinePayment() ? 'Tạo mã VietQR mới' : (pendingCheckout() ? 'Thử lại / Mở lại mã VietQR' : 'Tạo mã VietQR') }}
+                } @else {
+                  {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
+                }
+              </button>
+            }
           </div>
         </zen-card>
       </div>

@@ -12,7 +12,7 @@
 /* ---------- Bố cục 2 cột ---------- */
 .pos-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-columns: minmax(0, 1fr) 480px;
   gap: var(--spacing-lg);
   align-items: start;
 
@@ -33,6 +33,12 @@
 }
 
 /* ---------- Bước 1: tìm học viên ---------- */
+/* zen-card mặc định overflow: hidden → dropdown kết quả bị cắt; mở ra và đặt card lên trên card Bước 2. */
+.student-lookup-card {
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
 .student-quick-search { position: relative; }
 
 .search-dropdown-menu {
@@ -173,21 +179,23 @@
 
 .method-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--spacing-sm);
 }
 .method-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px 6px;
+  gap: 8px;
+  padding: 16px 8px;
+  min-height: 84px;
+  justify-content: center;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   text-align: center;
   cursor: pointer;
@@ -355,7 +363,24 @@
   .currency { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--color-text-muted); }
 }
 
+.online-pay-box {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spacing-md);
+  align-items: center;
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+
+  > p, > zen-alert, .online-waiting, .online-actions { grid-column: 1 / -1; }
+}
+.online-qr ::ng-deep img { display: block; width: 180px; height: 180px; border-radius: var(--radius-sm); background: #fff; }
+.online-waiting { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--color-text-secondary); }
+.online-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+
 @media (max-width: 640px) {
+  .method-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .online-pay-box { grid-template-columns: minmax(0, 1fr); justify-items: center; }
   .branch-selector { flex-direction: column; align-items: stretch; width: 100%; }
   .branch-select-box { width: 100%; }
   .qr-payment-box { flex-direction: column; }

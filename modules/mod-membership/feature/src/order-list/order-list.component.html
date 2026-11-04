@@ -12,6 +12,8 @@
     </button>
   </zen-page-header>
 
+  <yoga-online-reconciliation />
+
   @if (error()) {
     <zen-alert tone="danger" dismissible (dismissed)="error.set('')">{{ error() }}</zen-alert>
   }

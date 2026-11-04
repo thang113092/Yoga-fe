@@ -7,11 +7,12 @@ import { PosApi, OrderListResult } from '@yoga/mod-membership/data-access';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { AuthService } from '@yoga/platform/auth';
 import { ZEN_UI, ZenSelectOption, ZenTone } from '@yoga/platform/ui';
+import { OnlineReconciliationComponent } from './online-reconciliation.component';
 
 @Component({
   selector: 'yoga-order-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ...ZEN_UI],
+  imports: [CommonModule, FormsModule, ...ZEN_UI, OnlineReconciliationComponent],
   templateUrl: './order-list.component.html',
   styleUrl: './order-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

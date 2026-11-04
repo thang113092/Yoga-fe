@@ -7,13 +7,16 @@ import { toDataURL } from 'qrcode';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class QrCodeComponent {
-  readonly value = input.required<string>();
+  // Not required: the effect may run before the first binding when the component appears inside control flow.
+  readonly value = input<string>('');
   protected readonly image = signal('');
   constructor() {
     effect(onCleanup => {
       let active = true;
       this.image.set('');
-      void toDataURL(this.value(), { width: 240, margin: 4, errorCorrectionLevel: 'M' })
+      const value = this.value();
+      if (!value) return;
+      void toDataURL(value, { width: 240, margin: 4, errorCorrectionLevel: 'M' })
         .then(data => { if (active) this.image.set(data); })
         .catch(() => { if (active) this.image.set(''); });
       onCleanup(() => { active = false; });

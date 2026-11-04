@@ -8,9 +8,9 @@ import { OrderListComponent } from './order-list.component';
 
 describe('OrderListComponent', () => {
   const empty: OrderListResult = { content: [], totalElements: 0, totalPages: 0, number: 0 };
-  let api: { listOrders: ReturnType<typeof vi.fn> };
+  let api: { listOrders: ReturnType<typeof vi.fn>; listOnlineReconciliation: ReturnType<typeof vi.fn> };
   beforeEach(() => {
-    api = { listOrders: vi.fn().mockReturnValue(of(empty)) };
+    api = { listOrders: vi.fn().mockReturnValue(of(empty)), listOnlineReconciliation: vi.fn().mockReturnValue(of([])) } as typeof api;
     TestBed.configureTestingModule({
       imports: [OrderListComponent],
       providers: [provideExperimentalZonelessChangeDetection(),

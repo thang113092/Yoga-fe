@@ -1,5 +1,6 @@
 export type PlanType = 'TIME_BASED' | 'SESSION_BASED' | 'COMBO';
-export type PaymentMethod = 'CASH' | 'POS_CARD' | 'BANK_TRANSFER_QR';
+export type PaymentMethod = 'CASH' | 'POS_CARD' | 'BANK_TRANSFER_QR' | 'PAYOS';
+export type OnlinePaymentStatus = 'CREATED' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'NEEDS_RECONCILIATION' | 'RESOLVED';
 export type MembershipStatus = 'PENDING_PAYMENT' | 'ACTIVE' | 'FROZEN' | 'EXPIRED' | 'CANCELLED' | 'REPLACED' | 'TRANSFERRED';
 
 export interface MembershipPlan {
@@ -91,6 +92,41 @@ export interface PaymentResp {
   readonly paymentStatus: 'PENDING' | 'SUCCESS' | 'FAILED';
   readonly paymentTime: string;
   readonly activatedMembershipCode: string;
+}
+
+/** Dynamic VietQR link. QR and checkout URL are only returned while the link is open. */
+export interface OnlinePaymentResp {
+  readonly id: string;
+  readonly paymentId: string;
+  readonly orderId: string;
+  readonly provider: string;
+  readonly providerOrderCode: number;
+  readonly status: OnlinePaymentStatus;
+  readonly amount: number;
+  readonly checkoutUrl: string | null;
+  readonly qrPayload: string | null;
+  readonly expiresAt: string;
+  readonly paidAt: string | null;
+  readonly paymentStatus: 'PENDING' | 'SUCCESS' | 'FAILED';
+  readonly orderStatus: string;
+  readonly activatedMembershipCode: string | null;
+}
+
+export interface OnlineReconciliationRow {
+  readonly id: string;
+  readonly orderId: string;
+  readonly orderCode: string;
+  readonly branchId: string;
+  readonly branchName: string;
+  readonly customerName: string | null;
+  readonly customerPhone: string | null;
+  readonly providerOrderCode: number;
+  readonly amount: number;
+  readonly paidAmount: number | null;
+  readonly paidAt: string | null;
+  readonly providerReference: string | null;
+  readonly orderStatus: string;
+  readonly createdAt: string;
 }
 
 export interface MembershipResp {

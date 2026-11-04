@@ -13,18 +13,25 @@ describe('POS single membership checkout', () => {
   const membership = { id: 'old', membershipCode: 'MB-old', planId: 'old-plan', status: 'ACTIVE', remainingSessions: 8, totalSessions: 20, purchasedPrice: 2000000 };
   let createOrder: ReturnType<typeof vi.fn>; let processPayment: ReturnType<typeof vi.fn>;
   let getQuote: ReturnType<typeof vi.fn>; let getMemberships: ReturnType<typeof vi.fn>; let cancelOrder: ReturnType<typeof vi.fn>;
+  let startOnline: ReturnType<typeof vi.fn>; let getOnline: ReturnType<typeof vi.fn>; let refreshOnline: ReturnType<typeof vi.fn>;
+  const online = (status: string) => ({ id: 'online', paymentId: 'pay', orderId: 'order', provider: 'PAYOS', providerOrderCode: 100001, status, amount: 3000000,
+    checkoutUrl: status === 'CREATED' ? 'https://pay.payos.vn/web/1' : null, qrPayload: status === 'CREATED' ? '000201' : null,
+    expiresAt: new Date(Date.now() + 600000).toISOString(), paidAt: null, paymentStatus: 'PENDING', orderStatus: status === 'PAID' ? 'PAID' : 'PENDING',
+    activatedMembershipCode: status === 'PAID' ? 'MB-real' : null });
   beforeEach(() => {
     localStorage.clear();
     createOrder = vi.fn().mockReturnValue(of({ orderId: 'order', membershipCode: 'MB-real', totalAmount: 3000000 }));
     processPayment = vi.fn().mockReturnValue(of({ orderId: 'order', paymentStatus: 'SUCCESS' }));
     getQuote = vi.fn().mockReturnValue(of({ currentMembership: null, credit: 0, totalAmount: 3000000, issue: null }));
     getMemberships = vi.fn().mockReturnValue(of([])); cancelOrder = vi.fn().mockReturnValue(of(undefined));
+    startOnline = vi.fn().mockReturnValue(of(online('CREATED'))); getOnline = vi.fn().mockReturnValue(of(online('CREATED')));
+    refreshOnline = vi.fn().mockReturnValue(of(online('EXPIRED')));
     TestBed.configureTestingModule({ imports: [PosCheckoutComponent], providers: [provideExperimentalZonelessChangeDetection(), provideRouter([]),
       { provide: AuthService, useValue: { currentUserId: () => 'cashier', isSuperAdmin: () => false, isBranchManager: () => false, branchIds: () => ['branch'] } },
       { provide: UserApi, useValue: { searchStudents: vi.fn().mockReturnValue(of([student])) } },
       { provide: BranchApi, useValue: { getAll: () => of([{ id: 'branch', name: 'Cơ sở', isActive: true }]) } },
       { provide: MembershipApi, useValue: { getActivePlans: () => of([plan]), getStudentMemberships: getMemberships } },
-      { provide: PosApi, useValue: { createOrder, processPayment, getCheckoutQuote: getQuote, cancelPendingOrder: cancelOrder } }
+      { provide: PosApi, useValue: { createOrder, processPayment, getCheckoutQuote: getQuote, cancelPendingOrder: cancelOrder, startOnlinePayment: startOnline, getOnlinePayment: getOnline, cancelOnlinePayment: () => of(online('CANCELLED')), refreshOnlinePayment: refreshOnline } }
     ] });
   });
   function page(select = true) {
@@ -112,6 +119,75 @@ describe('POS single membership checkout', () => {
     component.handleCheckout(); expect(createOrder).not.toHaveBeenCalled();
     component['adjustmentReason'] = 'Bảo toàn quyền lợi'; component.handleCheckout();
     expect(createOrder.mock.calls[0][0]).toMatchObject({ expectedCredit: 800000, expectedTotal: 2100000, adjustedCredit: 900000, adjustmentReason: 'Bảo toàn quyền lợi' });
+  });
+  describe('dynamic VietQR', () => {
+    afterEach(() => vi.useRealTimers());
+    it('opens a VietQR for the order without a transfer reference or counter payment', () => {
+      const fixture = page(); const component = fixture.componentInstance;
+      component.setPaymentMethod('PAYOS'); component.handleCheckout(); fixture.detectChanges();
+      expect(createOrder).toHaveBeenCalledTimes(1);
+      expect(startOnline).toHaveBeenCalledWith('order', expect.any(String));
+      expect(processPayment).not.toHaveBeenCalled();
+      expect(component['onlineOpen']()).toBe(true);
+      expect(component['successReceipt']()).toBeNull();
+      expect(fixture.nativeElement.querySelector('yoga-qr-code')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('#transactionRef')).toBeNull();
+    });
+    it('shows the receipt once the gateway confirms the money', () => {
+      vi.useFakeTimers(); getOnline.mockReturnValue(of(online('PAID')));
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      vi.advanceTimersByTime(3000);
+      expect(component['successReceipt']()?.payment.activatedMembershipCode).toBe('MB-real');
+      expect(component['pendingCheckout']()).toBeNull();
+    });
+    it('cannot cancel the order while the VietQR is open', () => {
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      component.cancelPendingCheckout(); expect(cancelOrder).not.toHaveBeenCalled();
+    });
+    it('releases the order and unlocks student search when the cashier cancels the VietQR', () => {
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      component.cancelOnline();
+      expect(cancelOrder).toHaveBeenCalledWith('order');
+      expect(component['pendingCheckout']()).toBeNull();
+      expect(component['isProcessing']()).toBe(false);
+      component.onSearchQueryChange('khác');
+      expect(component['resolvedStudent']()).toBeNull();
+    });
+    it('asks the gateway as soon as the VietQR countdown ends', () => {
+      vi.useFakeTimers();
+      startOnline.mockReturnValue(of({ ...online('CREATED'), expiresAt: new Date(Date.now() + 2000).toISOString() }));
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      vi.advanceTimersByTime(1000); expect(refreshOnline).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1500);
+      expect(refreshOnline).toHaveBeenCalledTimes(1);
+      expect(component['onlineOpen']()).toBe(false);
+      expect(component['errorMessage']()).toContain('hết hạn');
+    });
+    it('reopens the same VietQR after a page reload instead of offering a cancel', () => {
+      const first = page().componentInstance; first.setPaymentMethod('PAYOS'); first.handleCheckout();
+      const key = startOnline.mock.calls[0][1];
+      const fixture = page(false); fixture.detectChanges();
+      expect(startOnline).toHaveBeenCalledTimes(2);
+      expect(startOnline.mock.calls[1]).toEqual(['order', key]);
+      expect(fixture.componentInstance['onlineOpen']()).toBe(true);
+      expect(fixture.nativeElement.textContent).not.toContain('Hủy đơn chưa thanh toán');
+    });
+    it('collects the same order another way after the VietQR expires', () => {
+      startOnline.mockReturnValue(of(online('EXPIRED')));
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      const onlineKey = startOnline.mock.calls[0][1];
+      expect(component['errorMessage']()).toContain('hết hạn');
+      component.setPaymentMethod('CASH'); component.handleCheckout();
+      expect(createOrder).toHaveBeenCalledTimes(1);
+      expect(processPayment.mock.calls[0][0]).toMatchObject({ orderId: 'order', paymentMethod: 'CASH' });
+      expect(processPayment.mock.calls[0][0].idempotencyKey).not.toBe(onlineKey);
+    });
+    it('never offers to collect again when the money needs reconciliation', () => {
+      startOnline.mockReturnValue(of(online('NEEDS_RECONCILIATION')));
+      const component = page().componentInstance; component.setPaymentMethod('PAYOS'); component.handleCheckout();
+      expect(component['pendingCheckout']()).toBeNull();
+      expect(component['errorMessage']()).toContain('đối soát');
+    });
   });
   it('allows a zero top-up exchange without a transfer reference', () => {
     getQuote.mockReturnValue(of({ currentMembership: membership, credit: 3000000, totalAmount: 0, issue: null }));
