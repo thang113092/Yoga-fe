@@ -19,6 +19,21 @@
     }
   </zen-page-header>
 
+  @if (pendingOrder(); as pending) {
+    <zen-alert tone="warning" heading="Bạn có đơn mua thẻ chờ thanh toán">
+      <div class="pending-order">
+        <span>
+          {{ pending.items[0]?.itemName }} · <strong class="zen-num">{{ pending.totalAmount | number:'1.0-0' }} ₫</strong>
+          @if (pending.branchName) { · {{ pending.branchName }} }
+        </span>
+        <span class="pending-actions">
+          <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="resumePending()">Tiếp tục thanh toán</button>
+          <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="cancelPending()" [disabled]="isCancellingPending()">Hủy đơn</button>
+        </span>
+      </div>
+    </zen-alert>
+  }
+
   @if (successMessage()) {
     <zen-alert tone="success" dismissible (dismissed)="successMessage.set(null)">{{ successMessage() }}</zen-alert>
   }
@@ -112,6 +127,16 @@
             </div>
           </div>
 
+          @if (auth.isStudent() && plan.isActive) {
+            <div card-footer class="zen-row zen-row--end">
+              <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="buy(plan)" [disabled]="!!pendingOrder()"
+                      [title]="pendingOrder() ? 'Hoàn tất hoặc hủy đơn đang chờ trước khi mua gói khác' : 'Mua thẻ và thanh toán bằng VietQR'">
+                <zen-icon name="credit-card" />
+                <span>Mua thẻ</span>
+              </button>
+            </div>
+          }
+
           @if (auth.isSuperAdmin()) {
             <div card-footer class="zen-row zen-row--end">
               <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="openEditModal(plan)">
@@ -127,6 +152,10 @@
         </zen-card>
       }
     </div>
+  }
+
+  @if (purchasePlan()) {
+    <yoga-plan-purchase [plan]="purchasePlan()" (closed)="closePurchase()" />
   }
 
   @if (isModalOpen() && auth.isSuperAdmin()) {

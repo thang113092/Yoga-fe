@@ -1,0 +1,75 @@
+<div class="zen-page checkout-page">
+  <zen-page-header eyebrow="Thanh toán online" heading="Thanh toán đơn hàng" subtitle="Quét VietQR bằng app ngân hàng. Hệ thống tự kích hoạt khi ngân hàng báo đã nhận tiền." />
+
+  @if (loading() && !order()) {
+    <zen-card><zen-loading message="Đang tải đơn hàng..." /></zen-card>
+  } @else if (error() && !order()) {
+    <zen-card>
+      <zen-empty-state icon="receipt" heading="Không mở được đơn hàng" [description]="error() ?? ''">
+        <a class="zen-btn zen-btn--primary" routerLink="/membership/plans">Về bảng giá gói thẻ</a>
+      </zen-empty-state>
+    </zen-card>
+  }
+  @if (order(); as o) {
+    <div class="checkout-layout">
+      <zen-card heading="Đơn hàng" class="summary-card">
+        <dl class="zen-dl summary">
+          <dt>{{ isCourse() ? 'Khóa học' : 'Gói thẻ' }}</dt>
+          <dd class="zen-strong">{{ itemName() }}</dd>
+          @if (o.branchName) {
+            <dt>Cơ sở</dt>
+            <dd>{{ o.branchName }}</dd>
+          }
+          @if (o.discountAmount > 0) {
+            <dt>Giá gốc</dt>
+            <dd class="zen-num">{{ o.subtotal | number:'1.0-0' }} ₫</dd>
+            <dt>Khấu trừ thẻ cũ</dt>
+            <dd class="zen-num">−{{ o.discountAmount | number:'1.0-0' }} ₫</dd>
+          }
+          <dt class="total">Cần thanh toán</dt>
+          <dd class="total zen-num">{{ o.totalAmount | number:'1.0-0' }} ₫</dd>
+          <dt>Mã đơn</dt>
+          <dd class="zen-mono zen-text-xs">{{ o.orderCode }}</dd>
+        </dl>
+      </zen-card>
+
+      <zen-card heading="Thanh toán" class="pay-card">
+        @switch (o.status) {
+          @case ('PENDING') {
+            <yoga-online-payment-panel
+              [orderId]="o.orderId"
+              mode="student"
+              [checkGateway]="checkGateway()"
+              [successText]="isCourse() ? 'Thanh toán thành công. Đăng ký khóa học đã được kích hoạt.' : 'Thanh toán thành công. Thẻ tập đã được kích hoạt.'"
+              (paid)="onPaid()"
+              (orderCancelled)="onCancelled()"
+            />
+          }
+          @case ('PAID') {
+            <div class="done">
+              <span class="done-icon"><zen-icon name="check-circle" [size]="36" /></span>
+              <h2 class="zen-section-title">{{ justPaid() ? 'Thanh toán thành công' : 'Đơn hàng đã được thanh toán' }}</h2>
+              <p class="zen-text-muted">
+                {{ isCourse() ? 'Bạn đã được ghi danh toàn bộ khóa học.' : 'Thẻ tập của bạn đã được kích hoạt.' }}
+                @if (membershipCode()) { Mã thẻ <strong class="zen-mono">{{ membershipCode() }}</strong>. }
+              </p>
+              @if (isCourse()) {
+                <a class="zen-btn zen-btn--primary" routerLink="/schedule/courses">Xem khóa học của tôi</a>
+              } @else {
+                <a class="zen-btn zen-btn--primary" routerLink="/membership/my-passes">Xem thẻ của tôi</a>
+              }
+            </div>
+          }
+          @default {
+            <div class="done">
+              <zen-alert>Đơn hàng đã được hủy. Mã thanh toán của đơn không còn dùng được.</zen-alert>
+              <a class="zen-btn zen-btn--outline" [routerLink]="isCourse() ? '/schedule/courses' : '/membership/plans'">
+                {{ isCourse() ? 'Xem các khóa học đang mở' : 'Chọn gói thẻ khác' }}
+              </a>
+            </div>
+          }
+        }
+      </zen-card>
+    </div>
+  }
+</div>

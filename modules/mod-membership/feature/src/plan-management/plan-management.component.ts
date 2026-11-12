@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '@yoga/platform/auth';
 import { ZEN_UI, ZenConfirmService, ZenToastService } from '@yoga/platform/ui';
 import {
@@ -9,8 +9,12 @@ import {
   MembershipApi,
   MembershipPlan,
   PlanType,
+  PosApi,
+  SelfCheckoutApi,
+  StudentOrderHistoryResp,
   UpdatePlanReq
 } from '@yoga/mod-membership/data-access';
+import { PlanPurchaseComponent } from '../plan-purchase/plan-purchase.component';
 
 @Component({
   selector: 'yoga-plan-management',
@@ -19,6 +23,7 @@ import {
     CommonModule,
     FormsModule,
     RouterModule,
+    PlanPurchaseComponent,
     ...ZEN_UI
   ],
   templateUrl: './plan-management.component.html',
@@ -30,6 +35,16 @@ export class PlanManagementComponent implements OnInit {
   private readonly membershipApi = inject(MembershipApi);
   private readonly confirmService = inject(ZenConfirmService);
   private readonly toast = inject(ZenToastService);
+  private readonly posApi = inject(PosApi);
+  private readonly selfCheckout = inject(SelfCheckoutApi);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  // Student online purchase
+  protected readonly purchasePlan = signal<MembershipPlan | null>(null);
+  /** The student's unpaid membership order: it blocks buying another plan until paid or cancelled. */
+  protected readonly pendingOrder = signal<StudentOrderHistoryResp | null>(null);
+  protected readonly isCancellingPending = signal(false);
 
   protected readonly planTypeOptions = [
     { value: 'TIME_BASED', label: 'Theo thời hạn (ngày/tháng)' },
@@ -93,6 +108,62 @@ export class PlanManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPlans();
+    if (this.auth.isStudent()) {
+      // PayOS sends the student back here with its own query parameters; the status is read from the backend.
+      const fromGateway = this.route.snapshot.queryParamMap.has('orderCode');
+      if (fromGateway) void this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+      this.loadPendingOrder(fromGateway);
+    }
+  }
+
+  protected loadPendingOrder(resume = false): void {
+    const me = this.auth.currentUserId();
+    if (!me) return;
+    this.posApi.getStudentOrders(me).subscribe({
+      next: orders => {
+        const pending = orders.find(o => o.status === 'PENDING' && o.items.some(i => i.itemType === 'MEMBERSHIP_PLAN')) ?? null;
+        this.pendingOrder.set(pending);
+        if (pending && resume) this.resumePending(true);
+      },
+      error: () => this.pendingOrder.set(null)
+    });
+  }
+
+  protected buy(plan: MembershipPlan): void {
+    this.purchasePlan.set(plan);
+  }
+
+  /** Pending orders are paid on the shared checkout page; coming back from the gateway asks it for the status. */
+  protected resumePending(checkGateway = false): void {
+    const pending = this.pendingOrder();
+    if (!pending) return;
+    void this.router.navigate(['/membership/checkout', pending.orderId], checkGateway ? { queryParams: { check: 1 } } : {});
+  }
+
+  protected closePurchase(): void {
+    this.purchasePlan.set(null);
+  }
+
+  protected async cancelPending(): Promise<void> {
+    const pending = this.pendingOrder();
+    if (!pending || this.isCancellingPending()) return;
+    const confirmed = await this.confirmService.confirm({
+      title: 'Hủy đơn chờ thanh toán',
+      message: `Hủy đơn ${pending.items[0]?.itemName ?? ''}? Mã thanh toán của đơn sẽ không dùng được nữa.`,
+      confirmText: 'Hủy đơn',
+      cancelText: 'Giữ đơn',
+      type: 'cancel'
+    });
+    if (!confirmed) return;
+    this.isCancellingPending.set(true);
+    this.selfCheckout.cancelOrder(pending.orderId).subscribe({
+      next: () => { this.isCancellingPending.set(false); this.toast.success('Đã hủy đơn chờ thanh toán.'); this.loadPendingOrder(); },
+      error: err => {
+        this.isCancellingPending.set(false);
+        this.toast.error(err?.error?.message || 'Chưa hủy được đơn. Nếu bạn vừa chuyển khoản, vui lòng chờ hệ thống xác nhận.');
+        this.loadPendingOrder();
+      }
+    });
   }
 
   loadPlans(): void {

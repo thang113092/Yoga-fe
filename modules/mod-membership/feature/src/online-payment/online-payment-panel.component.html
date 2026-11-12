@@ -1,0 +1,78 @@
+<div class="panel" aria-live="polite">
+  @if (error()) {
+    <zen-alert tone="danger" dismissible (dismissed)="error.set(null)">{{ error() }}</zen-alert>
+  }
+
+  @switch (step()) {
+    @case ('loading') {
+      <zen-loading message="Đang tạo mã VietQR..." />
+    }
+
+    @case ('paying') {
+      @if (online(); as o) {
+        <div class="pay-box">
+          @if (o.qrPayload) {
+            <div class="pay-qr"><yoga-qr-code [value]="o.qrPayload" /></div>
+          }
+          <dl class="pay-info">
+            <div><dt>Số tiền</dt><dd class="zen-num">{{ o.amount | number:'1.0-0' }} ₫</dd></div>
+            <div><dt>Mã thanh toán</dt><dd class="zen-mono">{{ o.providerOrderCode }}</dd></div>
+            <div><dt>Còn hiệu lực</dt><dd class="zen-num">{{ countdown() }}</dd></div>
+          </dl>
+        </div>
+        <p class="waiting zen-text-sm">
+          <zen-icon name="refresh" [size]="14" class="zen-spin" />
+          @if (mode === 'counter') {
+            Đang chờ khách quét mã. Hệ thống tự xác nhận khi ngân hàng báo đã nhận tiền, không cần nhập mã chứng từ.
+          } @else {
+            Quét mã bằng app ngân hàng và giữ nguyên nội dung chuyển khoản. Trang sẽ tự cập nhật khi nhận được tiền.
+          }
+        </p>
+        <div class="actions">
+          @if (o.checkoutUrl) {
+            <a class="zen-btn zen-btn--ghost zen-btn--sm" [href]="o.checkoutUrl" [attr.target]="mode === 'counter' ? '_blank' : null" rel="noopener">
+              <zen-icon name="external-link" [size]="16" /><span>Mở trang thanh toán PayOS</span>
+            </a>
+          }
+          <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="checkNow()" [disabled]="busy()">
+            {{ mode === 'counter' ? 'Kiểm tra lại' : 'Tôi đã chuyển khoản' }}
+          </button>
+          @if (mode === 'counter') {
+            <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelCode()" [disabled]="busy()">Hủy mã thanh toán</button>
+          } @else {
+            <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelOrder()" [disabled]="busy()">Hủy đơn</button>
+          }
+        </div>
+      }
+    }
+
+    @case ('paid') {
+      <zen-alert tone="success">
+        {{ successText }}
+        @if (online()?.activatedMembershipCode) { Mã thẻ <strong class="zen-mono">{{ online()?.activatedMembershipCode }}</strong>. }
+      </zen-alert>
+    }
+
+    @case ('reconcile') {
+      <zen-alert tone="warning">
+        Hệ thống đã nhận {{ online()?.amount | number:'1.0-0' }} ₫ (mã {{ online()?.providerOrderCode }}) nhưng chưa kích hoạt được đơn, thường do mã đã quá hạn khi tiền về.
+        Không chuyển hay thu thêm. Quản lý cơ sở sẽ đối soát khoản này.
+      </zen-alert>
+    }
+
+    @case ('closed') {
+      <zen-alert>
+        {{ online()?.status === 'EXPIRED' ? 'Mã thanh toán đã hết hạn.' : online() ? 'Mã thanh toán đã bị hủy.' : 'Đơn đang chờ thanh toán.' }}
+        {{ mode === 'counter' ? 'Tạo mã mới hoặc thu bằng cách khác.' : 'Bạn có thể tạo mã mới cho đơn này hoặc hủy đơn.' }}
+      </zen-alert>
+      <div class="actions">
+        <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="open()" [disabled]="busy()">
+          @if (busy()) { <zen-loading inline /> } <span>Tạo mã thanh toán mới</span>
+        </button>
+        @if (mode === 'student') {
+          <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm" (click)="cancelOrder()" [disabled]="busy()">Hủy đơn</button>
+        }
+      </div>
+    }
+  }
+</div>

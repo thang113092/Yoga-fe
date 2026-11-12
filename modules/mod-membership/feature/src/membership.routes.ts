@@ -31,6 +31,12 @@ export const MEMBERSHIP_ROUTES: Routes = [
     title: 'Thẻ Hội Viên & Lịch Sử Tập - An Yên Yoga'
   },
   {
+    path: 'checkout/:orderId',
+    canActivate: [roleGuard(['STUDENT'])],
+    loadComponent: () => import('./checkout/checkout.component').then(m => m.CheckoutComponent),
+    title: 'Thanh Toán Đơn Hàng - An Yên Yoga'
+  },
+  {
     path: 'history',
     canActivate: [roleGuard(['STUDENT'])],
     loadComponent: () => import('./workout-history/workout-history.component').then(m => m.WorkoutHistoryComponent),

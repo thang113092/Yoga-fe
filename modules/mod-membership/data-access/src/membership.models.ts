@@ -58,6 +58,15 @@ export interface CreateOrderReq {
   readonly notes?: string;
 }
 
+/** A student's own online purchase. The expected amounts come from the quote the student confirmed. */
+export interface SelfServiceOrderReq {
+  readonly branchId: string;
+  readonly planId: string;
+  readonly replacesMembershipId?: string;
+  readonly expectedCredit: number;
+  readonly expectedTotal: number;
+}
+
 export interface OrderResp {
   readonly orderId: string;
   readonly orderCode: string;

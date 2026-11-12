@@ -1,14 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { CheckoutQuote, MembershipResp, MembershipApi, MembershipPlan, OnlinePaymentResp, OrderResp, PaymentMethod, PaymentReq, PaymentResp, PosApi, CreateOrderReq } from '@yoga/mod-membership/data-access';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
 import { QrCodeComponent } from '@yoga/platform/api';
 import { ZEN_UI } from '@yoga/platform/ui';
 import { BranchApi, Branch } from '@yoga/mod-branch/data-access';
-interface CheckoutDraft { actorId: string; key: string; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
+import { CourseApi, CourseClass } from '@yoga/mod-schedule/data-access';
+/** What the counter sells: a membership plan, or a seat in a whole course. */
+type ItemKind = 'PLAN' | 'COURSE';
+/**
+ * A checkout that may not be confirmed yet; kept in localStorage so a lost response is retried, never collected twice.
+ * Course drafts are saved only once the enrollment (and so its order) exists; `orderRequest.planId` then holds the class id.
+ */
+interface CheckoutDraft { actorId: string; key: string; kind?: ItemKind; orderRequest: CreateOrderReq; paymentRequest: Omit<PaymentReq, 'orderId'>; order?: OrderResp; }
 const ONLINE_POLL_MS = 3000;
 /** Minimum gap between automatic gateway checks once a VietQR has run out of time. */
 const EXPIRY_REFRESH_MS = 5000;
@@ -18,17 +25,26 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   private readonly posApi = inject(PosApi);
   private readonly userApi = inject(UserApi);
   private readonly branchApi = inject(BranchApi);
+  private readonly courseApi = inject(CourseApi);
+  private readonly route = inject(ActivatedRoute);
+  /** A course chosen on the Courses page ("Ghi danh"), selected once the branch's courses are loaded. */
+  private preselectCourseId: string | null = null;
   protected readonly auth = inject(AuthService);
   protected readonly plans = signal<readonly MembershipPlan[]>([]);
   protected readonly branches = signal<Branch[]>([]);
   protected readonly selectedBranch = computed(() => this.branches().find(b => b.id === this.branchId()) ?? null);
   private readonly branchId = signal('');
   protected get selectedBranchId(): string { return this.branchId(); }
-  protected set selectedBranchId(value: string) { if (this.pendingCheckout() || this.isProcessing()) return; this.branchId.set(value); this.clearSelectedStudent(); }
+  protected set selectedBranchId(value: string) {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    this.branchId.set(value); this.clearSelectedStudent();
+    if (this.itemKind() === 'COURSE') this.selectPlan(this.plans()[0]?.id ?? '');
+    this.loadCourses();
+  }
   protected readonly isLoadingPlans = signal(false);
   protected readonly isProcessing = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly successReceipt = signal<{ order: OrderResp; payment: PaymentResp } | null>(null);
+  protected readonly successReceipt = signal<{ order: OrderResp; payment: PaymentResp; kind?: ItemKind } | null>(null);
   protected readonly pendingCheckout = signal<CheckoutDraft | null>(null);
   protected readonly copiedCode = signal(false);
   private copyTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -49,17 +65,38 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
   protected cashierNotes = '';
   protected transactionReference = '';
   protected readonly selectedPlan = computed(() => this.plans().find(p => p.id === this.selectedPlanId()) ?? null);
+  // Courses open for enrollment at the selected branch, sold from the same checkout as plans.
+  protected readonly itemKind = signal<ItemKind>('PLAN');
+  protected readonly courseClasses = signal<CourseClass[]>([]);
+  protected readonly isLoadingCourses = signal(false);
+  protected readonly selectedCourseId = signal<string | null>(null);
+  protected readonly selectedCourse = computed(() => this.courseClasses().find(c => c.id === this.selectedCourseId()) ?? null);
+  /** Name of what is being sold; a restored course draft may refer to a class no longer listed. */
+  protected readonly itemName = computed(() => this.pendingCheckout()?.order?.planName
+    ?? (this.itemKind() === 'COURSE' ? this.selectedCourse()?.name : this.selectedPlan()?.name) ?? null);
+  private courseVersion = 0;
   protected readonly quote = signal<CheckoutQuote | null>(null);
   protected readonly isLoadingQuote = signal(false);
   protected readonly studentMemberships = signal<MembershipResp[]>([]);
   protected readonly pendingMembership = computed(() => this.studentMemberships().find(m => m.status === 'PENDING_PAYMENT') ?? null);
-  protected readonly currentMembership = computed(() => this.quote()?.currentMembership ?? this.studentMemberships().find(m => ['ACTIVE', 'FROZEN', 'EXPIRED'].includes(m.status)) ?? null);
+  protected readonly currentMembership = computed(() => this.itemKind() === 'COURSE' ? null
+    : this.quote()?.currentMembership ?? this.studentMemberships().find(m => ['ACTIVE', 'FROZEN', 'EXPIRED'].includes(m.status)) ?? null);
   protected readonly useCreditAdjustment = signal(false);
   protected readonly adjustedCredit = signal<number | null>(null);
   protected adjustmentReason = '';
   protected readonly effectiveCredit = computed(() => this.useCreditAdjustment() ? (this.adjustedCredit() ?? 0) : (this.quote()?.credit ?? 0));
   protected readonly adjustmentInvalid = computed(() => this.useCreditAdjustment() && (!this.currentMembership() || this.adjustedCredit() == null || !Number.isInteger(this.adjustedCredit()) || this.adjustedCredit()! < 0 || this.adjustedCredit()! > Math.min(this.selectedPlan()?.price ?? 0, this.quote()?.contractValue ?? this.currentMembership()?.purchasedPrice ?? 0)));
-  protected readonly amountDue = computed(() => this.pendingCheckout()?.order?.totalAmount ?? this.pendingCheckout()?.orderRequest.expectedTotal ?? (this.quote() ? (this.selectedPlan()?.price ?? 0) - this.effectiveCredit() : 0));
+  protected readonly amountDue = computed(() => this.pendingCheckout()?.order?.totalAmount ?? this.pendingCheckout()?.orderRequest.expectedTotal
+    ?? (this.itemKind() === 'COURSE' ? (this.selectedCourse()?.tuitionFee ?? 0)
+      : this.quote() ? (this.selectedPlan()?.price ?? 0) - this.effectiveCredit() : 0));
+  protected canCheckout(): boolean {
+    if (this.isProcessing()) return false;
+    if (this.pendingCheckout()) return true;
+    if (!this.resolvedStudent() || !this.selectedBranchId) return false;
+    if (this.itemKind() === 'COURSE') return !!this.selectedCourse();
+    return !!this.selectedPlan() && !this.isLoadingQuote() && !!this.quote() && !this.quote()?.issue
+      && !this.adjustmentInvalid() && !(this.useCreditAdjustment() && !this.adjustmentReason.trim());
+  }
   private quoteVersion = 0;
   private searchVersion = 0;
 
@@ -88,7 +125,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     const student = this.resolvedStudent(); const plan = this.selectedPlan(); const branch = this.selectedBranchId;
     const version = ++this.quoteVersion;
     this.quote.set(null); this.useCreditAdjustment.set(false); this.adjustedCredit.set(null); this.adjustmentReason = '';
-    if (!student || !plan || !branch || this.pendingCheckout()) { this.isLoadingQuote.set(false); return; }
+    if (!student || !plan || !branch || this.pendingCheckout() || this.itemKind() === 'COURSE') { this.isLoadingQuote.set(false); return; }
     this.isLoadingQuote.set(true); this.errorMessage.set(null);
     const quote$ = this.posApi.getCheckoutQuote(student.id, plan.id, branch).pipe(catchError(err => {
       if (version === this.quoteVersion) this.errorMessage.set(err?.error?.message || 'Không tải được báo giá. Vui lòng thử lại trước khi thanh toán.');
@@ -147,7 +184,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     if (!draft && !membership) return;
     this.isProcessing.set(true);
     const cancel = (orderId: string) => this.posApi.cancelPendingOrder(orderId).subscribe({
-      next: () => { this.pendingCheckout.set(null); this.clearOnline(); try { localStorage.removeItem(this.storageKey()); } catch {} this.isProcessing.set(false); this.refreshQuote(); },
+      next: () => { this.pendingCheckout.set(null); this.clearOnline(); try { localStorage.removeItem(this.storageKey()); } catch {} this.isProcessing.set(false); this.refreshQuote(); this.loadCourses(); },
       error: err => this.fail(err, 'Chưa hủy được đơn. Cần đối soát trước khi tạo giao dịch khác.')
     });
     if (draft?.order) { cancel(draft.order.orderId); return; }
@@ -184,11 +221,47 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
         this.branches.set(branches.filter(b => b.isActive && (this.auth.isSuperAdmin() || this.auth.branchIds().includes(b.id))));
         this.branchId.set(this.branches()[0]?.id ?? '');
         this.selectedPlanId.set(plans[0]?.id ?? null);
-        this.restoreDraft(); this.isLoadingPlans.set(false);
+        const query = this.route.snapshot.queryParamMap;
+        this.preselectCourseId = query.get('courseId');
+        const branch = query.get('branchId');
+        if (this.preselectCourseId && branch) {
+          if (this.branches().some(b => b.id === branch)) this.branchId.set(branch);
+          else { this.preselectCourseId = null; this.errorMessage.set('Bạn không được phân công tại cơ sở của khóa học này.'); }
+        }
+        this.restoreDraft(); this.isLoadingPlans.set(false); this.loadCourses();
       }, error: err => { this.errorMessage.set(err?.error?.message || 'Không tải được gói tập và chi nhánh.'); this.isLoadingPlans.set(false); }
     });
   }
-  selectPlan(id: string): void { if (!this.pendingCheckout() && !this.isProcessing()) { this.selectedPlanId.set(id); this.refreshQuote(); } }
+  selectPlan(id: string): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    this.itemKind.set('PLAN'); this.selectedCourseId.set(null); this.selectedPlanId.set(id || null); this.refreshQuote();
+  }
+  selectCourse(id: string): void {
+    if (this.pendingCheckout() || this.isProcessing()) return;
+    this.itemKind.set('COURSE'); this.selectedPlanId.set(null); this.selectedCourseId.set(id); this.errorMessage.set(null);
+    this.refreshQuote();
+  }
+  /** Classes a customer can still join: open, not full and not started. */
+  loadCourses(): void {
+    const branch = this.selectedBranchId; const version = ++this.courseVersion;
+    if (!branch) { this.courseClasses.set([]); return; }
+    this.isLoadingCourses.set(true);
+    this.courseApi.classes(branch).subscribe({
+      next: list => {
+        if (version !== this.courseVersion) return;
+        const now = Date.now();
+        this.courseClasses.set(list.filter(c => c.status === 'OPEN' && c.enrolledCount < c.maxCapacity && (!c.startTime || Date.parse(c.startTime) > now)));
+        this.isLoadingCourses.set(false);
+        const wanted = this.preselectCourseId; this.preselectCourseId = null;
+        // An unfinished checkout restored from storage takes priority over the course picked on the Courses page.
+        if (wanted && !this.pendingCheckout()) {
+          if (this.courseClasses().some(c => c.id === wanted)) this.selectCourse(wanted);
+          else this.errorMessage.set('Khóa học đã chọn không còn nhận đăng ký (đã đủ chỗ, đã bắt đầu hoặc đã đóng).');
+        }
+      },
+      error: () => { if (version === this.courseVersion) { this.courseClasses.set([]); this.isLoadingCourses.set(false); } }
+    });
+  }
   setPaymentMethod(method: PaymentMethod): void {
     if (this.canSwitchMethod()) {
       // A new key: the closed VietQR attempt stays on record and must not be replayed.
@@ -286,6 +359,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
       if (method === 'PAYOS' && this.onlinePayment()) draft = { ...draft, paymentRequest: { ...draft.paymentRequest, idempotencyKey: crypto.randomUUID() } };
       this.saveDraft(draft); this.isProcessing.set(true); this.errorMessage.set(null); this.completeCheckout(draft); return;
     }
+    if (this.itemKind() === 'COURSE') { this.courseCheckout(); return; }
     const plan = this.selectedPlan(); const student = this.resolvedStudent();
     const quote = this.quote(); const actorId = this.auth.currentUserId();
     if (!plan || !student || !actorId || !this.selectedBranchId || !quote || this.isLoadingQuote() || quote.issue) {
@@ -307,6 +381,29 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     };
     this.saveDraft(checkoutDraft); this.completeCheckout(checkoutDraft);
   }
+  /** Enrolls the student in every session of the course (a pending order), then collects it like a plan order. */
+  private courseCheckout(): void {
+    const course = this.selectedCourse(); const student = this.resolvedStudent(); const actorId = this.auth.currentUserId();
+    if (!course || !student || !actorId || !this.selectedBranchId) { this.errorMessage.set('Chọn học viên và khóa học trước khi thanh toán.'); return; }
+    const method = this.amountDue() === 0 ? 'CASH' : this.paymentMethod();
+    if ((method === 'POS_CARD' || method === 'BANK_TRANSFER_QR') && !this.transactionReference.trim()) {
+      this.errorMessage.set('Nhập mã chứng từ thanh toán đã được xác nhận.'); return;
+    }
+    this.isProcessing.set(true); this.errorMessage.set(null);
+    const notes = this.cashierNotes;
+    this.courseApi.enroll(course.id, student.id).subscribe({
+      next: e => {
+        const order: OrderResp = { orderId: e.orderId, orderCode: e.enrollmentCode, branchId: course.branchId, studentId: student.id,
+          planId: course.id, planName: course.name, subtotal: e.totalAmount, discountAmount: 0, totalAmount: e.totalAmount,
+          status: 'PENDING', orderDate: new Date().toISOString(), membershipId: '', membershipCode: '' };
+        const draft: CheckoutDraft = { actorId, key: crypto.randomUUID(), kind: 'COURSE', order,
+          orderRequest: { branchId: course.branchId, studentId: student.id, planId: course.id, cashierId: actorId, notes },
+          paymentRequest: { paymentMethod: method, idempotencyKey: crypto.randomUUID(), cashierId: actorId, transactionReference: this.transactionReference.trim() || undefined, notes } };
+        this.saveDraft(draft); this.pay(draft);
+      },
+      error: err => { this.fail(err, 'Chưa ghi danh được học viên vào khóa học.'); this.loadCourses(); }
+    });
+  }
   private completeCheckout(draft: CheckoutDraft): void {
     if (draft.actorId !== this.auth.currentUserId()) { this.fail(null, 'Phiên thu ngân đã thay đổi. Đăng nhập lại đúng tài khoản để đối soát giao dịch.'); return; }
     if (draft.order) { this.pay(draft); return; }
@@ -324,7 +421,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     this.posApi.processPayment({ ...draft.paymentRequest, orderId: order.orderId }).subscribe({
       next: payment => {
         if (payment.paymentStatus !== 'SUCCESS' || payment.orderId !== order.orderId) { this.fail(null, 'Thanh toán chưa được xác nhận.'); return; }
-        this.successReceipt.set({ order, payment }); this.isProcessing.set(false); this.pendingCheckout.set(null);
+        this.successReceipt.set({ order, payment, kind: draft.kind ?? 'PLAN' }); this.isProcessing.set(false); this.pendingCheckout.set(null);
         try { localStorage.removeItem(this.storageKey()); } catch { /* storage unavailable */ }
       }, error: err => this.fail(err, 'Chưa xác nhận được kết quả thanh toán. Thử lại cùng đơn và mã giao dịch; không thu tiền lần nữa.')
     });
@@ -374,7 +471,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
         return;
       case 'PAID':
         if (draft?.order) this.successReceipt.set({ order: draft.order, payment: { paymentId: online.paymentId, paymentCode: `PAYOS-${online.providerOrderCode}`, orderId: online.orderId,
-          amount: online.amount, paymentMethod: 'PAYOS', paymentStatus: 'SUCCESS', paymentTime: online.paidAt ?? new Date().toISOString(), activatedMembershipCode: online.activatedMembershipCode ?? '' } });
+          amount: online.amount, paymentMethod: 'PAYOS', paymentStatus: 'SUCCESS', paymentTime: online.paidAt ?? new Date().toISOString(), activatedMembershipCode: online.activatedMembershipCode ?? '' }, kind: draft.kind ?? 'PLAN' });
         this.pendingCheckout.set(null); this.clearOnline();
         try { localStorage.removeItem(this.storageKey()); } catch { /* storage unavailable */ }
         return;
@@ -414,7 +511,9 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
       const raw = localStorage.getItem(this.storageKey()); if (!raw) return;
       const draft = JSON.parse(raw) as CheckoutDraft;
       if (draft.actorId !== this.auth.currentUserId() || !draft.key || !draft.orderRequest?.studentId || !draft.paymentRequest?.idempotencyKey) return;
-      this.pendingCheckout.set(draft); this.branchId.set(draft.orderRequest.branchId); this.selectedPlanId.set(draft.orderRequest.planId); this.paymentMethod.set(draft.paymentRequest.paymentMethod);
+      this.pendingCheckout.set(draft); this.branchId.set(draft.orderRequest.branchId); this.paymentMethod.set(draft.paymentRequest.paymentMethod);
+      if (draft.kind === 'COURSE') { this.itemKind.set('COURSE'); this.selectedPlanId.set(null); this.selectedCourseId.set(draft.orderRequest.planId); }
+      else this.selectedPlanId.set(draft.orderRequest.planId);
       this.errorMessage.set('Có giao dịch chưa được xác nhận. Thử lại để đối soát cùng đơn; không thu thêm tiền.');
       // A VietQR may still be open for this order: show it again (same key returns the same link) instead of
       // offering a cancel that the server would refuse while the customer can still pay.
@@ -425,6 +524,7 @@ export class PosCheckoutComponent implements OnInit, OnDestroy {
     if (this.pendingCheckout() || this.isProcessing()) return;
     this.successReceipt.set(null);
     this.clearOnline();
+    this.loadCourses();
     this.copiedCode.set(false);
     if (this.copyTimeout) {
       clearTimeout(this.copyTimeout);

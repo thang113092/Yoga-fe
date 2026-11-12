@@ -9,6 +9,7 @@ const aliases: Record<string, string> = {
   '@yoga/platform/supabase': 'platform/supabase/src/index.ts',
   '@yoga/mod-branch/data-access': 'modules/mod-branch/data-access/src/index.ts',
   '@yoga/mod-membership/data-access': 'modules/mod-membership/data-access/src/index.ts',
+  '@yoga/mod-membership/feature': 'modules/mod-membership/feature/src/index.ts',
   '@yoga/mod-schedule/data-access': 'modules/mod-schedule/data-access/src/index.ts',
   '@yoga/mod-landing/data-access': 'modules/mod-landing/data-access/src/index.ts'
 };

@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ScheduleApi, BranchItem, RoomItem, InstructorItem, ClassTypeItem } from '@yoga/mod-schedule/data-access';
 import { PosApi } from '@yoga/mod-membership/data-access';
+import { OnlinePaymentPanelComponent } from '@yoga/mod-membership/feature';
 import { QrCodeComponent } from '@yoga/platform/api';
 import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
-import { CourseApi, Course, CourseClass, CourseSession, CourseEnrollment, CourseConflict, CourseStudent, CreateCourseClass } from '@yoga/mod-schedule/data-access';
+import { CourseApi, Course, CourseClass, CourseSession, CourseEnrollment, CourseConflict, CreateCourseClass } from '@yoga/mod-schedule/data-access';
 
 @Component({
-  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, ...ZEN_UI],
+  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, OnlinePaymentPanelComponent, ...ZEN_UI],
   templateUrl: './courses.component.html', styleUrl: './courses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -21,10 +22,14 @@ export class CoursesComponent implements OnInit {
   private readonly schedule=inject(ScheduleApi);
   private readonly pos=inject(PosApi);
   private readonly route=inject(ActivatedRoute);
+  private readonly router=inject(Router);
+  /** The VietQR being shown for the open enrollment's order: the student paying online, or staff at the desk. */
+  /** Staff only: the VietQR shown at the desk for the open enrollment. Students pay on the shared checkout page. */
+  readonly onlinePay=signal<{orderId:string}|null>(null);
   readonly busy=signal(false); readonly error=signal(''); readonly success=signal('');
   readonly courses=signal<Course[]>([]); readonly classes=signal<CourseClass[]>([]); readonly mine=signal<CourseEnrollment[]>([]);
   readonly branches=signal<BranchItem[]>([]); readonly rooms=signal<RoomItem[]>([]); readonly instructors=signal<InstructorItem[]>([]);
-  readonly types=signal<ClassTypeItem[]>([]); readonly students=signal<CourseStudent[]>([]);
+  readonly types=signal<ClassTypeItem[]>([]);
   readonly selected=signal<CourseClass|null>(null); readonly enrollment=signal<CourseEnrollment|null>(null); readonly roster=signal<CourseEnrollment[]>([]);
   readonly conflicts=signal<CourseConflict[]>([]); readonly previewed=signal(false); readonly view=signal<'classes'|'mine'|'programs'>('classes');
   readonly form=signal<'course'|'class'|null>(null); readonly editing=signal<CourseSession|null>(null);
@@ -64,7 +69,7 @@ export class CoursesComponent implements OnInit {
     }
     return list.map(b => ({ value: b.id, label: b.name, sublabel: b.address }));
   });
-  branchId='ALL'; studentId=''; paymentMethod: 'CASH'|'POS_CARD'|'BANK_TRANSFER_QR'='CASH'; paymentReference='';
+  branchId='ALL'; studentId=''; paymentMethod: 'CASH'|'POS_CARD'|'BANK_TRANSFER_QR'|'PAYOS'='CASH'; paymentReference='';
   private paymentKeys=new Map<string,string>();
   courseForm: Omit<Course,'id'>={code:'',name:'',description:'',classTypeId:'',totalSessions:12,defaultDurationMinutes:60,defaultFee:0};
   classForm: CreateCourseClass={courseId:'',branchId:'',code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
@@ -83,6 +88,12 @@ export class CoursesComponent implements OnInit {
       : (this.auth.userHomeBranchId() || this.branches()[0]?.id || 'ALL');
     await this.reload();
     const id=this.route.snapshot.queryParamMap.get('classId'); if(id) await this.loadDetail(id);
+    // PayOS sends the student back here with its own parameters; the status is always read from the backend.
+    if(this.auth.isStudent() && this.route.snapshot.queryParamMap.has('orderCode')) {
+      void this.router.navigate([],{relativeTo:this.route,queryParams:{},replaceUrl:true});
+      const pending=this.mine().find(e=>e.status==='PENDING_PAYMENT');
+      if(pending) void this.router.navigate(['/membership/checkout',pending.orderId],{queryParams:{check:1}});
+    }
   }); }
   private async reload() {
     const bId = this.branchId && this.branchId !== 'ALL' ? this.branchId : undefined;
@@ -163,16 +174,27 @@ export class CoursesComponent implements OnInit {
   private async loadDetail(id:string) {
     this.selected.set(await firstValueFrom(this.api.detail(id)));this.enrollment.set(null);this.roster.set([]);
     if(!this.auth.isStudent()) this.roster.set(await firstValueFrom(this.api.roster(id)));
-    if(this.auth.canAccessPos()) this.students.set(await firstValueFrom(this.api.students(this.selected()!.branchId)));
     this.studentId=this.auth.isStudent()?this.auth.currentUserId()||'':'';
   }
   showClass(id:string) {void this.run(()=>this.loadDetail(id));}
-  showEnrollment(id:string) {void this.run(async()=>{this.enrollment.set(await firstValueFrom(this.api.enrollment(id)));this.selected.set(null);});}
+  showEnrollment(id:string) {void this.run(()=>this.openEnrollment(id));}
+  /** Students pay any pending order on the shared checkout page. */
+  checkout(orderId:string) {void this.router.navigate(['/membership/checkout',orderId]);}
+  private async openEnrollment(id:string) {this.onlinePay.set(null);this.paymentMethod='CASH';this.enrollment.set(await firstValueFrom(this.api.enrollment(id)));this.selected.set(null);}
+  /** Opens the VietQR for the open enrollment: the student's own, or shown by staff at the desk. */
+  payOnline() {const e=this.enrollment();if(!e||e.status!=='PENDING_PAYMENT')return;
+    if(this.auth.isStudent()) {this.checkout(e.orderId);return;}
+    this.error.set('');this.onlinePay.set({orderId:e.orderId});}
+  onlinePaid() {const e=this.enrollment();if(!e)return;void this.run(async()=>{this.enrollment.set(await firstValueFrom(this.api.enrollment(e.id)));await this.reload();this.onlinePay.set(null);
+    this.success.set('Đã nhận học phí qua VietQR và kích hoạt đăng ký khóa.');});}
   enroll() { const c=this.selected();if(!c||!this.studentId)return;void this.run(async()=>{
     const e=await firstValueFrom(this.api.enroll(c.id,this.auth.isStudent()?this.auth.currentUserId()!:this.studentId));
-    this.enrollment.set(e);this.selected.set(null);await this.reload();this.success.set('Đã giữ chỗ cho toàn bộ khóa. Vui lòng thanh toán tại cơ sở trước hạn giữ chỗ.');
+    if(this.auth.isStudent()) {this.checkout(e.orderId);return;}
+    this.enrollment.set(e);this.selected.set(null);await this.reload();
+    this.paymentMethod='CASH';
+    this.success.set('Đã giữ chỗ cho học viên. Thu học phí bên dưới để kích hoạt đăng ký.');
   });}
-  pay() { const e=this.enrollment();if(!e||!this.auth.canAccessPos())return;void this.run(async()=>{
+  pay() { const e=this.enrollment();if(!e||!this.auth.canAccessPos())return;if(this.paymentMethod==='PAYOS'){this.payOnline();return;}void this.run(async()=>{
     let key=this.paymentKeys.get(e.orderId);if(!key){key=crypto.randomUUID();this.paymentKeys.set(e.orderId,key);}
     await firstValueFrom(this.pos.processPayment({orderId:e.orderId,paymentMethod:this.paymentMethod,idempotencyKey:key,cashierId:this.auth.currentUserId()!,transactionReference:this.paymentReference||undefined}));
     this.enrollment.set(await firstValueFrom(this.api.enrollment(e.id)));await this.reload();this.success.set('Đã thu học phí và kích hoạt đăng ký khóa.');
@@ -196,7 +218,7 @@ export class CoursesComponent implements OnInit {
     return cleaned || raw;
   }
   nextSession(e:CourseEnrollment) {return e.sessions?.find(s=>s.status!=='CANCELLED'&&this.future(s));}
-  switchView(key:string) {this.view.set(key as 'classes'|'mine'|'programs');this.selected.set(null);this.enrollment.set(null);}
+  switchView(key:string) {this.view.set(key as 'classes'|'mine'|'programs');this.selected.set(null);this.enrollment.set(null);this.onlinePay.set(null);}
   tone(status?:string|null):ZenTone {return ({OPEN:'success',IN_PROGRESS:'info',COMPLETED:'neutral',CANCELLED:'neutral',ACTIVE:'success',PENDING_PAYMENT:'warning',SCHEDULED:'info',ATTENDED:'success',ABSENT:'danger',UPCOMING:'neutral',PAID:'success',PENDING:'warning'} as Record<string,ZenTone>)[status||'']||'neutral';}
   percent(part:number,total:number) {return total?Math.min(100,(part/total)*100):0;}
   label(status:string) {return ({OPEN:'Mở đăng ký',IN_PROGRESS:'Đang học',COMPLETED:'Hoàn thành',CANCELLED:'Đã hủy',ACTIVE:'Đang theo học',PENDING_PAYMENT:'Chờ thanh toán',SCHEDULED:'Sắp diễn ra',ATTENDED:'Đã tham dự',ABSENT:'Vắng',UPCOMING:'Chưa điểm danh',PAID:'Đã thanh toán',PENDING:'Chờ thanh toán'} as Record<string,string>)[status]||status;}

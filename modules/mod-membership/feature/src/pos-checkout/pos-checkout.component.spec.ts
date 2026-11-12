@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { AuthService, UserApi, UserResponse } from '@yoga/platform/auth';
 import { BranchApi } from '@yoga/mod-branch/data-access';
 import { MembershipApi, PosApi } from '@yoga/mod-membership/data-access';
+import { CourseApi } from '@yoga/mod-schedule/data-access';
 import { PosCheckoutComponent } from './pos-checkout.component';
 
 describe('POS single membership checkout', () => {
@@ -14,6 +15,10 @@ describe('POS single membership checkout', () => {
   let createOrder: ReturnType<typeof vi.fn>; let processPayment: ReturnType<typeof vi.fn>;
   let getQuote: ReturnType<typeof vi.fn>; let getMemberships: ReturnType<typeof vi.fn>; let cancelOrder: ReturnType<typeof vi.fn>;
   let startOnline: ReturnType<typeof vi.fn>; let getOnline: ReturnType<typeof vi.fn>; let refreshOnline: ReturnType<typeof vi.fn>;
+  let getClasses: ReturnType<typeof vi.fn>; let enroll: ReturnType<typeof vi.fn>;
+  const future = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
+  const course = { id: 'class-1', code: 'YG01', name: 'Yoga nền tảng', branchId: 'branch', status: 'OPEN', plannedSessions: 12, maxCapacity: 20,
+    enrolledCount: 4, tuitionFee: 2400000, startTime: future(10), endTime: future(50) };
   const online = (status: string) => ({ id: 'online', paymentId: 'pay', orderId: 'order', provider: 'PAYOS', providerOrderCode: 100001, status, amount: 3000000,
     checkoutUrl: status === 'CREATED' ? 'https://pay.payos.vn/web/1' : null, qrPayload: status === 'CREATED' ? '000201' : null,
     expiresAt: new Date(Date.now() + 600000).toISOString(), paidAt: null, paymentStatus: 'PENDING', orderStatus: status === 'PAID' ? 'PAID' : 'PENDING',
@@ -26,11 +31,16 @@ describe('POS single membership checkout', () => {
     getMemberships = vi.fn().mockReturnValue(of([])); cancelOrder = vi.fn().mockReturnValue(of(undefined));
     startOnline = vi.fn().mockReturnValue(of(online('CREATED'))); getOnline = vi.fn().mockReturnValue(of(online('CREATED')));
     refreshOnline = vi.fn().mockReturnValue(of(online('EXPIRED')));
+    getClasses = vi.fn().mockReturnValue(of([course,
+      { ...course, id: 'full', name: 'Đã đủ', enrolledCount: 20 }, { ...course, id: 'draft', name: 'Nháp', status: 'DRAFT' },
+      { ...course, id: 'started', name: 'Đã học', startTime: future(-1) }]));
+    enroll = vi.fn().mockReturnValue(of({ id: 'enr-1', enrollmentCode: 'CE-1', orderId: 'course-order', totalAmount: 2400000, status: 'PENDING_PAYMENT' }));
     TestBed.configureTestingModule({ imports: [PosCheckoutComponent], providers: [provideExperimentalZonelessChangeDetection(), provideRouter([]),
       { provide: AuthService, useValue: { currentUserId: () => 'cashier', isSuperAdmin: () => false, isBranchManager: () => false, branchIds: () => ['branch'] } },
       { provide: UserApi, useValue: { searchStudents: vi.fn().mockReturnValue(of([student])) } },
       { provide: BranchApi, useValue: { getAll: () => of([{ id: 'branch', name: 'Cơ sở', isActive: true }]) } },
       { provide: MembershipApi, useValue: { getActivePlans: () => of([plan]), getStudentMemberships: getMemberships } },
+      { provide: CourseApi, useValue: { classes: getClasses, enroll } },
       { provide: PosApi, useValue: { createOrder, processPayment, getCheckoutQuote: getQuote, cancelPendingOrder: cancelOrder, startOnlinePayment: startOnline, getOnlinePayment: getOnline, cancelOnlinePayment: () => of(online('CANCELLED')), refreshOnlinePayment: refreshOnline } }
     ] });
   });
@@ -193,5 +203,77 @@ describe('POS single membership checkout', () => {
     getQuote.mockReturnValue(of({ currentMembership: membership, credit: 3000000, totalAmount: 0, issue: null }));
     const component = page().componentInstance; component.setPaymentMethod('BANK_TRANSFER_QR'); component.handleCheckout();
     expect(processPayment.mock.calls[0][0].paymentMethod).toBe('CASH');
+  });
+
+  it('lists open courses of the branch below the plans, without full, draft or started classes', () => {
+    const fixture = page(); fixture.detectChanges();
+    expect(getClasses).toHaveBeenCalledWith('branch');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Gói mới');
+    expect(text).toContain('Yoga nền tảng');
+    expect(text).not.toContain('Đã đủ'); expect(text).not.toContain('Nháp'); expect(text).not.toContain('Đã học');
+    expect(text.indexOf('Gói mới')).toBeLessThan(text.indexOf('Yoga nền tảng'));
+  });
+
+  it('sells a course: enrolls the student, collects the fee and shows the enrollment code', () => {
+    processPayment.mockReturnValue(of({ orderId: 'course-order', paymentStatus: 'SUCCESS', paymentMethod: 'CASH' }));
+    const fixture = page(); const component = fixture.componentInstance;
+    component.selectCourse('class-1'); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Xác nhận ghi danh & thu học phí');
+    expect(component['amountDue']()).toBe(2400000);
+
+    component.handleCheckout(); fixture.detectChanges();
+
+    expect(enroll).toHaveBeenCalledWith('class-1', student.id);
+    expect(createOrder).not.toHaveBeenCalled();
+    expect(processPayment.mock.calls[0][0]).toMatchObject({ orderId: 'course-order', paymentMethod: 'CASH', cashierId: 'cashier' });
+    expect(fixture.nativeElement.textContent).toContain('CE-1');
+    expect(fixture.nativeElement.textContent).toContain('Khóa học đăng ký');
+  });
+
+  it('collects a course fee by dynamic VietQR on the enrollment order', () => {
+    const fixture = page(); const component = fixture.componentInstance;
+    component.selectCourse('class-1'); component.setPaymentMethod('PAYOS');
+    component.handleCheckout(); fixture.detectChanges();
+    expect(startOnline).toHaveBeenCalledWith('course-order', expect.any(String));
+    expect(processPayment).not.toHaveBeenCalled();
+  });
+
+  it('switching back to a plan clears the course and asks for a quote again', () => {
+    const component = page().componentInstance;
+    component.selectCourse('class-1');
+    getQuote.mockClear();
+    component.selectPlan('plan');
+    expect(component['selectedCourse']()).toBeNull();
+    expect(getQuote).toHaveBeenCalled();
+    component.handleCheckout();
+    expect(enroll).not.toHaveBeenCalled();
+    expect(createOrder).toHaveBeenCalled();
+  });
+
+  function openedFromCourses(params: Record<string, string>) {
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { snapshot: { queryParamMap: convertToParamMap(params) } } });
+  }
+
+  it('opens with the course chosen on the Courses page already selected', () => {
+    openedFromCourses({ courseId: 'class-1', branchId: 'branch' });
+    const fixture = page(); fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCourse']()?.id).toBe('class-1');
+    expect(fixture.componentInstance['amountDue']()).toBe(2400000);
+    expect(fixture.nativeElement.textContent).toContain('Xác nhận ghi danh & thu học phí');
+  });
+
+  it('explains when the chosen course can no longer be joined', () => {
+    openedFromCourses({ courseId: 'full', branchId: 'branch' });
+    const component = page(false).componentInstance;
+    expect(component['selectedCourse']()).toBeNull();
+    expect(component['errorMessage']()).toContain('không còn nhận đăng ký');
+  });
+
+  it('refuses a course at a branch the cashier is not assigned to', () => {
+    openedFromCourses({ courseId: 'class-1', branchId: 'other-branch' });
+    const component = page(false).componentInstance;
+    expect(component['selectedCourse']()).toBeNull();
+    expect(component['errorMessage']()).toContain('không được phân công');
   });
 });

@@ -1,0 +1,57 @@
+<zen-modal heading="Mua thẻ tập" [subtitle]="plan()?.name ?? ''" icon="credit-card" size="md" (closed)="close()">
+  <div class="purchase" aria-live="polite">
+    @if (error()) {
+      <zen-alert tone="danger" dismissible (dismissed)="error.set(null)">{{ error() }}</zen-alert>
+    }
+
+    @if (needsBranch()) {
+      <div class="zen-field">
+        <label class="zen-label" for="purchase-branch">Cơ sở đăng ký</label>
+        <zen-select
+          id="purchase-branch"
+          name="branch"
+          [options]="branches()"
+          valueKey="id"
+          labelKey="name"
+          [(ngModel)]="branchId"
+          [disabled]="busy()"
+          placeholder="Chọn cơ sở"
+        />
+        <small class="zen-hint">Gói đơn cơ sở chỉ dùng để tập tại cơ sở này.</small>
+      </div>
+    } @else {
+      <p class="zen-text-sm zen-text-muted"><zen-icon name="map-pin" [size]="14" /> Gói toàn hệ thống: tập được tại mọi cơ sở An Yên.</p>
+    }
+
+    @if (loadingQuote()) {
+      <zen-loading message="Đang tính số tiền..." />
+    }
+    @if (!loadingQuote() && quote(); as q) {
+      <dl class="zen-dl summary">
+        <dt>Giá gói</dt>
+        <dd class="zen-num">{{ plan()?.price | number:'1.0-0' }} ₫</dd>
+        @if (q.currentMembership) {
+          <dt>Thẻ hiện tại</dt>
+          <dd>{{ q.currentPlanName }} <span class="zen-mono zen-text-xs zen-text-muted">{{ q.currentMembership.membershipCode }}</span></dd>
+          <dt>Khấu trừ giá trị còn lại</dt>
+          <dd class="zen-num">−{{ q.credit | number:'1.0-0' }} ₫</dd>
+        }
+        <dt class="total">Cần thanh toán</dt>
+        <dd class="total zen-num">{{ q.totalAmount | number:'1.0-0' }} ₫</dd>
+      </dl>
+      @if (q.issue) {
+        <zen-alert tone="warning">{{ q.issue }}</zen-alert>
+      } @else if (q.currentMembership) {
+        <p class="zen-text-sm zen-text-muted">Thẻ mới thay thế thẻ hiện tại ngay khi thanh toán xong; giá trị còn lại của thẻ cũ đã được trừ vào số tiền trên.</p>
+      }
+    }
+  </div>
+
+  <ng-container modal-footer>
+    <button type="button" class="zen-btn zen-btn--outline" (click)="close()" [disabled]="busy()">Đóng</button>
+    <button type="button" class="zen-btn zen-btn--primary" (click)="confirm()"
+            [disabled]="busy() || loadingQuote() || !quote() || !!quote()?.issue">
+      @if (busy()) { <zen-loading inline /> <span>Đang tạo đơn...</span> } @else { <span>Tiếp tục thanh toán</span> }
+    </button>
+  </ng-container>
+</zen-modal>

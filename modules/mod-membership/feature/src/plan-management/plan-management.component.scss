@@ -37,3 +37,13 @@
 .plan-price { margin-top: auto; }
 
 .zen-check + .zen-check { margin-top: var(--spacing-sm); }
+
+.pending-order {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.pending-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }

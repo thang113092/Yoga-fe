@@ -174,3 +174,6 @@
 @media (max-width: 640px) {
   .program-row { flex-direction: column; }
 }
+
+/* Row buttons stay on one line, right-aligned, so "Chi tiết" lines up in every row. */
+.row-actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: var(--spacing-sm); white-space: nowrap; }

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
-import { AuthService } from '@yoga/platform/auth';
+import { AuthService, UserApi } from '@yoga/platform/auth';
 import { CourseApi, ScheduleApi } from '@yoga/mod-schedule/data-access';
-import { PosApi } from '@yoga/mod-membership/data-access';
+import { PosApi, SelfCheckoutApi } from '@yoga/mod-membership/data-access';
 import { CoursesComponent } from './courses.component';
 
 describe('Course schedules',()=>{
@@ -12,7 +12,7 @@ describe('Course schedules',()=>{
   beforeEach(()=>{
     TestBed.configureTestingModule({imports:[CoursesComponent],providers:[provideExperimentalZonelessChangeDetection(),provideRouter([]),
       {provide:AuthService,useValue:{isSuperAdmin:()=>true,isBranchManager:()=>false,isStudent:()=>false,canAccessPos:()=>true,branchIds:()=>[],userHomeBranchId:()=>null,currentUserId:()=> 'admin'}},
-      {provide:CourseApi,useValue:{courses:()=>of([]),classes:()=>of([])}},{provide:ScheduleApi,useValue:{getBranches:()=>of([])}},{provide:PosApi,useValue:{}}]});
+      {provide:CourseApi,useValue:{courses:()=>of([]),classes:()=>of([])}},{provide:ScheduleApi,useValue:{getBranches:()=>of([])}},{provide:PosApi,useValue:{}},{provide:UserApi,useValue:{}},{provide:SelfCheckoutApi,useValue:{}}]});
     component=TestBed.createComponent(CoursesComponent).componentInstance;
     component.courses.set([{id:'course',code:'C',name:'Yoga',description:'',classTypeId:'type',totalSessions:12,defaultDurationMinutes:60,defaultFee:500000}]);
     component.classForm.courseId='course';component.startDate='2026-11-02';component.startTime='18:00';component.roomId='room';component.instructorId='teacher';component.weekdays=[1,3];
@@ -79,5 +79,108 @@ describe('Course schedules',()=>{
     expect(compiled.querySelector('.session-topic-title')?.textContent).toContain('Thấu hiểu cấu trúc cột sống');
     expect(compiled.querySelector('.session-plan-desc')?.textContent).toContain('Chi tiết buổi 1');
     expect(compiled.querySelector('.time-primary')?.textContent).toContain('05:00 – 06:00');
+  });
+});
+
+describe('Selling courses and paying online', () => {
+  const openClass = { id: 'class-1', courseId: 'course', code: 'YG01', name: 'Yoga nền tảng', courseName: 'Yoga', description: '',
+    branchId: 'b-1', branchName: 'An Yên Q1', plannedSessions: 12, maxCapacity: 20, tuitionFee: 2400000, status: 'OPEN',
+    startTime: '2026-12-01T11:00:00Z', endTime: '2027-01-10T12:00:00Z', enrolledCount: 3, heldSessions: 0, sessions: [] };
+  const pending = { id: 'enr-1', enrollmentCode: 'CE01', courseClassId: 'class-1', studentId: 'student-1', studentName: 'Lan', studentPhone: '0901',
+    className: 'Yoga nền tảng', classCode: 'YG01', courseName: 'Yoga', branchName: 'An Yên Q1', status: 'PENDING_PAYMENT', orderId: 'order-1',
+    paymentStatus: 'PENDING', totalAmount: 2400000, reservedUntil: '2026-11-20T00:00:00Z', plannedSessions: 12, attendedSessions: 0,
+    heldSessions: 0, startTime: '2026-12-01T11:00:00Z', endTime: '2027-01-10T12:00:00Z', sessions: [] };
+  const link = { id: 'link-1', paymentId: 'p', orderId: 'order-1', provider: 'PAYOS', providerOrderCode: 100777, status: 'CREATED', amount: 2400000,
+    checkoutUrl: null, qrPayload: '000201', expiresAt: new Date(Date.now() + 600_000).toISOString(), paidAt: null, paymentStatus: 'PENDING',
+    orderStatus: 'PENDING', activatedMembershipCode: null };
+
+  let courseApi: Record<string, ReturnType<typeof vi.fn>>;
+  let selfCheckout: Record<string, ReturnType<typeof vi.fn>>;
+  let posApi: Record<string, ReturnType<typeof vi.fn>>;
+  let users: Record<string, ReturnType<typeof vi.fn>>;
+
+  function setUp(student: boolean) {
+    courseApi = {
+      courses: vi.fn().mockReturnValue(of([])), classes: vi.fn().mockReturnValue(of([openClass])), mine: vi.fn().mockReturnValue(of([])),
+      detail: vi.fn().mockReturnValue(of(openClass)), roster: vi.fn().mockReturnValue(of([])),
+      enroll: vi.fn().mockReturnValue(of(pending)), enrollment: vi.fn().mockReturnValue(of(pending))
+    };
+    selfCheckout = { startOnlinePayment: vi.fn().mockReturnValue(of(link)), getOnlinePayment: vi.fn().mockReturnValue(of(link)), cancelOrder: vi.fn() };
+    posApi = { startOnlinePayment: vi.fn().mockReturnValue(of({ ...link, providerOrderCode: 100888 })), getOnlinePayment: vi.fn().mockReturnValue(of(link)) };
+    users = {};
+    TestBed.configureTestingModule({ imports: [CoursesComponent], providers: [provideExperimentalZonelessChangeDetection(), provideRouter([]),
+      { provide: AuthService, useValue: { isSuperAdmin: () => false, isBranchManager: () => false, isStudent: () => student, canAccessPos: () => !student,
+        branchIds: () => ['b-1'], userHomeBranchId: () => 'b-1', currentUserId: () => student ? 'student-1' : 'staff-1' } },
+      { provide: CourseApi, useValue: courseApi }, { provide: ScheduleApi, useValue: { getBranches: () => of([{ id: 'b-1', name: 'An Yên Q1' }]) } },
+      { provide: PosApi, useValue: posApi }, { provide: UserApi, useValue: users }, { provide: SelfCheckoutApi, useValue: selfCheckout }] });
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CoursesComponent);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.busy()).toBe(false));
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function button(fixture: { nativeElement: HTMLElement }, label: string): HTMLButtonElement {
+    const found = [...fixture.nativeElement.querySelectorAll('button')].find(b => b.textContent?.includes(label)) as HTMLButtonElement;
+    expect(found, label).toBeTruthy();
+    return found;
+  }
+
+  async function settle(fixture: { detectChanges(): void; componentInstance: CoursesComponent }) {
+    await vi.waitFor(() => expect(fixture.componentInstance.busy()).toBe(false));
+    fixture.detectChanges();
+  }
+
+  it('sends a receptionist to the POS checkout with the course preselected instead of selling here', async () => {
+    setUp(false);
+    const fixture = await render();
+    const rowButtons = [...fixture.nativeElement.querySelectorAll('button')].map((b: HTMLButtonElement) => b.textContent?.trim());
+    expect(rowButtons.some(t => t?.includes('Bán khóa'))).toBe(false);
+
+    button(fixture, 'Chi tiết').click();
+    await settle(fixture);
+
+    const link = fixture.nativeElement.querySelector('a[href^="/membership/pos"]') as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.getAttribute('href')).toBe('/membership/pos?courseId=class-1&branchId=b-1');
+    expect(link.textContent).toContain('Ghi danh');
+    expect(fixture.nativeElement.querySelector('input[name=studentQuery]')).toBeNull();
+    expect(courseApi['enroll']).not.toHaveBeenCalled();
+  });
+
+  it('lets a student enroll, then sends them to the shared checkout page', async () => {
+    setUp(true);
+    const fixture = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    button(fixture, 'Đăng ký').click();
+    await settle(fixture);
+
+    button(fixture, 'Đăng ký và thanh toán').click();
+    await settle(fixture);
+    expect(courseApi['enroll']).toHaveBeenCalledWith('class-1', 'student-1');
+    expect(navigate).toHaveBeenCalledWith(['/membership/checkout', 'order-1']);
+    expect(selfCheckout['startOnlinePayment']).not.toHaveBeenCalled();
+  });
+
+  it('puts the row buttons of a class on one line', async () => {
+    setUp(true);
+    const fixture = await render();
+    const row = fixture.nativeElement.querySelector('.row-actions') as HTMLElement;
+    expect([...row.querySelectorAll('button')].map(b => b.textContent?.trim())).toEqual(['Đăng ký', 'Chi tiết']);
+  });
+
+  it('sends a pending enrollment from the student\u2019s course list to the checkout page', async () => {
+    setUp(true);
+    courseApi['mine'].mockReturnValue(of([pending]));
+    const fixture = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.switchView('mine');
+    fixture.detectChanges();
+
+    button(fixture, 'Thanh toán').click();
+    expect(navigate).toHaveBeenCalledWith(['/membership/checkout', 'order-1']);
   });
 });

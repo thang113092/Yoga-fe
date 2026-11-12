@@ -140,10 +140,17 @@
                     <td class="is-numeric"><span class="zen-price">{{ c.tuitionFee | number }} ₫</span></td>
                     <td><zen-badge [tone]="tone(c.status)" dot>{{ label(c.status) }}</zen-badge></td>
                     <td class="is-actions">
-                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="showClass(c.id)" title="Xem chi tiết lớp và lịch học" [disabled]="busy()">
-                        <zen-icon name="eye" />
-                        <span>Xem lớp & lịch</span>
-                      </button>
+                      <div class="row-actions">
+                        @if (auth.isStudent() && c.status === 'OPEN' && c.enrolledCount < c.maxCapacity) {
+                          <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="showClass(c.id)" [disabled]="busy()" title="Xem lịch và đăng ký khóa học">
+                            <span>Đăng ký</span>
+                          </button>
+                        }
+                        <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="showClass(c.id)" title="Xem chi tiết lớp và lịch học" [disabled]="busy()">
+                          <zen-icon name="eye" />
+                          <span>Chi tiết</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -192,10 +199,17 @@
                     </td>
                     <td><zen-badge [tone]="tone(e.status)" dot>{{ label(e.status) }}</zen-badge></td>
                     <td class="is-actions">
-                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="showEnrollment(e.id)" title="Xem lịch học và tiến độ" [disabled]="busy()">
-                        <zen-icon name="eye" />
-                        <span>Xem lịch & tiến độ</span>
-                      </button>
+                      <div class="row-actions">
+                        @if (e.status === 'PENDING_PAYMENT') {
+                          <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="checkout(e.orderId)" title="Thanh toán học phí bằng VietQR" [disabled]="busy()">
+                            <span>Thanh toán</span>
+                          </button>
+                        }
+                        <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="showEnrollment(e.id)" title="Xem lịch học và tiến độ" [disabled]="busy()">
+                          <zen-icon name="eye" />
+                          <span>Chi tiết</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -239,25 +253,29 @@
     </div>
 
     @if (canEnroll() && c.status === 'OPEN') {
-      <zen-card heading="Ghi danh học viên" subtitle="Giữ chỗ tối đa 24 giờ, không quá giờ bắt đầu khóa.">
-        <div class="enroll-bar">
-          @if (!auth.isStudent()) {
-            <label class="zen-field enroll-field">
-              <span class="zen-label">Chọn học viên ghi danh</span>
-              <select class="zen-control" [(ngModel)]="studentId">
-                <option value="">Chọn học viên</option>
-                @for (s of students(); track s.id) {
-                  <option [value]="s.id">{{ s.fullName }} · {{ s.phone }}</option>
-                }
-              </select>
-            </label>
-          }
-          <button type="button" class="zen-btn zen-btn--primary" (click)="enroll()" [disabled]="busy() || !studentId || c.enrolledCount >= c.maxCapacity">
-            <zen-icon name="user-plus" />
-            <span>Đăng ký toàn bộ khóa</span>
-          </button>
-        </div>
-      </zen-card>
+      @if (auth.isStudent()) {
+        <zen-card heading="Đăng ký khóa học" subtitle="Giữ chỗ toàn bộ khóa rồi thanh toán online bằng VietQR, hoặc tại cơ sở trước hạn giữ chỗ.">
+          <div class="zen-row zen-row--end">
+            <button type="button" class="zen-btn zen-btn--primary" (click)="enroll()" [disabled]="busy() || !studentId || c.enrolledCount >= c.maxCapacity">
+              <zen-icon name="user-plus" />
+              <span>Đăng ký và thanh toán · {{ c.tuitionFee | number }} ₫</span>
+            </button>
+          </div>
+        </zen-card>
+      } @else {
+        <zen-card heading="Ghi danh học viên" subtitle="Chọn học viên và thu học phí tại trang Bán thẻ tập & khóa học (POS); khóa này được chọn sẵn.">
+          <div class="zen-row zen-row--end">
+            @if (c.enrolledCount >= c.maxCapacity) {
+              <button type="button" class="zen-btn zen-btn--primary" disabled>Lớp đã đủ sĩ số</button>
+            } @else {
+              <a class="zen-btn zen-btn--primary" routerLink="/membership/pos" [queryParams]="{ courseId: c.id, branchId: c.branchId }">
+                <zen-icon name="user-plus" />
+                <span>Ghi danh · {{ c.tuitionFee | number }} ₫</span>
+              </a>
+            }
+          </div>
+        </zen-card>
+      }
     }
 
     <zen-card heading="Lịch học của lớp" padding="none">
@@ -419,32 +437,57 @@
 
     @if (e.status === 'PENDING_PAYMENT') {
       <zen-alert tone="warning" heading="Chờ thanh toán">
-        Học phí {{ e.totalAmount | number }} ₫ · Giữ chỗ đến {{ e.reservedUntil | date:'dd/MM/yyyy HH:mm':'+0700' }}. Vui lòng thanh toán tại cơ sở để kích hoạt quyền học.
+        Học phí {{ e.totalAmount | number }} ₫ · Giữ chỗ đến {{ e.reservedUntil | date:'dd/MM/yyyy HH:mm':'+0700' }}.
+        {{ auth.isStudent() ? 'Thanh toán online bằng VietQR hoặc tại cơ sở để kích hoạt quyền học.' : 'Thu học phí để kích hoạt quyền học.' }}
       </zen-alert>
+
+      @if (auth.isStudent()) {
+        <zen-card heading="Thanh toán online" subtitle="Quét VietQR bằng app ngân hàng. Đăng ký được kích hoạt tự động khi ngân hàng báo đã nhận tiền.">
+          <div class="zen-row zen-row--end">
+            <button type="button" class="zen-btn zen-btn--primary" (click)="payOnline()" [disabled]="busy()">
+              <zen-icon name="credit-card" />
+              <span>Thanh toán online {{ e.totalAmount | number }} ₫</span>
+            </button>
+          </div>
+        </zen-card>
+      }
 
       @if (auth.canAccessPos()) {
         <zen-card heading="Thu học phí tại quầy">
-          <div class="zen-form-grid">
-            <label class="zen-field">
-              <span class="zen-label">Phương thức thanh toán</span>
-              <select class="zen-control" [(ngModel)]="paymentMethod">
-                <option value="CASH">Tiền mặt</option>
-                <option value="POS_CARD">Thẻ quẹt POS</option>
-                <option value="BANK_TRANSFER_QR">Chuyển khoản QR</option>
-              </select>
-            </label>
-            <label class="zen-field">
-              <span class="zen-label">Mã giao dịch</span>
-              <input class="zen-control" [(ngModel)]="paymentReference" placeholder="VD: MB-882991">
-            </label>
-          </div>
-          <div class="zen-row zen-row--end pos-actions">
-            <button type="button" class="zen-btn zen-btn--danger-outline" (click)="cancelPending()" [disabled]="busy()">Hủy đăng ký giữ chỗ</button>
-            <button type="button" class="zen-btn zen-btn--primary" (click)="pay()" [disabled]="busy()">
-              <zen-icon name="check" />
-              <span>Xác nhận đã thu {{ e.totalAmount | number }} ₫</span>
-            </button>
-          </div>
+          @if (onlinePay(); as pay) {
+            <yoga-online-payment-panel
+              [orderId]="pay.orderId"
+              mode="counter"
+              successText="Đã nhận học phí qua VietQR."
+              (paid)="onlinePaid()"
+              (codeClosed)="onlinePay.set(null)"
+            />
+          } @else {
+            <div class="zen-form-grid">
+              <label class="zen-field">
+                <span class="zen-label">Phương thức thanh toán</span>
+                <select class="zen-control" [(ngModel)]="paymentMethod">
+                  <option value="CASH">Tiền mặt</option>
+                  <option value="POS_CARD">Thẻ quẹt POS</option>
+                  <option value="BANK_TRANSFER_QR">Chuyển khoản QR</option>
+                  <option value="PAYOS">VietQR động (tự xác nhận)</option>
+                </select>
+              </label>
+              @if (paymentMethod !== 'PAYOS') {
+                <label class="zen-field">
+                  <span class="zen-label">Mã giao dịch</span>
+                  <input class="zen-control" [(ngModel)]="paymentReference" placeholder="VD: MB-882991">
+                </label>
+              }
+            </div>
+            <div class="zen-row zen-row--end pos-actions">
+              <button type="button" class="zen-btn zen-btn--danger-outline" (click)="cancelPending()" [disabled]="busy()">Hủy đăng ký giữ chỗ</button>
+              <button type="button" class="zen-btn zen-btn--primary" (click)="pay()" [disabled]="busy()">
+                <zen-icon [name]="paymentMethod === 'PAYOS' ? 'qr' : 'check'" />
+                <span>{{ paymentMethod === 'PAYOS' ? 'Tạo mã VietQR ' : 'Xác nhận đã thu ' }}{{ e.totalAmount | number }} ₫</span>
+              </button>
+            </div>
+          }
         </zen-card>
       }
     }

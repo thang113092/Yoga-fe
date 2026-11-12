@@ -2,7 +2,7 @@
   <zen-page-header
     class="no-print"
     eyebrow="Quầy dịch vụ & thu ngân"
-    heading="Cấp & Đổi Thẻ Tập"
+    heading="Bán Thẻ Tập & Khóa Học"
     subtitle="Hệ thống kích hoạt thẻ tập điện tử tức thì trên toàn chuỗi An Yên"
   >
     <div actions class="branch-selector">
@@ -44,7 +44,7 @@
             <span class="pass-brand"><zen-icon name="ticket" [size]="15" />AN YÊN • THẺ TẬP ĐIỆN TỬ</span>
             <zen-badge tone="success" size="sm" dot>Đang hoạt động</zen-badge>
           </div>
-          <div class="pass-plan-name">{{ successReceipt()?.order?.planName }}</div>
+          <div class="pass-plan-name">{{ successReceipt()?.kind === 'COURSE' ? 'Khóa học · ' : '' }}{{ successReceipt()?.order?.planName }}</div>
           <div class="pass-member-row">
             <div>
               <span class="pass-sublabel">Chủ thẻ</span>
@@ -56,13 +56,13 @@
           </div>
           <div class="pass-code-container">
             <div class="pass-code-block">
-              <span class="pass-sublabel">Mã thẻ tập (Digital Pass)</span>
-              <code class="code-value">{{ successReceipt()?.payment?.activatedMembershipCode }}</code>
+              <span class="pass-sublabel">{{ successReceipt()?.kind === 'COURSE' ? 'Mã đăng ký khóa học' : 'Mã thẻ tập (Digital Pass)' }}</span>
+              <code class="code-value">{{ successReceipt()?.kind === 'COURSE' ? successReceipt()?.order?.orderCode : successReceipt()?.payment?.activatedMembershipCode }}</code>
             </div>
             <button
               type="button"
               class="zen-btn zen-btn--secondary zen-btn--sm btn-copy-code no-print"
-              (click)="copyPassCode(successReceipt()?.payment?.activatedMembershipCode)"
+              (click)="copyPassCode(successReceipt()?.kind === 'COURSE' ? successReceipt()?.order?.orderCode : successReceipt()?.payment?.activatedMembershipCode)"
               [attr.aria-label]="copiedCode() ? 'Đã sao chép' : 'Sao chép mã thẻ'"
             >
               @if (copiedCode()) {
@@ -81,7 +81,7 @@
             <span>{{ studentName }}</span>
             <span class="detail-sub">{{ studentPhone }}{{ studentEmail ? ' • ' + studentEmail : '' }}</span>
           </dd>
-          <dt>Gói thẻ đăng ký</dt>
+          <dt>{{ successReceipt()?.kind === 'COURSE' ? 'Khóa học đăng ký' : 'Gói thẻ đăng ký' }}</dt>
           <dd>{{ successReceipt()?.order?.planName }}</dd>
           @if (selectedBranch()?.name) {
             <dt>Cơ sở đăng ký</dt>
@@ -245,7 +245,7 @@
         <zen-card>
           <div class="step-head">
             <zen-badge tone="primary" size="sm">Bước 2</zen-badge>
-            <h2 class="zen-section-title">Chọn Gói Thẻ Tập</h2>
+            <h2 class="zen-section-title">Chọn Gói Thẻ Tập hoặc Khóa Học</h2>
           </div>
 
           @if (isLoadingPlans()) {
@@ -279,6 +279,46 @@
             </div>
           }
         </zen-card>
+
+        <!-- 2b. Course picker: the same checkout sells a seat in a whole course -->
+        <zen-card>
+          <div class="step-head">
+            <zen-badge tone="primary" size="sm">Bước 2</zen-badge>
+            <h2 class="zen-section-title">Khóa Học Đang Mở Đăng Ký</h2>
+          </div>
+
+          @if (isLoadingCourses()) {
+            <zen-loading message="Đang tải khóa học của cơ sở..." />
+          } @else if (courseClasses().length === 0) {
+            <p class="zen-text-sm zen-text-muted">Cơ sở này chưa có khóa học nào đang mở đăng ký và còn chỗ.</p>
+          } @else {
+            <div class="plan-grid">
+              @for (course of courseClasses(); track course.id) {
+                <div
+                  class="plan-card course-card"
+                  role="button" tabindex="0" [attr.aria-pressed]="selectedCourseId() === course.id"
+                  (keydown.enter)="selectCourse(course.id)"
+                  (keydown.space)="$event.preventDefault(); selectCourse(course.id)"
+                  [class.selected]="selectedCourseId() === course.id"
+                  (click)="selectCourse(course.id)"
+                >
+                  <div class="zen-row zen-row--between">
+                    <zen-badge size="sm" tone="info"><span class="zen-mono">{{ course.code }}</span></zen-badge>
+                    <span class="zen-text-xs zen-text-secondary zen-strong">{{ course.plannedSessions }} buổi</span>
+                  </div>
+                  <h3 class="plan-title">{{ course.name }}</h3>
+                  <p class="plan-desc">
+                    {{ course.startTime | date:'dd/MM/yyyy':'+0700' }} – {{ course.endTime | date:'dd/MM/yyyy':'+0700' }}
+                    · Còn {{ course.maxCapacity - course.enrolledCount }}/{{ course.maxCapacity }} chỗ
+                  </p>
+                  <div class="plan-price-row">
+                    <span class="zen-amount zen-amount--md">{{ course.tuitionFee | number:'1.0-0' }}<span class="zen-amount__unit">₫</span></span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </zen-card>
       </div>
 
       <!-- 3. Payment -->
@@ -291,13 +331,21 @@
 
           <div class="zen-stack">
             <dl class="order-breakdown">
-              <div class="breakdown-row"><dt>Gói đã chọn</dt><dd>{{ selectedPlan()?.name || 'Chưa chọn gói' }}</dd></div>
+              @if (itemKind() === 'COURSE') {
+                <div class="breakdown-row"><dt>Khóa học đã chọn</dt><dd>{{ itemName() || 'Chưa chọn khóa' }}</dd></div>
+                @if (selectedCourse(); as course) {
+                  <div class="breakdown-row"><dt>Lịch học</dt><dd>{{ course.startTime | date:'dd/MM/yyyy':'+0700' }} – {{ course.endTime | date:'dd/MM/yyyy':'+0700' }}</dd></div>
+                  <div class="breakdown-row"><dt>Số buổi</dt><dd>{{ course.plannedSessions }} buổi, giữ chỗ toàn khóa</dd></div>
+                }
+              } @else {
+              <div class="breakdown-row"><dt>Gói đã chọn</dt><dd>{{ itemName() || 'Chưa chọn gói' }}</dd></div>
               <div class="breakdown-row"><dt>Phạm vi cơ sở</dt><dd>{{ selectedPlan()?.isAllBranches ? 'Toàn bộ các chi nhánh' : 'Cơ sở hiện tại' }}</dd></div>
               @if (quote()?.currentMembership) {
                 <div class="breakdown-row"><dt>Giá gói mới</dt><dd class="zen-num">{{ selectedPlan()?.price | number:'1.0-0' }} ₫</dd></div>
                 <div class="breakdown-row"><dt>Giá trị thẻ cũ</dt><dd class="zen-num">{{ effectiveCredit() | number:'1.0-0' }} ₫</dd></div>
               }
               <div class="breakdown-row"><dt>Quyền lợi gói mới</dt><dd>{{ selectedPlan()?.totalSessions ?? 'Không giới hạn' }} buổi · {{ selectedPlan()?.durationDays ?? 'Không giới hạn' }} ngày</dd></div>
+              }
               <div class="breakdown-row total"><dt>Cần thanh toán</dt><dd class="zen-price">{{ amountDue() | number:'1.0-0' }} ₫</dd></div>
             </dl>
 
@@ -412,7 +460,7 @@
               <button
                 type="button"
                 class="zen-btn zen-btn--primary zen-btn--lg zen-btn--block btn-checkout-submit"
-                [disabled]="isProcessing() || (!pendingCheckout() && (!resolvedStudent() || !selectedPlan() || !selectedBranchId || isLoadingQuote() || !quote() || !!quote()?.issue || adjustmentInvalid() || (useCreditAdjustment() && !adjustmentReason.trim())))"
+                [disabled]="!canCheckout()"
                 (click)="handleCheckout()"
               >
                 @if (isProcessing()) {
@@ -420,7 +468,7 @@
                 } @else if (paymentMethod() === 'PAYOS' && amountDue() > 0) {
                   {{ onlinePayment() ? 'Tạo mã VietQR mới' : (pendingCheckout() ? 'Thử lại / Mở lại mã VietQR' : 'Tạo mã VietQR') }}
                 } @else {
-                  {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
+                  {{ pendingCheckout() ? 'Thử lại / Đối soát cùng giao dịch' : itemKind() === 'COURSE' ? 'Xác nhận ghi danh & thu học phí' : (currentMembership() ? 'Xác nhận đổi thẻ' : 'Xác nhận cấp thẻ') }}
                 }
               </button>
             }
