@@ -5,6 +5,9 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '@yoga/platform/auth';
 import { ZEN_UI, ZenConfirmService, ZenToastService } from '@yoga/platform/ui';
 import {
+  ACCESS_SCOPE_OPTIONS,
+  AccessScope,
+  accessScopeLabel,
   CreatePlanReq,
   MembershipApi,
   MembershipPlan,
@@ -52,6 +55,9 @@ export class PlanManagementComponent implements OnInit {
     { value: 'COMBO', label: 'Kết hợp cả ngày và số buổi' }
   ];
 
+  protected readonly accessScopeOptions = ACCESS_SCOPE_OPTIONS.map(o => ({ value: o.value, label: `${o.label} – ${o.hint}` }));
+  protected readonly scopeLabel = accessScopeLabel;
+
   // Data signals
   protected readonly plans = signal<MembershipPlan[]>([]);
   protected readonly isLoading = signal<boolean>(true);
@@ -61,6 +67,9 @@ export class PlanManagementComponent implements OnInit {
   // Filters
   protected readonly searchQuery = signal<string>('');
   protected readonly filterScope = signal<'ALL' | 'ALL_BRANCHES' | 'SINGLE_BRANCH'>('ALL');
+  /** Studio or online packages; 'ALL' shows both. */
+  protected readonly filterAccess = signal<'ALL' | 'STUDIO' | 'ONLINE'>('ALL');
+  protected readonly onlinePlanCount = computed(() => this.plans().filter(p => this.isOnlinePlan(p)).length);
 
   // Modal State for Create/Edit
   protected readonly isModalOpen = signal<boolean>(false);
@@ -78,6 +87,7 @@ export class PlanManagementComponent implements OnInit {
   protected readonly formTotalSessions = signal<number | null>(null);
   protected readonly formIsAllBranches = signal<boolean>(false);
   protected readonly formIsActive = signal<boolean>(true);
+  protected readonly formAccessScope = signal<AccessScope>('STUDIO');
 
   // Delete Confirmation State
   protected readonly planToDelete = signal<MembershipPlan | null>(null);
@@ -103,8 +113,20 @@ export class PlanManagementComponent implements OnInit {
       list = list.filter(p => !p.isAllBranches);
     }
 
+    const access = this.filterAccess();
+    if (access === 'ONLINE') {
+      list = list.filter(p => this.isOnlinePlan(p));
+    } else if (access === 'STUDIO') {
+      list = list.filter(p => (p.accessScope ?? 'STUDIO') !== 'ONLINE');
+    }
+
     return list;
   });
+
+  /** Online-only packages; hybrid packages are listed with both groups. */
+  protected isOnlinePlan(plan: MembershipPlan): boolean {
+    return plan.accessScope === 'ONLINE' || plan.accessScope === 'HYBRID';
+  }
 
   ngOnInit(): void {
     this.loadPlans();
@@ -202,6 +224,7 @@ export class PlanManagementComponent implements OnInit {
     this.formTotalSessions.set(null);
     this.formIsAllBranches.set(false);
     this.formIsActive.set(true);
+    this.formAccessScope.set('STUDIO');
     this.isModalOpen.set(true);
   }
 
@@ -218,6 +241,7 @@ export class PlanManagementComponent implements OnInit {
     this.formTotalSessions.set(plan.totalSessions ?? null);
     this.formIsAllBranches.set(plan.isAllBranches);
     this.formIsActive.set(plan.isActive);
+    this.formAccessScope.set(plan.accessScope ?? 'STUDIO');
     this.isModalOpen.set(true);
   }
 
@@ -248,7 +272,8 @@ export class PlanManagementComponent implements OnInit {
         description: this.formDescription().trim() || undefined,
         price: this.formPrice(),
         isAllBranches: this.formIsAllBranches(),
-        isActive: this.formIsActive()
+        isActive: this.formIsActive(),
+        accessScope: this.formAccessScope()
       };
 
       this.membershipApi.updatePlan(this.editingPlanId()!, updateReq).subscribe({
@@ -279,7 +304,8 @@ export class PlanManagementComponent implements OnInit {
         planType: this.formPlanType(),
         durationDays: this.formDurationDays(),
         totalSessions: this.formTotalSessions(),
-        isAllBranches: this.formIsAllBranches()
+        isAllBranches: this.formIsAllBranches(),
+        accessScope: this.formAccessScope()
       };
 
       this.membershipApi.createPlan(createReq).subscribe({

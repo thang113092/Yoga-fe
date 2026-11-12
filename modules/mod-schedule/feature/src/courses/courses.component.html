@@ -44,6 +44,15 @@
           [disabled]="busy()"
           placeholder="Chọn cơ sở..."
         />
+        @if (view() === 'classes') {
+          <zen-select
+            class="zen-toolbar-item mode-filter"
+            [options]="modeFilterOptions"
+            [ngModel]="modeFilter()"
+            (ngModelChange)="modeFilter.set($event)"
+            placeholder="Hình thức học..."
+          />
+        }
         <div toolbar-end>
           <button type="button" class="zen-btn zen-btn--outline" (click)="refresh()" [disabled]="busy()" title="Đồng bộ danh sách">
             <zen-icon name="refresh" [class.zen-spin]="busy()" />
@@ -124,11 +133,21 @@
                       <span class="cell-sub">đến {{ c.endTime | date:'dd/MM/yyyy':'+0700' }}</span>
                     </td>
                     <td class="is-wrap">
-                      <span class="cell-primary">{{ c.name }}</span>
+                      <span class="cell-primary">
+                        {{ c.name }}
+                        @if (isOnline(c)) {
+                          <zen-badge class="online-badge" tone="info" size="sm">Online</zen-badge>
+                        }
+                      </span>
                       <span class="cell-sub zen-mono">{{ c.code }}</span>
                     </td>
                     <td>
-                      <span class="branch-cell"><zen-icon name="map-pin" [size]="14" />{{ c.branchName }}</span>
+                      @if (isOnline(c)) {
+                        <span class="branch-cell online-cell"><zen-icon name="monitor" [size]="14" />Học qua Zoom</span>
+                        <span class="cell-sub">Tổ chức bởi {{ c.branchName }}</span>
+                      } @else {
+                        <span class="branch-cell"><zen-icon name="map-pin" [size]="14" />{{ c.branchName }}</span>
+                      }
                     </td>
                     <td class="is-nowrap">{{ c.plannedSessions }} buổi</td>
                     <td>
@@ -184,11 +203,20 @@
                       <span class="cell-sub">đến {{ e.endTime | date:'dd/MM/yyyy':'+0700' }}</span>
                     </td>
                     <td class="is-wrap">
-                      <span class="cell-primary">{{ e.className }}</span>
+                      <span class="cell-primary">
+                        {{ e.className }}
+                        @if (isOnline(e)) {
+                          <zen-badge class="online-badge" tone="info" size="sm">Online</zen-badge>
+                        }
+                      </span>
                       <span class="cell-sub zen-mono">{{ e.classCode }}</span>
                     </td>
                     <td>
-                      <span class="branch-cell"><zen-icon name="map-pin" [size]="14" />{{ e.branchName }}</span>
+                      @if (isOnline(e)) {
+                        <span class="branch-cell online-cell"><zen-icon name="monitor" [size]="14" />Học qua Zoom</span>
+                      } @else {
+                        <span class="branch-cell"><zen-icon name="map-pin" [size]="14" />{{ e.branchName }}</span>
+                      }
                     </td>
                     <td>
                       <span class="zen-num">{{ e.attendedSessions }} / {{ e.plannedSessions }} buổi</span>
@@ -234,12 +262,18 @@
       <div class="detail-head">
         <div class="zen-row">
           <zen-badge tone="primary" size="sm"><span class="zen-mono">{{ c.code }}</span></zen-badge>
+          @if (isOnline(c)) {
+            <zen-badge class="online-badge" tone="info" size="sm">Online</zen-badge>
+          }
           <zen-badge size="sm">{{ c.branchName }}</zen-badge>
           <zen-badge [tone]="tone(c.status)" dot>{{ label(c.status) }}</zen-badge>
         </div>
         <h2 class="detail-title">{{ c.name }}</h2>
         @if (c.description) {
           <p class="zen-text-muted">{{ c.description }}</p>
+        }
+        @if (isOnline(c)) {
+          <p class="zen-text-sm zen-text-muted online-note"><zen-icon name="monitor" [size]="14" /> Học qua Zoom · học viên mọi cơ sở đều đăng ký được. Nút "Vào lớp" mở từ 15 phút trước giờ học.</p>
         }
       </div>
     </zen-card>
@@ -278,6 +312,13 @@
       }
     }
 
+    @if (canSeeZoomRoom() && zoomSession(); as zs) {
+      <zen-card class="zoom-card">
+        <p class="zen-eyebrow">Buổi {{ zs.sessionNumber }} · {{ zs.startTime | date:'HH:mm dd/MM/yyyy':'+0700' }}</p>
+        <yoga-online-session-panel [scheduleId]="zs.id!" />
+      </zen-card>
+    }
+
     <zen-card heading="Lịch học của lớp" padding="none">
       <div class="zen-table-wrap">
         <table class="zen-table">
@@ -285,7 +326,7 @@
             <tr>
               <th class="th-session">Buổi Học & Nội Dung</th>
               <th>Thời gian ca học</th>
-              <th>Phòng tập</th>
+              <th>{{ isOnline(c) ? 'Hình thức' : 'Phòng tập' }}</th>
               <th>Huấn luyện viên</th>
               <th>Trạng thái</th>
               <th class="is-actions"></th>
@@ -309,7 +350,7 @@
                   <span class="time-primary cell-primary">{{ s.startTime | date:'HH:mm':'+0700' }} – {{ s.endTime | date:'HH:mm':'+0700' }}</span>
                   <span class="cell-sub">{{ s.startTime | date:'dd/MM/yyyy':'+0700' }}</span>
                 </td>
-                <td>{{ s.roomName }}</td>
+                <td>{{ isOnline(s, c) ? 'Online (Zoom)' : s.roomName }}</td>
                 <td>
                   <div class="zen-cell-user">
                     <zen-avatar [name]="s.instructorName" size="sm" />
@@ -318,12 +359,21 @@
                 </td>
                 <td><zen-badge [tone]="tone(s.status)" dot>{{ label(s.status || '') }}</zen-badge></td>
                 <td class="is-actions">
-                  @if (canCreateClass() && future(s) && s.status !== 'CANCELLED') {
-                    <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="editSession(s)" [disabled]="busy()">
-                      <zen-icon name="edit" />
-                      <span>Đổi lịch</span>
-                    </button>
-                  }
+                  <div class="row-actions">
+                    @if (canSeeZoomRoom() && isOnline(s, c) && s.status !== 'CANCELLED') {
+                      <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="zoomSessionId.set(s.id || null)"
+                        [class.is-active]="zoomSession()?.id === s.id" title="Xem phòng Zoom của buổi này">
+                        <zen-icon name="monitor" />
+                        <span>Phòng Zoom</span>
+                      </button>
+                    }
+                    @if (canCreateClass() && future(s) && s.status !== 'CANCELLED') {
+                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="editSession(s)" [disabled]="busy()">
+                        <zen-icon name="edit" />
+                        <span>Đổi lịch</span>
+                      </button>
+                    }
+                  </div>
                 </td>
               </tr>
             }
@@ -392,10 +442,13 @@
         <div class="zen-row">
           <zen-badge tone="primary" size="sm"><span class="zen-mono">{{ e.enrollmentCode }}</span></zen-badge>
           <zen-badge size="sm"><span class="zen-mono">{{ e.classCode }}</span></zen-badge>
+          @if (isOnline(e)) {
+            <zen-badge class="online-badge" tone="info" size="sm">Online</zen-badge>
+          }
           <zen-badge [tone]="tone(e.status)" dot>{{ label(e.status) }}</zen-badge>
         </div>
         <h2 class="detail-title">{{ e.className }}</h2>
-        <p class="zen-text-muted">{{ e.studentName }} · {{ e.branchName }}</p>
+        <p class="zen-text-muted">{{ e.studentName }} · {{ isOnline(e) ? 'Học qua Zoom' : e.branchName }}</p>
       </div>
       <div class="attendance-progress">
         <div class="zen-row zen-row--between zen-text-sm">
@@ -423,9 +476,32 @@
           <div class="zen-stack zen-stack--sm">
             <span class="zen-eyebrow">Buổi học tiếp theo</span>
             <div class="next-time">{{ next.startTime | date:'dd/MM/yyyy HH:mm':'+0700' }}</div>
-            <div class="zen-text-muted zen-text-sm">Phòng {{ next.roomName }} · HLV {{ next.instructorName }}</div>
+            @if (isOnline(next, e)) {
+              <div class="zen-text-muted zen-text-sm">Học qua Zoom · HLV {{ next.instructorName }}</div>
+            } @else {
+              <div class="zen-text-muted zen-text-sm">Phòng {{ next.roomName }} · HLV {{ next.instructorName }}</div>
+            }
           </div>
-          @if (e.status === 'ACTIVE' && next.bookingCode) {
+          @if (isOnline(next, e)) {
+            @if (auth.isStudent()) {
+              <div class="next-join">
+                @if (e.status === 'PENDING_PAYMENT') {
+                  <button type="button" class="zen-btn zen-btn--primary" (click)="checkout(e.orderId)" [disabled]="busy()">
+                    <zen-icon name="credit-card" />
+                    <span>Thanh toán để vào lớp</span>
+                  </button>
+                  <small class="zen-text-xs zen-text-muted">Khóa học cần được thanh toán trước khi vào lớp online.</small>
+                } @else if (canJoin(e, next)) {
+                  <button type="button" class="zen-btn zen-btn--primary" (click)="joinSession(e, next)" [disabled]="joiningBookingId() === next.bookingId">
+                    <zen-icon name="play" />
+                    <span>{{ joiningBookingId() === next.bookingId ? 'Đang mở Zoom...' : (next.attendanceState === 'ATTENDED' ? 'Vào lại lớp' : 'Vào lớp') }}</span>
+                  </button>
+                } @else if (e.status === 'ACTIVE') {
+                  <small class="zen-text-xs zen-text-muted">Nút "Vào lớp" mở lúc {{ joinOpensAt(next) | date:'HH:mm dd/MM':'+0700' }}</small>
+                }
+              </div>
+            }
+          } @else if (e.status === 'ACTIVE' && next.bookingCode) {
             <div class="next-qr">
               <yoga-qr-code [value]="next.bookingCode" />
               <small class="zen-text-xs zen-text-muted">Mã vào lớp: <strong class="zen-mono">{{ next.bookingCode }}</strong></small>
@@ -499,9 +575,9 @@
             <tr>
               <th class="th-session">Buổi Học & Nội Dung</th>
               <th>Thời gian ca học</th>
-              <th>Phòng · Huấn luyện viên</th>
+              <th>{{ isOnline(e) ? 'Hình thức' : 'Phòng' }} · Huấn luyện viên</th>
               <th>Điểm danh</th>
-              <th class="is-numeric">Mã vào lớp</th>
+              <th class="is-numeric">{{ isOnline(e) ? 'Vào lớp' : 'Mã vào lớp' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -523,12 +599,21 @@
                   <span class="cell-sub">{{ s.startTime | date:'dd/MM/yyyy':'+0700' }}</span>
                 </td>
                 <td>
-                  <span class="cell-primary">{{ s.roomName }}</span>
+                  <span class="cell-primary">{{ isOnline(s, e) ? 'Online (Zoom)' : s.roomName }}</span>
                   <span class="cell-sub">{{ s.instructorName }}</span>
                 </td>
                 <td><zen-badge [tone]="tone(s.attendanceState)" dot>{{ label(s.attendanceState || '') }}</zen-badge></td>
                 <td class="is-numeric">
-                  @if (e.status === 'ACTIVE' && s.status !== 'CANCELLED') {
+                  @if (isOnline(s, e)) {
+                    @if (canJoin(e, s)) {
+                      <button type="button" class="zen-btn zen-btn--primary zen-btn--sm session-join" (click)="joinSession(e, s)" [disabled]="joiningBookingId() === s.bookingId">
+                        <zen-icon name="play" />
+                        <span>{{ s.attendanceState === 'ATTENDED' ? 'Vào lại lớp' : 'Vào lớp' }}</span>
+                      </button>
+                    } @else {
+                      <span class="cell-muted">—</span>
+                    }
+                  } @else if (e.status === 'ACTIVE' && s.status !== 'CANCELLED') {
                     <zen-badge size="sm"><span class="zen-mono">{{ s.bookingCode }}</span></zen-badge>
                   } @else {
                     <span class="cell-muted">—</span>
@@ -664,13 +749,36 @@
           <span class="zen-label">Học phí trọn khóa (đồng)<span class="zen-required">*</span></span>
           <input class="zen-control" name="tuition" type="number" [(ngModel)]="classForm.tuitionFee" required min="0">
         </label>
+        <div class="zen-field zen-field--full">
+          <span class="zen-label">Hình thức học<span class="zen-required">*</span></span>
+          <div class="zen-row" role="radiogroup" aria-label="Hình thức học">
+            <label class="zen-chip weekday-chip mode-chip" [class.is-active]="formMode() === 'IN_PERSON'">
+              <input type="radio" name="deliveryMode" value="IN_PERSON" [checked]="formMode() === 'IN_PERSON'" (change)="setDeliveryMode('IN_PERSON')">
+              <zen-icon name="map-pin" [size]="14" />
+              <span>Tại phòng</span>
+            </label>
+            <label class="zen-chip weekday-chip mode-chip" [class.is-active]="formMode() === 'ONLINE'">
+              <input type="radio" name="deliveryMode" value="ONLINE" [checked]="formMode() === 'ONLINE'" (change)="setDeliveryMode('ONLINE')">
+              <zen-icon name="monitor" [size]="14" />
+              <span>Online</span>
+            </label>
+          </div>
+          @if (formMode() === 'ONLINE') {
+            <p class="zen-hint">Mỗi buổi học được tạo phòng Zoom tự động. Học viên ở mọi cơ sở đều đăng ký được. Chỉ chọn được phòng online của cơ sở; hình thức không đổi được sau khi mở lớp.</p>
+          } @else {
+            <p class="zen-hint">Học trực tiếp tại phòng tập của cơ sở; học viên quét mã QR để điểm danh.</p>
+          }
+        </div>
         <label class="zen-field">
-          <span class="zen-label">Phòng tập mặc định<span class="zen-required">*</span></span>
+          <span class="zen-label">{{ formMode() === 'ONLINE' ? 'Phòng online mặc định' : 'Phòng tập mặc định' }}<span class="zen-required">*</span></span>
           <select class="zen-control" name="room" [(ngModel)]="roomId" required>
             @for (r of rooms(); track r.id) {
               <option [value]="r.id">{{ r.name }} · {{ r.maxCapacity }} chỗ</option>
             }
           </select>
+          @if (!rooms().length && !busy()) {
+            <span class="zen-hint">{{ formMode() === 'ONLINE' ? 'Cơ sở chưa có phòng online đang hoạt động.' : 'Cơ sở chưa có phòng tập đang hoạt động.' }}</span>
+          }
         </label>
         <label class="zen-field">
           <span class="zen-label">Huấn luyện viên<span class="zen-required">*</span></span>
@@ -726,7 +834,7 @@
                 <th class="th-session">Buổi Học & Nội Dung</th>
                 <th>Bắt đầu</th>
                 <th>Kết thúc</th>
-                <th>Phòng tập</th>
+                <th>{{ formMode() === 'ONLINE' ? 'Phòng online' : 'Phòng tập' }}</th>
                 <th>Huấn luyện viên</th>
               </tr>
             </thead>
@@ -809,7 +917,7 @@
         <input class="zen-control" type="datetime-local" [value]="localTime(s.endTime)" (change)="setTime(s, 'endTime', $any($event.target).value)">
       </label>
       <label class="zen-field">
-        <span class="zen-label">Phòng tập</span>
+        <span class="zen-label">{{ formMode() === 'ONLINE' ? 'Phòng online' : 'Phòng tập' }}</span>
         <select class="zen-control" [(ngModel)]="s.roomId">
           @for (r of rooms(); track r.id) {
             <option [value]="r.id">{{ r.name }}</option>

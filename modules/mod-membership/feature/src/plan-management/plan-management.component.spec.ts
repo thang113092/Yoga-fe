@@ -139,6 +139,26 @@ describe('PlanManagementComponent', () => {
     expect(component['isModalOpen']()).toBe(false);
   });
 
+  it('creates an online plan and lists it under the Online filter', () => {
+    const fixture = TestBed.createComponent(PlanManagementComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.openCreateModal();
+    expect(component['formAccessScope']()).toBe('STUDIO');
+    component['formCode'].set('ONLINE_8S');
+    component['formName'].set('Online 8 buổi');
+    component['formAccessScope'].set('ONLINE');
+    component.submitPlan();
+    expect(membershipApiMock.createPlan).toHaveBeenCalledWith(expect.objectContaining({ code: 'ONLINE_8S', accessScope: 'ONLINE' }));
+
+    component['plans'].set([...mockPlans, { ...mockPlans[1], id: 'plan-3', code: 'ONLINE_8S', accessScope: 'ONLINE' }]);
+    component['filterAccess'].set('ONLINE');
+    expect(component['filteredPlans']().map(p => p.code)).toEqual(['ONLINE_8S']);
+    component['filterAccess'].set('STUDIO');
+    expect(component['filteredPlans']().map(p => p.code)).toEqual(['PLAN_ALL_12M', 'PLAN_SINGLE_10S']);
+  });
+
   it('prevents non-SUPER_ADMIN from opening create modal and loads only active plans', () => {
     authMock.isSuperAdmin.mockReturnValue(false);
     authMock.userRole.mockReturnValue('STUDENT');

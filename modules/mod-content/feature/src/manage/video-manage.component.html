@@ -1,0 +1,302 @@
+<div class="zen-page">
+  <zen-page-header
+    eyebrow="Thư viện video"
+    heading="Quản lý video bài tập"
+    [subtitle]="canManage() ? 'Tải video lên, gắn chủ đề, xuất bản cho học viên' : 'Video bài tập do bạn phụ trách'"
+    [count]="videos().length"
+    countLabel="video"
+  >
+    <div actions class="header-actions">
+      @if (canManage()) {
+        <a routerLink="/videos/manage/collections" class="zen-btn zen-btn--outline">
+          <zen-icon name="list" />
+          <span>Lộ trình</span>
+        </a>
+        <button type="button" class="zen-btn zen-btn--outline" (click)="tagsOpen.set(true)">
+          <zen-icon name="tag" />
+          <span>Chủ đề</span>
+        </button>
+      }
+      <button type="button" class="zen-btn zen-btn--primary" (click)="openCreate()">
+        <zen-icon name="plus" />
+        <span>Thêm video</span>
+      </button>
+    </div>
+  </zen-page-header>
+
+  <div class="zen-grid zen-grid--stats">
+    <zen-stat-card label="Tổng số video" [value]="stats().total" icon="play" />
+    <zen-stat-card label="Đã xuất bản" [value]="stats().published" icon="eye" tone="success" />
+    <zen-stat-card label="Đang xử lý" [value]="stats().processing" icon="refresh" tone="info" />
+    <zen-stat-card label="Lỗi" [value]="stats().failed" icon="alert-triangle" tone="danger" />
+  </div>
+
+  <zen-card padding="sm">
+    <zen-toolbar>
+      <zen-search class="zen-toolbar-grow" size="sm" placeholder="Tìm theo tiêu đề..." [debounce]="400" (search)="search($event)" />
+      <zen-select class="zen-toolbar-item" [options]="statusOptions" [ngModel]="statusFilter()" (ngModelChange)="setStatus($event)" placeholder="Trạng thái" />
+      <div toolbar-end>
+        <button type="button" class="zen-btn zen-btn--outline" (click)="load()" [disabled]="loading()" title="Làm mới">
+          <zen-icon name="refresh" [class.zen-spin]="loading()" />
+          <span>Làm mới</span>
+        </button>
+      </div>
+    </zen-toolbar>
+  </zen-card>
+
+  @if (error()) {
+    <zen-alert tone="danger" dismissible (dismissed)="error.set(null)">{{ error() }}</zen-alert>
+  }
+
+  @if (loading() && !videos().length) {
+    <zen-loading message="Đang tải danh sách video..." />
+  } @else if (!videos().length) {
+    <zen-empty-state icon="play" heading="Chưa có video" description="Bấm “Thêm video” để tạo bài tập đầu tiên, rồi tải file video lên." />
+  } @else {
+    <zen-card padding="none">
+      <div class="zen-table-wrap">
+        <table class="zen-table video-table">
+          <thead>
+            <tr>
+              <th class="col-video">Video</th>
+              <th>Trạng thái</th>
+              <th class="is-right">Thời lượng</th>
+              <th>Huấn luyện viên</th>
+              <th class="is-right">Lượt xem</th>
+              <th class="is-actions">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of videos(); track v.id) {
+              @let acts = actions(v);
+              @let up = uploads()[v.id];
+              <tr [attr.data-video-id]="v.id">
+                <td class="is-wrap col-video">
+                  <div class="video-cell">
+                    <div class="mini-thumb">
+                      @if (v.thumbnailUrl) { <img [src]="v.thumbnailUrl" alt="" loading="lazy" /> } @else { <zen-icon name="play" [size]="16" /> }
+                      @if (v.durationSeconds) { <span class="thumb-duration zen-num">{{ formatDuration(v.durationSeconds) }}</span> }
+                    </div>
+                    <div class="video-cell-text">
+                      <span class="cell-primary video-title" [title]="v.title">{{ v.title }}</span>
+                      <div class="meta-pills">
+                        <span class="meta-pill" [class.is-muted]="!levelLabel(v.level)">{{ levelLabel(v.level) || 'Chưa chọn cấp độ' }}</span>
+                        @if (v.isFreePreview) { <span class="meta-pill is-free">Miễn phí</span> }
+                        @for (id of v.tagIds; track id) {
+                          @if (tagNames().get(id)) { <span class="meta-pill is-tag">#{{ tagNames().get(id) }}</span> }
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <zen-badge [tone]="statusTone(v.status)" dot>{{ statusLabel(v.status) }}</zen-badge>
+                  @if (v.status === 'FAILED' && v.processingError) {
+                    <span class="cell-sub error-text">{{ v.processingError }}</span>
+                  }
+                  @if (up) {
+                    <div class="upload-progress" [attr.data-phase]="up.phase">
+                      @switch (up.phase) {
+                        @case ('preparing') { <span class="cell-sub">Đang chuẩn bị tải lên...</span> }
+                        @case ('uploading') {
+                          <div class="bar"><span [style.width.%]="up.percent"></span></div>
+                          <span class="cell-sub zen-num">Đang tải lên {{ up.percent }}%
+                            <button type="button" class="link-btn" (click)="cancelUpload(v.id)">Hủy</button>
+                          </span>
+                        }
+                        @case ('processing') { <span class="cell-sub">Đang chuyển mã, tự kiểm tra mỗi 10 giây...</span> }
+                        @case ('error') { <span class="cell-sub error-text">{{ up.message }}</span> }
+                      }
+                    </div>
+                  }
+                </td>
+                <td class="is-right zen-num" [class.cell-muted]="!v.durationSeconds">{{ v.durationSeconds ? formatDuration(v.durationSeconds) : '—' }}</td>
+                <td>
+                  @if (v.instructorName) {
+                    <div class="zen-cell-user">
+                      <zen-avatar [name]="v.instructorName" size="sm" />
+                      <span>{{ v.instructorName }}</span>
+                    </div>
+                  } @else {
+                    <span class="cell-muted">Chưa phân công</span>
+                  }
+                </td>
+                <td class="is-right zen-num">
+                  <span class="viewers"><zen-icon name="eye" [size]="14" />{{ v.viewers }}</span>
+                </td>
+                <td class="is-actions">
+                  <div class="row-actions">
+                    @if (acts.has('upload') && (!up || up.phase === 'error')) {
+                      <label class="zen-btn zen-btn--primary zen-btn--sm upload-btn" data-action="upload">
+                        <zen-icon name="upload" [size]="14" />
+                        <span>{{ v.status === 'DRAFT' ? 'Tải video lên' : 'Tải lại' }}</span>
+                        <input type="file" accept="video/*" (change)="onFileSelected(v, $event)" hidden />
+                      </label>
+                    }
+                    @if (acts.has('publish')) {
+                      <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" data-action="publish" [disabled]="busyId() === v.id" (click)="publish(v)">Xuất bản</button>
+                    }
+                    @if (acts.has('refresh')) {
+                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" data-action="refresh" [disabled]="busyId() === v.id" (click)="refresh(v)">Kiểm tra trạng thái</button>
+                    }
+                    @if (acts.has('preview')) {
+                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" data-action="preview" [disabled]="busyId() === v.id" (click)="preview(v)">
+                        <zen-icon name="play" [size]="14" />
+                        <span>Xem thử</span>
+                      </button>
+                    }
+                    @if (acts.has('unpublish')) {
+                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" data-action="unpublish" [disabled]="busyId() === v.id" (click)="unpublish(v)">Ngừng xuất bản</button>
+                    }
+                    @if (acts.has('restore')) {
+                      <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" data-action="restore" [disabled]="busyId() === v.id" (click)="restore(v)">Khôi phục</button>
+                    }
+                    @if (acts.has('edit') || acts.has('archive') || acts.has('delete')) {
+                      <div class="icon-actions">
+                        @if (acts.has('edit')) {
+                          <button type="button" class="icon-btn" data-action="edit" (click)="openEdit(v)" title="Sửa thông tin" aria-label="Sửa thông tin">
+                            <zen-icon name="edit" [size]="15" />
+                          </button>
+                        }
+                        @if (acts.has('archive')) {
+                          <button type="button" class="icon-btn" data-action="archive" [disabled]="busyId() === v.id" (click)="archive(v)" title="Ẩn video" aria-label="Ẩn video">
+                            <zen-icon name="eye-off" [size]="15" />
+                          </button>
+                        }
+                        @if (acts.has('delete')) {
+                          <button type="button" class="icon-btn is-danger" data-action="delete" [disabled]="busyId() === v.id" (click)="remove(v)" title="Xóa video" aria-label="Xóa video">
+                            <zen-icon name="trash" [size]="15" />
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </zen-card>
+  }
+</div>
+
+@if (formOpen()) {
+  <zen-modal
+    [heading]="editing() ? 'Sửa thông tin video' : 'Thêm video mới'"
+    subtitle="Sau khi lưu, tải file video lên ở danh sách"
+    icon="play"
+    size="lg"
+    [closable]="!saving()"
+    (closed)="closeForm()"
+  >
+    @let f = form();
+    <div class="zen-form-grid">
+      <label class="zen-field zen-field--full">
+        <span class="zen-label">Tiêu đề <span class="zen-required">*</span></span>
+        <input class="zen-control" maxlength="200" [ngModel]="f.title" (ngModelChange)="patchForm({ title: $event })" placeholder="Ví dụ: Hatha cơ bản cho người mới" />
+      </label>
+      <label class="zen-field zen-field--full">
+        <span class="zen-label">Mô tả</span>
+        <textarea class="zen-control" rows="3" [ngModel]="f.description" (ngModelChange)="patchForm({ description: $event })"></textarea>
+      </label>
+      <div class="zen-field">
+        <span class="zen-label">Cấp độ</span>
+        <zen-select [options]="levelOptions" [ngModel]="f.level" (ngModelChange)="patchForm({ level: $event })" placeholder="Chọn cấp độ" />
+      </div>
+      @if (canManage()) {
+        <div class="zen-field">
+          <span class="zen-label">Huấn luyện viên</span>
+          <zen-select [options]="instructorOptions()" [ngModel]="f.instructorId" (ngModelChange)="patchForm({ instructorId: $event })" placeholder="Chọn huấn luyện viên" />
+        </div>
+        <label class="zen-check zen-field--full">
+          <input type="checkbox" [checked]="f.isFreePreview" (change)="patchForm({ isFreePreview: !f.isFreePreview })" />
+          <span>Miễn phí (học viên chưa có gói online cũng xem được)</span>
+        </label>
+      }
+      <div class="zen-field zen-field--full">
+        <span class="zen-label">Không phù hợp cho</span>
+        <div class="check-row">
+          <label class="zen-check">
+            <input type="checkbox" [checked]="f.notForPregnancy" (change)="patchForm({ notForPregnancy: !f.notForPregnancy })" />
+            <span>Phụ nữ mang thai</span>
+          </label>
+          <label class="zen-check">
+            <input type="checkbox" [checked]="f.notForHeartBp" (change)="patchForm({ notForHeartBp: !f.notForHeartBp })" />
+            <span>Bệnh tim / huyết áp</span>
+          </label>
+          <label class="zen-check">
+            <input type="checkbox" [checked]="f.notForInjuries" (change)="patchForm({ notForInjuries: !f.notForInjuries })" />
+            <span>Đang có chấn thương</span>
+          </label>
+        </div>
+      </div>
+      <label class="zen-field zen-field--full">
+        <span class="zen-label">Chống chỉ định / lưu ý</span>
+        <textarea class="zen-control" rows="2" [ngModel]="f.contraindications" (ngModelChange)="patchForm({ contraindications: $event })"
+                  placeholder="Ví dụ: Tránh nếu đau lưng cấp, thoát vị đĩa đệm"></textarea>
+      </label>
+      <div class="zen-field zen-field--full">
+        <span class="zen-label">Chủ đề</span>
+        @if (tags().length) {
+          <div class="tag-picker" role="group" aria-label="Chủ đề">
+            @for (t of tags(); track t.id) {
+              <button type="button" class="zen-chip" [class.is-active]="f.tagIds.includes(t.id)" [attr.aria-pressed]="f.tagIds.includes(t.id)" (click)="toggleTag(t.id)">
+                {{ t.name }}
+              </button>
+            }
+          </div>
+        } @else {
+          <span class="zen-hint">Chưa có chủ đề nào{{ canManage() ? '. Thêm ở nút “Chủ đề”.' : '.' }}</span>
+        }
+      </div>
+    </div>
+    @if (formError()) {
+      <p class="zen-error form-error">{{ formError() }}</p>
+    }
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeForm()" [disabled]="saving()">Hủy</button>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submit()" [disabled]="saving()">
+        {{ saving() ? 'Đang lưu...' : (editing() ? 'Lưu thay đổi' : 'Tạo video') }}
+      </button>
+    </ng-container>
+  </zen-modal>
+}
+
+@if (previewUrl(); as url) {
+  <zen-modal [heading]="'Xem thử: ' + previewTitle()" subtitle="Bản xem thử không tính tiến độ" icon="play" size="xl" (closed)="closePreview()">
+    <div class="preview-box">
+      <iframe [src]="url" title="Xem thử video" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+    </div>
+  </zen-modal>
+}
+
+@if (tagsOpen()) {
+  <zen-modal heading="Chủ đề video" subtitle="Dùng để lọc thư viện" icon="tag" size="md" (closed)="tagsOpen.set(false)">
+    <div class="tag-form">
+      <input class="zen-control" placeholder="Mã (VD: HATHA)" maxlength="50" [ngModel]="newTagCode()" (ngModelChange)="newTagCode.set($event)" />
+      <input class="zen-control" placeholder="Tên hiển thị" maxlength="100" [ngModel]="newTagName()" (ngModelChange)="newTagName.set($event)" (keydown.enter)="createTag()" />
+      <button type="button" class="zen-btn zen-btn--primary" (click)="createTag()" [disabled]="savingTag()">
+        <zen-icon name="plus" [size]="14" />
+        <span>Thêm</span>
+      </button>
+    </div>
+    @if (tagError()) { <p class="zen-error">{{ tagError() }}</p> }
+    @if (!tags().length) {
+      <zen-empty-state compact icon="tag" heading="Chưa có chủ đề" />
+    } @else {
+      <ul class="tag-list">
+        @for (t of tags(); track t.id) {
+          <li>
+            <span class="tag-name">{{ t.name }}</span>
+            <span class="zen-mono zen-text-muted">{{ t.code }}</span>
+            <span class="zen-text-muted zen-text-xs">{{ t.videoCount }} video</span>
+            <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm danger" (click)="deleteTag(t)" title="Xóa chủ đề">
+              <zen-icon name="trash" [size]="14" />
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </zen-modal>
+}

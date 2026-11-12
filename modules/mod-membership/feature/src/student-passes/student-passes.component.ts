@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, finalize, catchError, of } from 'rxjs';
-import { MembershipApi, MembershipResp, PosApi, StudentOrderHistoryResp } from '@yoga/mod-membership/data-access';
+import { accessScopeLabel, MembershipApi, MembershipResp, PosApi, StudentOrderHistoryResp } from '@yoga/mod-membership/data-access';
 import { Branch, BranchApi } from '@yoga/mod-branch/data-access';
 import { BookingApi, StudentBookingDetail, StudentWaitlistResp, WaitlistApi, WorkoutHistoryItem } from '@yoga/mod-schedule/data-access';
 import { AuthService } from '@yoga/platform/auth';
@@ -28,6 +28,7 @@ export class StudentPassesComponent implements OnInit {
   private readonly branchApi = inject(BranchApi, { optional: true });
 
   protected readonly auth = inject(AuthService);
+  protected readonly scopeLabel = accessScopeLabel;
   protected readonly activeTab = signal<'passes' | 'bookings' | 'waitlist'>('passes');
   protected readonly passes = signal<readonly MembershipResp[]>([]);
   protected readonly bookings = signal<readonly StudentBookingDetail[]>([]);

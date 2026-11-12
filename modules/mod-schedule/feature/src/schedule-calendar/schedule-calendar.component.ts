@@ -5,7 +5,9 @@ import { ZenConfirmService, ZenToastService } from '@yoga/platform/api';
 import { RouterModule } from '@angular/router';
 import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
 import { FormsModule } from '@angular/forms';
+import { isInOnlineJoinWindow, ONLINE_JOIN_LEAD_MINUTES, onlineJoinOpensAt, openOnlineJoin } from '../online-classes/online-join';
 import {
+  AttendanceMode,
   BookingApi,
   BranchItem,
   ClassSchedule,
@@ -18,6 +20,23 @@ import {
   WaitlistApi,
   WaitlistJoinReq
 } from '@yoga/mod-schedule/data-access';
+
+/** One seat type of a hybrid class as offered in the booking / waitlist modal. */
+export interface SeatChoice {
+  mode: AttendanceMode;
+  label: string;
+  booked: number;
+  capacity: number;
+  /** The selected pass may take this seat type. */
+  allowed: boolean;
+  /** No free seat of this type left. */
+  full: boolean;
+  /** Not selectable in the current modal (booking: full or not allowed; waitlist: not full or not allowed). */
+  disabled: boolean;
+  hint: string;
+}
+
+const SEAT_TYPES: AttendanceMode[] = ['IN_PERSON', 'ONLINE'];
 
 @Component({
   selector: 'yoga-schedule-calendar',
@@ -37,7 +56,7 @@ export class ScheduleCalendarComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   /** Students may enter an online class this many minutes before it starts (backend: yoga.online.join-window-minutes). */
-  static readonly JOIN_LEAD_MINUTES = 15;
+  static readonly JOIN_LEAD_MINUTES = ONLINE_JOIN_LEAD_MINUTES;
   /** Ticks every 30 s so the join button appears without reloading. */
   readonly now = signal(Date.now());
   readonly joiningBookingId = signal<string | null>(null);
@@ -96,6 +115,11 @@ export class ScheduleCalendarComponent implements OnInit {
   readonly waitlistModalSchedule = signal<ClassSchedule | null>(null);
   readonly selectedPassId = signal<string>('');
   readonly selectedMatNumber = signal<number>(1);
+  /** Seat chosen for a HYBRID class (studio or online); unused for other classes. */
+  readonly selectedAttendanceMode = signal<AttendanceMode | null>(null);
+
+  readonly bookingSeatChoices = computed(() => this.seatChoices(this.bookingModalSchedule(), this.selectedPassId(), 'booking'));
+  readonly waitlistSeatChoices = computed(() => this.seatChoices(this.waitlistModalSchedule(), this.selectedPassId(), 'waitlist'));
   readonly isSubmittingBooking = signal(false);
   readonly isSubmittingWaitlist = signal(false);
 
@@ -364,8 +388,10 @@ export class ScheduleCalendarComponent implements OnInit {
     }
     this.bookingModalSchedule.set(schedule);
     const passes = this.eligiblePasses(schedule);
-    this.selectedPassId.set(passes[0]?.id ?? '');
+    const pass = passes.find(p => this.bookableSeats(schedule, p).length > 0) ?? passes[0];
+    this.selectedPassId.set(pass?.id ?? '');
     this.selectedMatNumber.set(1);
+    this.selectedAttendanceMode.set(this.defaultSeat(schedule, pass?.id ?? '', 'booking'));
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }
@@ -388,6 +414,7 @@ export class ScheduleCalendarComponent implements OnInit {
     this.waitlistModalSchedule.set(schedule);
     const passes = this.eligiblePasses(schedule);
     this.selectedPassId.set(passes[0]?.id ?? '');
+    this.selectedAttendanceMode.set(this.defaultSeat(schedule, passes[0]?.id ?? '', 'waitlist'));
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }
@@ -412,6 +439,15 @@ export class ScheduleCalendarComponent implements OnInit {
       return;
     }
 
+    const seat = this.selectedAttendanceMode();
+    if (this.isHybrid(schedule)) {
+      const choice = this.bookingSeatChoices().find(c => c.mode === seat);
+      if (!choice || choice.disabled) {
+        this.errorMessage.set('Lớp hybrid: vui lòng chọn học tại phòng hoặc học online (loại chỗ còn trống).');
+        return;
+      }
+    }
+
     this.isSubmittingBooking.set(true);
     this.errorMessage.set(null);
 
@@ -420,12 +456,14 @@ export class ScheduleCalendarComponent implements OnInit {
       studentId: this.currentStudentId,
       membershipId: passId
     };
+    if (this.isHybrid(schedule) && seat) req.attendanceMode = seat;
+    const onlineSeat = this.isOnline(schedule) || (this.isHybrid(schedule) && seat === 'ONLINE');
 
     this.bookingApi.createBooking(req).subscribe({
       next: (booking) => {
         this.isSubmittingBooking.set(false);
         this.closeBookingModal();
-        this.successMessage.set(this.isOnline(schedule)
+        this.successMessage.set(onlineSeat
           ? `Đặt chỗ lớp online thành công! Mã booking: ${booking.bookingCode}. Nút "Vào lớp" sẽ mở trong mục Lịch đã đặt từ ${ScheduleCalendarComponent.JOIN_LEAD_MINUTES} phút trước giờ học.`
           : `Đặt chỗ thành công! Mã booking: ${booking.bookingCode}. Vị trí thảm số ${booking.matNumber ?? 'được sắp xếp tại phòng'}. Hệ thống đã giữ 1 lượt tập.`);
 
@@ -457,6 +495,15 @@ export class ScheduleCalendarComponent implements OnInit {
       return;
     }
 
+    const seat = this.selectedAttendanceMode();
+    if (this.isHybrid(schedule)) {
+      const choice = this.waitlistSeatChoices().find(c => c.mode === seat);
+      if (!choice || choice.disabled) {
+        this.errorMessage.set('Lớp hybrid: vui lòng chọn loại chỗ (tại phòng hoặc online) đã kín để vào hàng chờ.');
+        return;
+      }
+    }
+
     this.isSubmittingWaitlist.set(true);
     this.errorMessage.set(null);
 
@@ -465,6 +512,7 @@ export class ScheduleCalendarComponent implements OnInit {
       studentId: this.currentStudentId,
       membershipId: passId
     };
+    if (this.isHybrid(schedule) && seat) req.attendanceMode = seat;
 
     this.waitlistApi.joinWaitlist(req).subscribe({
       next: (res) => {
@@ -542,6 +590,30 @@ export class ScheduleCalendarComponent implements OnInit {
 
   eligiblePasses(schedule: ClassSchedule | null): StudentPassItem[] {
     if (!schedule) return [];
+    return this.studentPasses().filter(p => this.passSeats(schedule, p).length > 0);
+  }
+
+  /**
+   * Seat types a pass may take in a class, ignoring how full it is. Hybrid classes follow the seat:
+   * an online seat accepts every active pass (any branch, ONLINE scope included); a studio seat needs a
+   * studio pass of the class's branch or an all-branches pass. Other classes have one implied seat.
+   */
+  passSeats(schedule: ClassSchedule, p: StudentPassItem): AttendanceMode[] {
+    if (!this.isUsablePassOn(schedule, p)) return [];
+    if (this.isHybrid(schedule)) {
+      return SEAT_TYPES.filter(seat => seat === 'ONLINE' || this.passTakesStudioSeat(schedule, p));
+    }
+    // Online passes are only for online classes; online classes accept passes of every branch.
+    if (this.isOnline(schedule)) return ['ONLINE'];
+    return this.passTakesStudioSeat(schedule, p) ? ['IN_PERSON'] : [];
+  }
+
+  private passTakesStudioSeat(schedule: ClassSchedule, p: StudentPassItem): boolean {
+    if (p.accessScope === 'ONLINE') return false;
+    return p.isAllBranches || !schedule.branchId || p.registeredBranchId === schedule.branchId;
+  }
+
+  private isUsablePassOn(schedule: ClassSchedule, p: StudentPassItem): boolean {
     let date = '';
     try {
       if (schedule.startTime) {
@@ -550,31 +622,96 @@ export class ScheduleCalendarComponent implements OnInit {
     } catch {
       date = '';
     }
-    return this.studentPasses().filter(p => {
-      if (p.status !== 'ACTIVE' || (p.remainingSessions != null && p.remainingSessions <= 0)) {
-        return false;
+    if (p.status !== 'ACTIVE' || (p.remainingSessions != null && p.remainingSessions <= 0)) {
+      return false;
+    }
+    if (date) {
+      if (p.startDate && p.startDate > date) return false;
+      if (p.endDate && p.endDate < date) return false;
+    }
+    return true;
+  }
+
+  /** Whether a seat type of the class still has a free seat. */
+  seatFree(schedule: ClassSchedule, seat: AttendanceMode): boolean {
+    if (this.isHybrid(schedule) && seat === 'ONLINE') return this.onlineSeatsLeft(schedule) > 0;
+    return schedule.availableSlots > 0;
+  }
+
+  onlineSeatsLeft(schedule: ClassSchedule): number {
+    return Math.max(0, (schedule.onlineCapacity ?? 0) - (schedule.onlineBookedCount ?? 0));
+  }
+
+  /** Seat types the pass can book right now (allowed and not full). */
+  bookableSeats(schedule: ClassSchedule, p: StudentPassItem): AttendanceMode[] {
+    return this.passSeats(schedule, p).filter(seat => this.seatFree(schedule, seat));
+  }
+
+  /** The card offers booking when some eligible pass has a free seat it may take; otherwise the waitlist. */
+  hasBookableSeat(schedule: ClassSchedule): boolean {
+    if (!this.isHybrid(schedule)) return schedule.availableSlots > 0;
+    return this.eligiblePasses(schedule).some(p => this.bookableSeats(schedule, p).length > 0);
+  }
+
+  seatChoices(schedule: ClassSchedule | null, passId: string, purpose: 'booking' | 'waitlist'): SeatChoice[] {
+    if (!schedule || !this.isHybrid(schedule)) return [];
+    const pass = this.studentPasses().find(p => p.id === passId);
+    const allowedSeats = pass ? this.passSeats(schedule, pass) : [];
+    return SEAT_TYPES.map(mode => {
+      const studio = mode === 'IN_PERSON';
+      const booked = studio ? schedule.bookedCount : (schedule.onlineBookedCount ?? 0);
+      const capacity = studio ? schedule.maxCapacity : (schedule.onlineCapacity ?? 0);
+      const allowed = allowedSeats.includes(mode);
+      const full = !this.seatFree(schedule, mode);
+      const disabled = !allowed || (purpose === 'booking' ? full : !full);
+      let hint: string;
+      if (!allowed) {
+        hint = pass?.accessScope === 'ONLINE' ? 'Thẻ online chỉ học online' : 'Thẻ đơn cơ sở khác: chỉ học online';
+      } else if (purpose === 'booking') {
+        hint = full ? 'Đã kín chỗ' : `Còn ${capacity - booked} chỗ`;
+      } else {
+        hint = full ? 'Đã kín · nhận hàng chờ' : 'Còn chỗ trống, hãy đặt chỗ';
       }
-      if (date) {
-        if (p.startDate && p.startDate > date) return false;
-        if (p.endDate && p.endDate < date) return false;
-      }
-      // Online classes accept passes of every branch.
-      if (!this.isOnline(schedule) && !p.isAllBranches && schedule.branchId && p.registeredBranchId !== schedule.branchId) {
-        return false;
-      }
-      return true;
+      return { mode, label: studio ? 'Học tại phòng' : 'Học online', booked, capacity, allowed, full, disabled, hint };
     });
+  }
+
+  private defaultSeat(schedule: ClassSchedule, passId: string, purpose: 'booking' | 'waitlist'): AttendanceMode | null {
+    return this.seatChoices(schedule, passId, purpose).find(c => !c.disabled)?.mode ?? null;
+  }
+
+  /** Changing the pass may change which seat types it can take (e.g. an online pass). */
+  onModalPassChange(passId: string, purpose: 'booking' | 'waitlist'): void {
+    this.selectedPassId.set(passId);
+    const schedule = purpose === 'booking' ? this.bookingModalSchedule() : this.waitlistModalSchedule();
+    if (!schedule || !this.isHybrid(schedule)) return;
+    const choices = this.seatChoices(schedule, passId, purpose);
+    if (!choices.some(c => c.mode === this.selectedAttendanceMode() && !c.disabled)) {
+      this.selectedAttendanceMode.set(choices.find(c => !c.disabled)?.mode ?? null);
+    }
+  }
+
+  selectSeat(choice: SeatChoice): void {
+    if (!choice.disabled) this.selectedAttendanceMode.set(choice.mode);
   }
 
   isOnline(item: { deliveryMode?: string } | null | undefined): boolean {
     return item?.deliveryMode === 'ONLINE';
   }
 
+  isHybrid(item: { deliveryMode?: string } | null | undefined): boolean {
+    return item?.deliveryMode === 'HYBRID';
+  }
+
+  /** The booking is attended on Zoom: an online class, or the online seat of a hybrid class. */
+  isOnlineSeat(b: StudentBookingDetail): boolean {
+    return this.isOnline(b) || (this.isHybrid(b) && b.attendanceMode === 'ONLINE');
+  }
+
   /** Join opens shortly before class and stays open until it ends, so a dropped connection can rejoin. */
   canJoinOnline(b: StudentBookingDetail): boolean {
-    if (!this.isOnline(b) || (b.status !== 'CONFIRMED' && b.status !== 'ATTENDED')) return false;
-    const now = this.now();
-    return now >= Date.parse(b.startTime) - ScheduleCalendarComponent.JOIN_LEAD_MINUTES * 60_000 && now < Date.parse(b.endTime);
+    if (!this.isOnlineSeat(b) || (b.status !== 'CONFIRMED' && b.status !== 'ATTENDED')) return false;
+    return isInOnlineJoinWindow(b.startTime, b.endTime, this.now());
   }
 
   isUpcoming(b: StudentBookingDetail): boolean {
@@ -582,31 +719,22 @@ export class ScheduleCalendarComponent implements OnInit {
   }
 
   joinOpensLabel(b: StudentBookingDetail): string {
-    return this.formatTime(new Date(Date.parse(b.startTime) - ScheduleCalendarComponent.JOIN_LEAD_MINUTES * 60_000).toISOString());
+    return this.formatTime(onlineJoinOpensAt(b.startTime).toISOString());
   }
 
   joinOnline(b: StudentBookingDetail): void {
     if (this.joiningBookingId()) return;
-    // Open the tab inside the click so pop-up blockers allow it; the link is filled in once the backend answers.
-    const tab = window.open('', '_blank');
     this.joiningBookingId.set(b.id);
-    this.onlineApi.join(b.id).subscribe({
-      next: (res) => {
+    openOnlineJoin(this.onlineApi.join(b.id), {
+      joined: () => {
         this.joiningBookingId.set(null);
-        if (tab) {
-          tab.opener = null;
-          tab.location.href = res.joinUrl;
-        } else {
-          window.location.href = res.joinUrl;
-        }
         if (b.status === 'CONFIRMED') {
           this.toast.success(`Đã điểm danh lớp ${b.className}. Chúc bạn buổi tập vui vẻ!`);
           this.loadMyBookings();
         }
       },
-      error: (err) => {
+      failed: (err) => {
         this.joiningBookingId.set(null);
-        tab?.close();
         this.toast.error(err?.error?.message || 'Không thể vào lớp online. Vui lòng thử lại.');
       }
     });

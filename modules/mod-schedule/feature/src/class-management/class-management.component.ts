@@ -50,6 +50,9 @@ export class ClassManagementComponent implements OnInit {
   private readonly toast = inject(ZenToastService);
 
   private readonly route = inject(ActivatedRoute);
+
+  /** Default number of online seats of a new hybrid class (capped by the online room capacity). */
+  static readonly DEFAULT_ONLINE_SEATS = 20;
   // Active Tab
   readonly activeTab = signal<'schedules' | 'class-types'>('schedules');
 
@@ -91,6 +94,10 @@ export class ClassManagementComponent implements OnInit {
     startTimeStr: string;
     durationMinutes: number;
     maxCapacity: number;
+    /** Hybrid: the studio class is also streamed on Zoom through an online room of the same branch. */
+    hybrid: boolean;
+    liveRoomId: string;
+    onlineCapacity: number;
   }>({
     branchId: '',
     roomId: '',
@@ -99,7 +106,10 @@ export class ClassManagementComponent implements OnInit {
     date: this.getDefaultDate(),
     startTimeStr: '08:00',
     durationMinutes: 60,
-    maxCapacity: 20
+    maxCapacity: 20,
+    hybrid: false,
+    liveRoomId: '',
+    onlineCapacity: ClassManagementComponent.DEFAULT_ONLINE_SEATS
   });
 
   // Modal State: Create Class Type
@@ -190,6 +200,26 @@ export class ClassManagementComponent implements OnInit {
       sublabel: `${r.maxCapacity} chỗ`
     }));
   });
+
+  /** The studio room picked in the create form, when it is a physical room (hybrid streaming possible). */
+  readonly selectedFormRoomIsPhysical = computed(() => {
+    const room = this.rooms().find(r => r.id === this.scheduleForm().roomId);
+    return !!room && room.roomType !== 'VIRTUAL';
+  });
+
+  /** Online rooms of the form's branch that can stream a hybrid class. */
+  readonly liveRooms = computed<RoomItem[]>(() => {
+    const branchId = this.scheduleForm().branchId;
+    return this.rooms().filter(r => r.roomType === 'VIRTUAL' && r.isActive !== false && r.branchId === branchId);
+  });
+
+  readonly liveRoomSelectOptions = computed(() => this.liveRooms().map(r => ({
+    value: r.id,
+    label: r.name,
+    sublabel: `${r.maxCapacity} chỗ · Zoom: ${r.liveHostAccount || 'tài khoản mặc định'}`
+  })));
+
+  readonly selectedLiveRoom = computed(() => this.liveRooms().find(r => r.id === this.scheduleForm().liveRoomId) ?? null);
 
   readonly currentContextRooms = computed<RoomItem[]>(() => {
     const branchId = this.selectedBranchId();
@@ -1129,7 +1159,10 @@ export class ClassManagementComponent implements OnInit {
       date: this.getDefaultDate(),
       startTimeStr: '08:00',
       durationMinutes: this.classTypes()[0]?.defaultDurationMinutes ?? 60,
-      maxCapacity: initialRoom?.maxCapacity ?? 20
+      maxCapacity: initialRoom?.maxCapacity ?? 20,
+      hybrid: false,
+      liveRoomId: '',
+      onlineCapacity: ClassManagementComponent.DEFAULT_ONLINE_SEATS
     });
 
     this.errorMessage.set(null);
@@ -1146,7 +1179,7 @@ export class ClassManagementComponent implements OnInit {
     if (this.auth.isBranchManager()) {
       return;
     }
-    this.scheduleForm.update(f => ({ ...f, branchId }));
+    this.scheduleForm.update(f => ({ ...f, branchId, hybrid: false, liveRoomId: '' }));
     this.loadRooms(branchId);
   }
 
@@ -1155,8 +1188,34 @@ export class ClassManagementComponent implements OnInit {
     this.scheduleForm.update(f => ({
       ...f,
       roomId,
-      maxCapacity: r ? r.maxCapacity : f.maxCapacity
+      maxCapacity: r ? r.maxCapacity : f.maxCapacity,
+      // Only a studio (physical) room can be streamed as a hybrid class.
+      hybrid: r?.roomType === 'VIRTUAL' ? false : f.hybrid
     }));
+  }
+
+  setScheduleFormHybrid(on: boolean): void {
+    if (on && !this.selectedFormRoomIsPhysical()) return;
+    const live = on ? (this.selectedLiveRoom() ?? this.liveRooms()[0] ?? null) : null;
+    this.scheduleForm.update(f => ({
+      ...f,
+      hybrid: on,
+      liveRoomId: live?.id ?? '',
+      onlineCapacity: live ? Math.min(ClassManagementComponent.DEFAULT_ONLINE_SEATS, live.maxCapacity) : f.onlineCapacity
+    }));
+  }
+
+  onScheduleFormLiveRoomChange(liveRoomId: string): void {
+    const live = this.liveRooms().find(r => r.id === liveRoomId);
+    this.scheduleForm.update(f => ({
+      ...f,
+      liveRoomId,
+      onlineCapacity: live ? Math.min(Math.max(1, Number(f.onlineCapacity) || 1), live.maxCapacity) : f.onlineCapacity
+    }));
+  }
+
+  onScheduleFormOnlineCapacityChange(value: number): void {
+    this.scheduleForm.update(f => ({ ...f, onlineCapacity: Number(value) }));
   }
 
   onScheduleFormClassTypeChange(classTypeId: string): void {
@@ -1237,6 +1296,21 @@ export class ClassManagementComponent implements OnInit {
       maxCapacity: Number(form.maxCapacity)
     };
 
+    if (form.hybrid) {
+      const live = this.liveRooms().find(r => r.id === form.liveRoomId);
+      if (!this.selectedFormRoomIsPhysical() || !live) {
+        this.toast.warning('Lớp hybrid cần phòng tập thường và một phòng online của cùng cơ sở để phát trực tiếp.');
+        return;
+      }
+      const onlineSeats = Number(form.onlineCapacity);
+      if (!Number.isInteger(onlineSeats) || onlineSeats < 1 || onlineSeats > live.maxCapacity) {
+        this.toast.warning(`Số chỗ online phải từ 1 đến ${live.maxCapacity} (sức chứa phòng online).`);
+        return;
+      }
+      req.liveRoomId = live.id;
+      req.onlineCapacity = onlineSeats;
+    }
+
     this.isSubmittingSchedule.set(true);
     this.errorMessage.set(null);
 
@@ -1244,7 +1318,7 @@ export class ClassManagementComponent implements OnInit {
       next: () => {
         this.isSubmittingSchedule.set(false);
         this.isCreateScheduleOpen.set(false);
-        this.toast.success('Đã mở ca học mới thành công vào lịch!');
+        this.toast.success(form.hybrid ? 'Đã mở lớp hybrid: học viên đặt chỗ tại phòng hoặc học online qua Zoom.' : 'Đã mở ca học mới thành công vào lịch!');
         this.loadSchedules();
       },
       error: (err) => {
@@ -1278,6 +1352,26 @@ export class ClassManagementComponent implements OnInit {
         this.toast.error(err?.error?.message || 'Không thể hủy ca học.');
       }
     });
+  }
+
+  isHybrid(schedule: { deliveryMode?: string } | null | undefined): boolean {
+    return schedule?.deliveryMode === 'HYBRID';
+  }
+
+  /** Online and hybrid classes have a Zoom room. */
+  hasZoomRoom(schedule: { deliveryMode?: string } | null | undefined): boolean {
+    return schedule?.deliveryMode === 'ONLINE' || schedule?.deliveryMode === 'HYBRID';
+  }
+
+  /** Short capacity text of a card: studio seats, plus online seats for hybrid classes. */
+  capacityLabel(schedule: ClassSchedule): string {
+    const studio = `${schedule.bookedCount}/${schedule.maxCapacity}`;
+    return this.isHybrid(schedule) ? `${studio} · Online ${schedule.onlineBookedCount ?? 0}/${schedule.onlineCapacity ?? 0}` : studio;
+  }
+
+  isScheduleFull(schedule: ClassSchedule): boolean {
+    const studioFull = schedule.bookedCount >= schedule.maxCapacity;
+    return this.isHybrid(schedule) ? studioFull && (schedule.onlineBookedCount ?? 0) >= (schedule.onlineCapacity ?? 0) : studioFull;
   }
 
   // --- Modal Openers: Attendees ---

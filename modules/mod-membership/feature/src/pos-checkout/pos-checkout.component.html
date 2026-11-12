@@ -262,8 +262,8 @@
                   (click)="selectPlan(plan.id)"
                 >
                   <div class="zen-row zen-row--between">
-                    <zen-badge size="sm" [tone]="plan.isAllBranches ? 'primary' : 'neutral'">
-                      {{ plan.isAllBranches ? 'Toàn hệ thống' : 'Cơ sở hiện tại' }}
+                    <zen-badge size="sm" [tone]="plan.accessScope === 'ONLINE' ? 'info' : (plan.isAllBranches ? 'primary' : 'neutral')">
+                      {{ plan.accessScope === 'ONLINE' ? 'Chỉ học online' : (plan.isAllBranches ? 'Toàn hệ thống' : 'Cơ sở hiện tại') }}
                     </zen-badge>
                     <span class="zen-text-xs zen-text-secondary zen-strong">
                       {{ plan.planType === 'SESSION_BASED' ? (plan.totalSessions + ' buổi') : (plan.durationDays + ' ngày') }}
@@ -339,7 +339,7 @@
                 }
               } @else {
               <div class="breakdown-row"><dt>Gói đã chọn</dt><dd>{{ itemName() || 'Chưa chọn gói' }}</dd></div>
-              <div class="breakdown-row"><dt>Phạm vi cơ sở</dt><dd>{{ selectedPlan()?.isAllBranches ? 'Toàn bộ các chi nhánh' : 'Cơ sở hiện tại' }}</dd></div>
+              <div class="breakdown-row"><dt>Phạm vi cơ sở</dt><dd>{{ selectedPlan()?.accessScope === 'ONLINE' ? 'Lớp online của mọi cơ sở' : (selectedPlan()?.isAllBranches ? 'Toàn bộ các chi nhánh' : 'Cơ sở hiện tại') }}</dd></div>
               @if (quote()?.currentMembership) {
                 <div class="breakdown-row"><dt>Giá gói mới</dt><dd class="zen-num">{{ selectedPlan()?.price | number:'1.0-0' }} ₫</dd></div>
                 <div class="breakdown-row"><dt>Giá trị thẻ cũ</dt><dd class="zen-num">{{ effectiveCredit() | number:'1.0-0' }} ₫</dd></div>

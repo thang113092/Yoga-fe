@@ -15,11 +15,19 @@ export interface ClassSchedule {
   bookedCount: number;
   availableSlots: number;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  /** ONLINE for classes taught in a virtual room (Zoom). */
+  /** ONLINE for classes taught in a virtual room (Zoom); HYBRID for studio classes also streamed on Zoom. */
   deliveryMode?: DeliveryMode;
+  /** HYBRID: the online (VIRTUAL) room of the same branch whose Zoom account streams the class. */
+  liveRoomId?: string | null;
+  /** HYBRID: online seats; maxCapacity/bookedCount/availableSlots are the studio seats. */
+  onlineCapacity?: number;
+  onlineBookedCount?: number;
 }
 
-export type DeliveryMode = 'IN_PERSON' | 'ONLINE';
+export type DeliveryMode = 'IN_PERSON' | 'ONLINE' | 'HYBRID';
+
+/** The seat a booking takes: studio mat or online (Zoom). Required when booking a HYBRID class. */
+export type AttendanceMode = 'IN_PERSON' | 'ONLINE';
 
 export interface Booking {
   id: string;
@@ -37,6 +45,8 @@ export interface CreateBookingReq {
   studentId: string;
   membershipId: string;
   matNumber?: number;
+  /** Required for HYBRID classes; omitted for other classes. */
+  attendanceMode?: AttendanceMode;
 }
 
 export interface CheckInReq {
@@ -81,6 +91,8 @@ export interface StudentPassItem {
   planId: string;
   status: string;
   isAllBranches: boolean;
+  /** STUDIO, ONLINE or HYBRID (V14); missing means STUDIO. */
+  accessScope?: string;
   registeredBranchId: string;
   totalSessions: number | null;
   remainingSessions: number | null;
@@ -103,12 +115,16 @@ export interface StudentBookingDetail {
   bookingTime: string;
   canCancel: boolean;
   deliveryMode?: DeliveryMode;
+  /** Seat of the booking; ONLINE seats join on Zoom, IN_PERSON seats check in by QR. */
+  attendanceMode?: AttendanceMode;
 }
 
 export interface WaitlistJoinReq {
   scheduleId: string;
   studentId: string;
   membershipId: string;
+  /** Required for HYBRID classes: the seat type the student waits for. */
+  attendanceMode?: AttendanceMode;
 }
 
 export interface WaitlistResp {
@@ -182,6 +198,10 @@ export interface CreateScheduleReq {
   startTime: string;
   endTime: string;
   maxCapacity: number;
+  /** HYBRID: online room (VIRTUAL, same branch) that streams the studio class. */
+  liveRoomId?: string;
+  /** HYBRID: number of online seats, 1..live room capacity. */
+  onlineCapacity?: number;
 }
 
 export interface ScheduleAttendee {

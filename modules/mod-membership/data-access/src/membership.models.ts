@@ -1,6 +1,19 @@
 export type PlanType = 'TIME_BASED' | 'SESSION_BASED' | 'COMBO';
 export type PaymentMethod = 'CASH' | 'POS_CARD' | 'BANK_TRANSFER_QR' | 'PAYOS';
 export type OnlinePaymentStatus = 'CREATED' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'NEEDS_RECONCILIATION' | 'RESOLVED';
+/** Where a plan's passes can be used (V14). STUDIO passes also join online live classes. */
+export type AccessScope = 'STUDIO' | 'ONLINE' | 'HYBRID';
+
+export const ACCESS_SCOPE_OPTIONS: ReadonlyArray<{ value: AccessScope; label: string; hint: string }> = [
+  { value: 'STUDIO', label: 'Tại phòng', hint: 'Lớp tại phòng tập và lớp online trực tiếp' },
+  { value: 'ONLINE', label: 'Online', hint: 'Chỉ lớp online trực tiếp (thư viện video ở giai đoạn sau)' },
+  { value: 'HYBRID', label: 'Kết hợp', hint: 'Lớp tại phòng, lớp online và thư viện video khi ra mắt' }
+];
+
+export function accessScopeLabel(scope: AccessScope | string | null | undefined): string {
+  return ACCESS_SCOPE_OPTIONS.find(o => o.value === (scope || 'STUDIO'))?.label ?? 'Tại phòng';
+}
+
 export type MembershipStatus = 'PENDING_PAYMENT' | 'ACTIVE' | 'FROZEN' | 'EXPIRED' | 'CANCELLED' | 'REPLACED' | 'TRANSFERRED';
 
 export interface MembershipPlan {
@@ -13,6 +26,8 @@ export interface MembershipPlan {
   readonly durationDays?: number | null;
   readonly totalSessions?: number | null;
   readonly isAllBranches: boolean;
+  /** Missing on responses from a backend older than V14: treat as STUDIO. */
+  readonly accessScope?: AccessScope;
   readonly isActive: boolean;
   readonly createdAt?: string;
 }
@@ -26,6 +41,7 @@ export interface CreatePlanReq {
   readonly durationDays?: number | null;
   readonly totalSessions?: number | null;
   readonly isAllBranches?: boolean;
+  readonly accessScope?: AccessScope;
 }
 
 export interface UpdatePlanReq {
@@ -34,6 +50,7 @@ export interface UpdatePlanReq {
   readonly price: number;
   readonly isAllBranches?: boolean;
   readonly isActive?: boolean;
+  readonly accessScope?: AccessScope;
 }
 
 export interface CheckoutQuote {
@@ -145,6 +162,7 @@ export interface MembershipResp {
   readonly planId: string;
   readonly registeredBranchId: string;
   readonly isAllBranches: boolean;
+  readonly accessScope?: AccessScope;
   readonly startDate: string;
   readonly endDate?: string;
   readonly totalSessions?: number;

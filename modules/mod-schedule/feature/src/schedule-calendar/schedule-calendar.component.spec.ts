@@ -34,6 +34,12 @@ describe('Calendar',()=>{
     page.studentPasses.set([{id:'p1',status:'ACTIVE',remainingSessions:5,isAllBranches:false,registeredBranchId:'b-branch-1'} as any]);
     expect(page.canBookSchedule({id:'on',branchId:'b-online',deliveryMode:'ONLINE',startTime:'2026-10-10T10:00:00'} as any)).toBe(true);
   });
+  it('keeps an online pass for online classes only',()=>{
+    const page=TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+    page.studentPasses.set([{id:'p1',status:'ACTIVE',remainingSessions:5,isAllBranches:true,accessScope:'ONLINE',registeredBranchId:'b1'} as any]);
+    expect(page.canBookSchedule({id:'on',branchId:'b2',deliveryMode:'ONLINE',startTime:'2026-10-10T10:00:00'} as any)).toBe(true);
+    expect(page.canBookSchedule({id:'st',branchId:'b1',deliveryMode:'IN_PERSON',startTime:'2026-10-10T10:00:00'} as any)).toBe(false);
+  });
   it('opens the join button 15 minutes before an online class until it ends',()=>{
     const page=TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
     const start=Date.parse('2026-11-04T12:00:00Z');

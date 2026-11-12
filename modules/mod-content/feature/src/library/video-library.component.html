@@ -1,0 +1,112 @@
+<div class="zen-page">
+  <zen-page-header
+    eyebrow="Tập yoga tại nhà"
+    heading="Thư viện video"
+    subtitle="Bài tập quay sẵn theo cấp độ và chủ đề, xem lại bất cứ lúc nào"
+    [count]="total()"
+    countLabel="video"
+  >
+    @if (access(); as a) {
+      @if (a.hasPass) {
+        <zen-badge actions tone="success">
+          <zen-icon name="unlock" [size]="14" />
+          Gói online còn hạn{{ a.passEndDate ? ' đến ' + (a.passEndDate | date:'dd/MM/yyyy') : '' }}
+        </zen-badge>
+      } @else {
+        <zen-badge actions tone="warning">
+          <zen-icon name="lock" [size]="14" />
+          Chỉ xem được video miễn phí
+        </zen-badge>
+      }
+    }
+  </zen-page-header>
+
+  @if (access() && !access()!.hasPass) {
+    <yoga-video-pass-banner />
+  }
+
+  @if (continueWatching().length) {
+    <section class="zen-stack--sm zen-stack" aria-labelledby="continue-heading">
+      <h2 id="continue-heading" class="section-title">Tiếp tục xem</h2>
+      <div class="video-grid video-grid--row">
+        @for (v of continueWatching(); track v.id) {
+          <yoga-video-card [video]="v" />
+        }
+      </div>
+    </section>
+  }
+
+  @if (collections().length) {
+    <section class="zen-stack zen-stack--sm" aria-labelledby="collections-heading">
+      <h2 id="collections-heading" class="section-title">Lộ trình</h2>
+      <div class="collection-grid">
+        @for (c of collections(); track c.id) {
+          <a class="collection-card" [routerLink]="['/videos/collections', c.id]">
+            <div class="collection-head">
+              <zen-icon name="list" [size]="18" />
+              <h3>{{ c.title }}</h3>
+            </div>
+            @if (c.description) { <p class="collection-desc">{{ c.description }}</p> }
+            <div class="collection-meta">
+              @if (c.level) { <span>{{ levelLabel(c.level) }}</span> }
+              <span class="zen-num">{{ c.completed }}/{{ c.total }} bài đã xong</span>
+            </div>
+            <div class="bar" role="progressbar" [attr.aria-valuenow]="collectionPercent(c)" aria-valuemin="0" aria-valuemax="100">
+              <span [style.width.%]="collectionPercent(c)"></span>
+            </div>
+          </a>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="zen-stack" aria-labelledby="all-heading">
+    <h2 id="all-heading" class="section-title">Tất cả video</h2>
+    <zen-card padding="sm">
+      <zen-toolbar>
+        <zen-search
+          class="zen-toolbar-grow"
+          size="sm"
+          placeholder="Tìm theo tên bài tập..."
+          [debounce]="400"
+          [ngModel]="q()"
+          (search)="search($event)"
+        />
+        <zen-select class="zen-toolbar-item" [options]="levelOptions" [ngModel]="level()" (ngModelChange)="setLevel($event)" placeholder="Cấp độ" />
+        <zen-select class="zen-toolbar-item" [options]="tagOptions()" [ngModel]="tag()" (ngModelChange)="setTag($event)" placeholder="Chủ đề" />
+        <zen-select class="zen-toolbar-item" [options]="durationOptions" [ngModel]="maxMinutes()" (ngModelChange)="setMaxMinutes($event)" placeholder="Thời lượng" />
+        <div toolbar-end>
+          @if (hasFilters()) {
+            <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" (click)="clearFilters()">
+              <zen-icon name="close" [size]="14" />
+              <span>Bỏ lọc</span>
+            </button>
+          }
+        </div>
+      </zen-toolbar>
+    </zen-card>
+
+    @if (error()) {
+      <zen-alert tone="danger">{{ error() }}</zen-alert>
+    }
+
+    @if (loading()) {
+      <zen-loading message="Đang tải video..." />
+    } @else if (!videos().length && !error()) {
+      <zen-empty-state
+        icon="play"
+        heading="Chưa có video phù hợp"
+        [description]="hasFilters() ? 'Thử bỏ bớt bộ lọc hoặc tìm với từ khóa khác.' : 'Thư viện đang được cập nhật, bạn quay lại sau nhé.'"
+      />
+    } @else {
+      <div class="video-grid">
+        @for (v of videos(); track v.id) {
+          <yoga-video-card [video]="v" />
+        }
+      </div>
+      @if (totalPages() > 1) {
+        <zen-pagination [page]="page()" [totalPages]="totalPages()" [totalElements]="total()" (pageChange)="goToPage($event)" />
+      }
+    }
+  </section>
+</div>

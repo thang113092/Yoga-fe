@@ -1,18 +1,25 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
-import { ScheduleApi, BranchItem, RoomItem, InstructorItem, ClassTypeItem } from '@yoga/mod-schedule/data-access';
+import { ScheduleApi, BranchItem, RoomItem, InstructorItem, ClassTypeItem, DeliveryMode, OnlineClassApi } from '@yoga/mod-schedule/data-access';
 import { PosApi } from '@yoga/mod-membership/data-access';
 import { OnlinePaymentPanelComponent } from '@yoga/mod-membership/feature';
 import { QrCodeComponent } from '@yoga/platform/api';
-import { ZEN_UI, ZenTabItem, ZenTone } from '@yoga/platform/ui';
+import { ZEN_UI, ZenTabItem, ZenToastService, ZenTone } from '@yoga/platform/ui';
 import { CourseApi, Course, CourseClass, CourseSession, CourseEnrollment, CourseConflict, CreateCourseClass } from '@yoga/mod-schedule/data-access';
+import { OnlineSessionPanelComponent } from '../online-classes/online-session-panel.component';
+import { isInOnlineJoinWindow, onlineJoinOpensAt, openOnlineJoin } from '../online-classes/online-join';
+
+/** Online courses use the branch's online (Zoom) rooms, in-person courses its physical rooms. */
+export function roomFitsMode(room: RoomItem, mode: DeliveryMode): boolean {
+  return (room.roomType ?? 'PHYSICAL') === (mode === 'ONLINE' ? 'VIRTUAL' : 'PHYSICAL');
+}
 
 @Component({
-  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, OnlinePaymentPanelComponent, ...ZEN_UI],
+  selector: 'yoga-courses', standalone: true, imports: [CommonModule, FormsModule, RouterModule, QrCodeComponent, OnlinePaymentPanelComponent, OnlineSessionPanelComponent, ...ZEN_UI],
   templateUrl: './courses.component.html', styleUrl: './courses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -23,12 +30,22 @@ export class CoursesComponent implements OnInit {
   private readonly pos=inject(PosApi);
   private readonly route=inject(ActivatedRoute);
   private readonly router=inject(Router);
+  private readonly onlineApi=inject(OnlineClassApi);
+  private readonly toast=inject(ZenToastService);
+  /** Ticks every 30 s so join buttons appear and disappear on time. */
+  readonly now=signal(Date.now());
+  readonly joiningBookingId=signal<string|null>(null);
   /** The VietQR being shown for the open enrollment's order: the student paying online, or staff at the desk. */
   /** Staff only: the VietQR shown at the desk for the open enrollment. Students pay on the shared checkout page. */
   readonly onlinePay=signal<{orderId:string}|null>(null);
   readonly busy=signal(false); readonly error=signal(''); readonly success=signal('');
   readonly courses=signal<Course[]>([]); readonly classes=signal<CourseClass[]>([]); readonly mine=signal<CourseEnrollment[]>([]);
-  readonly branches=signal<BranchItem[]>([]); readonly rooms=signal<RoomItem[]>([]); readonly instructors=signal<InstructorItem[]>([]);
+  readonly branches=signal<BranchItem[]>([]);
+  /** Active rooms of the branch; rooms() keeps only those that fit the delivery mode being edited. */
+  readonly branchRooms=signal<RoomItem[]>([]);
+  /** Delivery mode of the class being created, or of the class whose session is being changed. */
+  readonly formMode=signal<DeliveryMode>('IN_PERSON');
+  readonly rooms=computed(()=>this.branchRooms().filter(r=>roomFitsMode(r,this.formMode()))); readonly instructors=signal<InstructorItem[]>([]);
   readonly types=signal<ClassTypeItem[]>([]);
   readonly selected=signal<CourseClass|null>(null); readonly enrollment=signal<CourseEnrollment|null>(null); readonly roster=signal<CourseEnrollment[]>([]);
   readonly conflicts=signal<CourseConflict[]>([]); readonly previewed=signal(false); readonly view=signal<'classes'|'mine'|'programs'>('classes');
@@ -41,10 +58,28 @@ export class CoursesComponent implements OnInit {
     ...(this.auth.isStudent()?[{key:'mine',label:'Khóa học của tôi',icon:'graduation-cap' as const,count:this.mine().length}]:[])
   ]);
   readonly searchQuery = signal('');
+  /** Catalog filter by delivery mode. */
+  readonly modeFilter = signal<'ALL'|DeliveryMode>('ALL');
+  readonly modeFilterOptions = [
+    { value: 'ALL', label: 'Tất cả hình thức' },
+    { value: 'IN_PERSON', label: 'Tại phòng' },
+    { value: 'ONLINE', label: 'Online' }
+  ];
+  readonly canSeeZoomRoom = computed(() => this.auth.isSuperAdmin() || this.auth.isBranchManager() || this.auth.isInstructor());
+  /** Staff: the online session whose Zoom room is shown (picked in the table, else the next one). */
+  readonly zoomSessionId = signal<string|null>(null);
+  readonly zoomSession = computed(() => {
+    const c = this.selected();
+    if (!c || !this.isOnline(c)) return null;
+    const live = (c.sessions || []).filter(s => s.id && s.status !== 'CANCELLED' && this.isOnline(s, c));
+    return live.find(s => s.id === this.zoomSessionId()) ?? live.find(s => Date.parse(s.endTime) > this.now()) ?? null;
+  });
   readonly filteredClasses = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
-    if (!q) return this.classes();
-    return this.classes().filter(c =>
+    const mode = this.modeFilter();
+    const byMode = mode === 'ALL' ? this.classes() : this.classes().filter(c => (c.deliveryMode ?? 'IN_PERSON') === mode);
+    if (!q) return byMode;
+    return byMode.filter(c =>
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.code && c.code.toLowerCase().includes(q)) ||
       (c.branchName && c.branchName.toLowerCase().includes(q))
@@ -72,13 +107,17 @@ export class CoursesComponent implements OnInit {
   branchId='ALL'; studentId=''; paymentMethod: 'CASH'|'POS_CARD'|'BANK_TRANSFER_QR'|'PAYOS'='CASH'; paymentReference='';
   private paymentKeys=new Map<string,string>();
   courseForm: Omit<Course,'id'>={code:'',name:'',description:'',classTypeId:'',totalSessions:12,defaultDurationMinutes:60,defaultFee:0};
-  classForm: CreateCourseClass={courseId:'',branchId:'',code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
+  classForm: CreateCourseClass={courseId:'',branchId:'',code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[],deliveryMode:'IN_PERSON'};
   startDate=''; startTime='18:00'; duration=60; roomId=''; instructorId=''; weekdays=[1,3];
   readonly days=[{value:1,label:'Thứ Hai'},{value:2,label:'Thứ Ba'},{value:3,label:'Thứ Tư'},{value:4,label:'Thứ Năm'},{value:5,label:'Thứ Sáu'},{value:6,label:'Thứ Bảy'},{value:0,label:'Chủ Nhật'}];
   private async run(work:()=>Promise<void>) {
     if(this.busy()) return; this.busy.set(true); this.error.set(''); this.success.set('');
     try { await work(); } catch(e: any) { this.error.set(e?.error?.message||e?.message||'Không thể hoàn tất thao tác.'); }
     finally { this.busy.set(false); }
+  }
+  constructor() {
+    const timer=setInterval(()=>this.now.set(Date.now()),30_000);
+    inject(DestroyRef).onDestroy(()=>clearInterval(timer));
   }
   ngOnInit() { void this.run(async()=>{
     const [courses,branches]=await Promise.all([firstValueFrom(this.api.courses()),firstValueFrom(this.schedule.getBranches())]);
@@ -140,13 +179,21 @@ export class CoursesComponent implements OnInit {
     void this.run(async()=>{ await firstValueFrom(this.api.createCourse(this.courseForm)); this.courses.set(await firstValueFrom(this.api.courses())); this.form.set(null); this.success.set('Đã tạo chương trình khóa học.'); }); }
   openClassFor(courseId:string) {this.openClass();this.classForm.courseId=courseId;this.selectCourse();}
   openClass() {
-    this.form.set('class'); this.previewed.set(false); this.classForm={courseId:this.courses()[0]?.id||'',branchId:(this.branchId && this.branchId !== 'ALL') ? this.branchId : (this.branches()[0]?.id||''),code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[]};
+    this.form.set('class'); this.previewed.set(false); this.formMode.set('IN_PERSON'); this.classForm={courseId:this.courses()[0]?.id||'',branchId:(this.branchId && this.branchId !== 'ALL') ? this.branchId : (this.branches()[0]?.id||''),code:'',name:'',maxCapacity:20,tuitionFee:0,sessions:[],deliveryMode:'IN_PERSON'};
     this.selectCourse(); void this.run(()=>this.loadResources(this.classForm.branchId));
   }
   selectCourse() { const c=this.courses().find(c=>c.id===this.classForm.courseId); if(c) {this.classForm.name=c.name;this.classForm.tuitionFee=c.defaultFee;this.duration=c.defaultDurationMinutes;} this.invalidate(); }
   private async loadResources(branch: string) {
     const [rooms,instructors]=await Promise.all([firstValueFrom(this.schedule.getRoomsByBranch(branch)),firstValueFrom(this.schedule.getInstructors(branch))]);
-    this.rooms.set(rooms.filter(r=>r.isActive)); this.instructors.set(instructors); this.roomId=this.rooms()[0]?.id||'';this.instructorId=instructors[0]?.id||'';
+    this.branchRooms.set(rooms.filter(r=>r.isActive)); this.instructors.set(instructors); this.roomId=this.rooms()[0]?.id||'';this.instructorId=instructors[0]?.id||'';
+  }
+  /** Switches the new class between in-person and online; rooms of the other kind are replaced. */
+  setDeliveryMode(mode: DeliveryMode) {
+    if(this.formMode()===mode) return;
+    this.formMode.set(mode); this.classForm.deliveryMode=mode; this.invalidate();
+    const fits=new Set(this.rooms().map(r=>r.id));
+    if(!fits.has(this.roomId)) this.roomId=this.rooms()[0]?.id||'';
+    for(const s of this.classForm.sessions) if(!fits.has(s.roomId)) s.roomId=this.roomId;
   }
   classBranchChanged() { this.invalidate(); void this.run(()=>this.loadResources(this.classForm.branchId)); }
   invalidate() { this.previewed.set(false); this.conflicts.set([]); }
@@ -176,7 +223,7 @@ export class CoursesComponent implements OnInit {
     if(!this.auth.isStudent()) this.roster.set(await firstValueFrom(this.api.roster(id)));
     this.studentId=this.auth.isStudent()?this.auth.currentUserId()||'':'';
   }
-  showClass(id:string) {void this.run(()=>this.loadDetail(id));}
+  showClass(id:string) {this.zoomSessionId.set(null);void this.run(()=>this.loadDetail(id));}
   showEnrollment(id:string) {void this.run(()=>this.openEnrollment(id));}
   /** Students pay any pending order on the shared checkout page. */
   checkout(orderId:string) {void this.router.navigate(['/membership/checkout',orderId]);}
@@ -200,7 +247,7 @@ export class CoursesComponent implements OnInit {
     this.enrollment.set(await firstValueFrom(this.api.enrollment(e.id)));await this.reload();this.success.set('Đã thu học phí và kích hoạt đăng ký khóa.');
   });}
   cancelPending() {const e=this.enrollment();if(!e)return;void this.run(async()=>{await firstValueFrom(this.pos.cancelPendingOrder(e.orderId));this.enrollment.set(await firstValueFrom(this.api.enrollment(e.id)));await this.reload();this.success.set('Đã hủy đăng ký và giải phóng toàn bộ chỗ học.');});}
-  async editSession(s:CourseSession) { await this.run(async()=>{await this.loadResources(this.selected()!.branchId);this.editing.set({...s});}); }
+  async editSession(s:CourseSession) { await this.run(async()=>{const c=this.selected()!;this.formMode.set(c.deliveryMode??'IN_PERSON');await this.loadResources(c.branchId);this.editing.set({...s});}); }
   saveSession() { const s=this.editing(),c=this.selected();if(!s||!c)return;void this.run(async()=>{await firstValueFrom(this.api.changeSession(c.id,s.id!,s));this.editing.set(null);await this.loadDetail(c.id);this.success.set('Đã cập nhật lịch cho tất cả học viên của lớp.');});}
   localTime(iso:string) {return new Date(new Date(iso).getTime()+7*3600000).toISOString().slice(0,16);}
   setTime(s:CourseSession,key:'startTime'|'endTime',value:string) {
@@ -217,7 +264,38 @@ export class CoursesComponent implements OnInit {
     const cleaned = raw.replace(/^Buổi\s*\d+\s*[:\-·\.]\s*/i, '').trim();
     return cleaned || raw;
   }
-  nextSession(e:CourseEnrollment) {return e.sessions?.find(s=>s.status!=='CANCELLED'&&this.future(s));}
+  /** In-person: the next session to come. Online: also a session in progress, which can still be joined. */
+  nextSession(e:CourseEnrollment) {
+    if(this.isOnline(e)) return e.sessions?.find(s=>s.status!=='CANCELLED'&&Date.parse(s.endTime)>this.now());
+    return e.sessions?.find(s=>s.status!=='CANCELLED'&&this.future(s));
+  }
+  isOnline(item?: {deliveryMode?: DeliveryMode}|null, parent?: {deliveryMode?: DeliveryMode}|null): boolean {
+    return (item?.deliveryMode ?? parent?.deliveryMode) === 'ONLINE';
+  }
+  /** A student of a paid online course may enter from 15 minutes before a session until it ends. */
+  canJoin(e:CourseEnrollment,s:CourseSession): boolean {
+    if(!this.auth.isStudent()||e.status!=='ACTIVE'||!s.bookingId||!this.isOnline(s,e)) return false;
+    if(s.status==='CANCELLED'||s.bookingStatus==='CANCELLED'||s.attendanceState==='CANCELLED') return false;
+    return isInOnlineJoinWindow(s.startTime,s.endTime,this.now());
+  }
+  joinOpensAt(s:CourseSession) {return onlineJoinOpensAt(s.startTime);}
+  joinSession(e:CourseEnrollment,s:CourseSession) {
+    if(this.joiningBookingId()||!s.bookingId) return;
+    const firstJoin=s.attendanceState!=='ATTENDED';
+    this.joiningBookingId.set(s.bookingId);
+    openOnlineJoin(this.onlineApi.join(s.bookingId),{
+      joined:()=>{
+        this.joiningBookingId.set(null);
+        if(!firstJoin) return;
+        this.toast.success('Đã điểm danh buổi '+(s.sessionNumber??'')+' lớp '+e.className+'. Chúc bạn buổi tập vui vẻ!');
+        this.api.enrollment(e.id).subscribe({next:fresh=>{if(this.enrollment()?.id===fresh.id) this.enrollment.set(fresh);},error:()=>undefined});
+      },
+      failed:(err)=>{
+        this.joiningBookingId.set(null);
+        this.toast.error(err?.error?.message||'Không thể vào lớp online. Vui lòng thử lại.');
+      }
+    });
+  }
   switchView(key:string) {this.view.set(key as 'classes'|'mine'|'programs');this.selected.set(null);this.enrollment.set(null);this.onlinePay.set(null);}
   tone(status?:string|null):ZenTone {return ({OPEN:'success',IN_PROGRESS:'info',COMPLETED:'neutral',CANCELLED:'neutral',ACTIVE:'success',PENDING_PAYMENT:'warning',SCHEDULED:'info',ATTENDED:'success',ABSENT:'danger',UPCOMING:'neutral',PAID:'success',PENDING:'warning'} as Record<string,ZenTone>)[status||'']||'neutral';}
   percent(part:number,total:number) {return total?Math.min(100,(part/total)*100):0;}

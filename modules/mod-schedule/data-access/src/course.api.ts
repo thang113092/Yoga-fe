@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@yoga/platform/api';
-import { ClassTypeItem } from './schedule.models';
+import { ClassTypeItem, DeliveryMode } from './schedule.models';
 
 export interface ProgramSession { title: string; content: string; durationMinutes: number; }
 
@@ -11,12 +11,15 @@ export interface Course {
 export interface CourseSession {
   id?: string; sessionNumber?: number; roomId: string; instructorId: string; startTime: string; endTime: string;
   plannedContent?: string; plannedDurationMinutes?: number; title?: string; sessionTitle?: string; roomName?: string; instructorName?: string; status?: string;
-  bookingId?: string; bookingCode?: string; attendanceState?: string;
+  bookingId?: string; bookingCode?: string; bookingStatus?: string; attendanceState?: string;
+  /** Online sessions run in a Zoom room; students join instead of scanning a QR code. */
+  deliveryMode?: DeliveryMode;
 }
 export interface CourseClass {
   id: string; courseId: string; code: string; name: string; courseName: string; description: string;
   branchId: string; branchName: string; plannedSessions: number; maxCapacity: number; tuitionFee: number;
   status: string; startTime: string; endTime: string; enrolledCount: number; heldSessions: number; sessions: CourseSession[];
+  deliveryMode?: DeliveryMode;
 }
 export interface CourseEnrollment {
   id: string; enrollmentCode: string; courseClassId: string; studentId: string; studentName: string; studentPhone: string;
@@ -24,9 +27,12 @@ export interface CourseEnrollment {
   orderId: string; paymentStatus: string; totalAmount: number; reservedUntil: string;
   plannedSessions: number; attendedSessions: number; heldSessions: number; startTime: string; endTime: string;
   sessions: CourseSession[];
+  deliveryMode?: DeliveryMode;
 }
 export interface CreateCourseClass {
   courseId: string; branchId: string; code: string; name: string; maxCapacity: number; tuitionFee: number; sessions: CourseSession[];
+  /** IN_PERSON (default) uses physical rooms; ONLINE uses the branch's online (Zoom) rooms. Fixed once created. */
+  deliveryMode?: DeliveryMode;
 }
 export interface CourseConflict { sessionNumber: number; message: string; }
 export interface CourseStudent { id: string; fullName: string; phone: string; }
@@ -36,7 +42,9 @@ export class CourseApi {
   private readonly api = inject(ApiClient);
   courses() { return this.api.get<Course[]>('/courses'); }
   createCourse(req: Omit<Course, 'id'>) { return this.api.post<Course>('/courses', req); }
-  classes(branchId?: string) { return this.api.get<CourseClass[]>('/course-classes', branchId ? { branchId } : {}); }
+  classes(branchId?: string, deliveryMode?: DeliveryMode) {
+    return this.api.get<CourseClass[]>('/course-classes', { ...(branchId ? { branchId } : {}), ...(deliveryMode ? { deliveryMode } : {}) });
+  }
   detail(id: string) { return this.api.get<CourseClass>(`/course-classes/${id}`); }
   preview(req: CreateCourseClass) { return this.api.post<CourseConflict[]>('/course-classes/preview', req); }
   createClass(req: CreateCourseClass) { return this.api.post<CourseClass>('/course-classes', req); }

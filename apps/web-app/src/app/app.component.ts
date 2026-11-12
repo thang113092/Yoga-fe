@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '@yoga/platform/auth';
+import { AuthService, NotificationApi, NotificationItem, relativeTimeVi } from '@yoga/platform/auth';
 import {
   ZenAvatarComponent,
   ZenConfirmModalComponent,
@@ -10,6 +10,8 @@ import {
   ZenThemeMode,
   ZenThemeService
 } from '@yoga/platform/ui';
+
+const NOTIFICATION_POLL_MS = 5 * 60_000;
 
 @Component({
   selector: 'yoga-root',
@@ -48,6 +50,10 @@ import {
                 <zen-icon class="nav-icon" name="calendar" />
                 <span>Lịch & Đặt Chỗ</span>
               </a>
+              <a routerLink="/videos" routerLinkActive="active" class="nav-tab">
+                <zen-icon class="nav-icon" name="play" />
+                <span>Thư Viện Video</span>
+              </a>
               <span class="nav-divider" aria-hidden="true"></span>
               <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">
                 <zen-icon class="nav-icon" name="book" />
@@ -78,6 +84,12 @@ import {
                   <span>Lớp Online</span>
                 </a>
               }
+              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
+                <a routerLink="/videos/manage" routerLinkActive="active" class="nav-tab">
+                  <zen-icon class="nav-icon" name="play" />
+                  <span>Video</span>
+                </a>
+              }
               <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
                 <zen-icon class="nav-icon" name="graduation-cap" />
                 <span>Khóa Học</span>
@@ -90,6 +102,16 @@ import {
                 <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab">
                   <zen-icon class="nav-icon" name="bar-chart" />
                   <span>Doanh Thu</span>
+                </a>
+                <a routerLink="/membership/online-report" routerLinkActive="active" class="nav-tab">
+                  <zen-icon class="nav-icon" name="activity" />
+                  <span>Báo Cáo Online</span>
+                </a>
+              }
+              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
+                <a routerLink="/schedule/payroll" routerLinkActive="active" class="nav-tab">
+                  <zen-icon class="nav-icon" name="banknote" />
+                  <span>Thù Lao HLV</span>
                 </a>
               }
               @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
@@ -181,36 +203,29 @@ import {
                           <span class="new-pill">{{ unreadNotificationsCount() }} mới</span>
                         }
                       </div>
-                      <button type="button" class="btn-text-sm" (click)="markAllNotificationsAsRead()">Đã đọc tất cả</button>
+                      @if (unreadNotificationsCount() > 0) {
+                        <button type="button" class="btn-text-sm" (click)="markAllNotificationsAsRead()">Đã đọc tất cả</button>
+                      }
                     </div>
 
                     <div class="notifications-list">
-                      <div class="notif-item unread">
-                        <div class="notif-icon class-icon"><zen-icon name="clock" [size]="15" /></div>
-                        <div class="notif-content">
-                          <p class="notif-title">Nhắc nhở ca học hôm nay</p>
-                          <p class="notif-desc">Lớp Hatha Yoga Cơ Bản sẽ bắt đầu lúc 18:30 tại CS Quận 1.</p>
-                          <span class="notif-time">25 phút trước</span>
+                      @for (n of notifications(); track n.id) {
+                        <button type="button" class="notif-item" [class.unread]="!n.read" (click)="openNotification(n)">
+                          <div class="notif-icon" [ngClass]="notificationVisual(n.type).tone"><zen-icon [name]="notificationVisual(n.type).icon" [size]="15" /></div>
+                          <div class="notif-content">
+                            <p class="notif-title">{{ n.title }}</p>
+                            @if (n.body) {
+                              <p class="notif-desc">{{ n.body }}</p>
+                            }
+                            <span class="notif-time" [title]="n.createdAt">{{ relativeTime(n.createdAt) }}</span>
+                          </div>
+                        </button>
+                      } @empty {
+                        <div class="notif-empty">
+                          <zen-icon name="bell" [size]="20" />
+                          <span>{{ notificationsLoading() ? 'Đang tải thông báo...' : 'Chưa có thông báo' }}</span>
                         </div>
-                      </div>
-
-                      <div class="notif-item unread">
-                        <div class="notif-icon pass-icon"><zen-icon name="check-circle" [size]="15" /></div>
-                        <div class="notif-content">
-                          <p class="notif-title">Thẻ tập đã sẵn sàng</p>
-                          <p class="notif-desc">Hệ thống đã đồng bộ quyền truy cập đa cơ sở cho bạn.</p>
-                          <span class="notif-time">2 giờ trước</span>
-                        </div>
-                      </div>
-
-                      <div class="notif-item">
-                        <div class="notif-icon info-icon"><zen-icon name="info" [size]="15" /></div>
-                        <div class="notif-content">
-                          <p class="notif-title">Chào mừng đến với An Yên</p>
-                          <p class="notif-desc">Chúc bạn có những giờ phút rèn luyện an nhiên và tràn đầy năng lượng.</p>
-                          <span class="notif-time">Hôm qua</span>
-                        </div>
-                      </div>
+                      }
                     </div>
                   </div>
                 }
@@ -289,6 +304,10 @@ import {
                       @if (auth.isSuperAdmin() || auth.isBranchManager()) {
                         <a routerLink="/membership/revenue" (click)="closeAllPopovers()" class="setting-link">
                           <span>Báo cáo doanh thu</span>
+                          <zen-icon name="chevron-right" [size]="15" />
+                        </a>
+                        <a routerLink="/membership/online-report" (click)="closeAllPopovers()" class="setting-link">
+                          <span>Báo cáo học online</span>
                           <zen-icon name="chevron-right" [size]="15" />
                         </a>
                       }
@@ -413,6 +432,10 @@ import {
                 <zen-icon name="calendar" />
                 <span>Lịch & Đặt Chỗ</span>
               </a>
+              <a routerLink="/videos" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                <zen-icon name="play" />
+                <span>Thư Viện Video</span>
+              </a>
               <div class="drawer-section-title">Danh mục</div>
               <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
                 <zen-icon name="book" />
@@ -446,6 +469,13 @@ import {
                 </a>
               }
 
+              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
+                <a routerLink="/videos/manage" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                  <zen-icon name="play" />
+                  <span>Video</span>
+                </a>
+              }
+
               <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
                 <zen-icon name="graduation-cap" />
                 <span>Khóa Học</span>
@@ -459,6 +489,17 @@ import {
                 <a routerLink="/membership/revenue" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
                   <zen-icon name="bar-chart" />
                   <span>Báo Cáo Doanh Thu</span>
+                </a>
+                <a routerLink="/membership/online-report" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                  <zen-icon name="activity" />
+                  <span>Báo Cáo Online</span>
+                </a>
+              }
+
+              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
+                <a routerLink="/schedule/payroll" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                  <zen-icon name="banknote" />
+                  <span>Thù Lao HLV</span>
                 </a>
               }
 
@@ -762,8 +803,14 @@ import {
     .notif-item {
       display: flex;
       gap: 12px;
+      width: 100%;
       padding: 12px 16px;
+      border: none;
       border-bottom: 1px solid var(--color-border-subtle);
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
       transition: background-color var(--duration-fast) ease;
 
       &:last-child { border-bottom: none; }
@@ -793,6 +840,17 @@ import {
       &.class-icon { background: var(--color-warning-bg); color: var(--color-warning); }
       &.pass-icon { background: var(--color-success-bg); color: var(--color-success); }
       &.info-icon { background: var(--color-info-bg); color: var(--color-info); }
+      &.danger-icon { background: var(--color-error-bg); color: var(--color-error); }
+    }
+
+    .notif-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 28px 16px;
+      font-size: var(--text-sm);
+      color: var(--color-text-subtle);
     }
 
     .notif-content { min-width: 0; }
@@ -1179,7 +1237,12 @@ export class AppComponent {
   protected readonly isMobileMenuOpen = signal(false);
   protected readonly isNotificationsOpen = signal(false);
   protected readonly isSettingsOpen = signal(false);
-  protected readonly unreadNotificationsCount = signal(2);
+  protected readonly notifications = signal<NotificationItem[]>([]);
+  protected readonly unreadNotificationsCount = signal(0);
+  protected readonly notificationsLoading = signal(false);
+  private readonly notificationApi = inject(NotificationApi);
+  /** Bumped on every load and on logout so stale responses are dropped. */
+  private notificationsVersion = 0;
   protected readonly reminderEnabled = signal(true);
   protected readonly theme = inject(ZenThemeService);
   protected readonly themeOptions: { value: ZenThemeMode; label: string; icon: ZenIconName }[] = [
@@ -1191,6 +1254,17 @@ export class AppComponent {
   constructor() {
     // Chế độ tối chỉ áp dụng cho khu vực quản lý; trang chủ & đăng nhập luôn sáng.
     effect(() => this.theme.apply(!this.isStandalonePage()));
+
+    // Thông báo: tải khi đăng nhập, xóa khi đăng xuất, làm mới mỗi 5 phút khi tab đang hiển thị.
+    effect(() => {
+      const authenticated = this.auth.isAuthenticated();
+      untracked(() => authenticated ? this.loadNotifications() : this.clearNotifications());
+    });
+    const poll = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (this.auth.isAuthenticated()) this.loadNotifications();
+    }, NOTIFICATION_POLL_MS);
+    inject(DestroyRef).onDestroy(() => clearInterval(poll));
 
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
@@ -1230,6 +1304,54 @@ export class AppComponent {
   toggleNotifications(): void {
     this.isNotificationsOpen.update(v => !v);
     this.isSettingsOpen.set(false);
+    if (this.isNotificationsOpen() && this.auth.isAuthenticated()) this.loadNotifications();
+  }
+
+  loadNotifications(): void {
+    const version = ++this.notificationsVersion;
+    this.notificationsLoading.set(true);
+    this.notificationApi.mine(20).subscribe({
+      next: inbox => {
+        if (version !== this.notificationsVersion) return;
+        this.notifications.set(inbox?.items ?? []);
+        this.unreadNotificationsCount.set(Number(inbox?.unread ?? 0));
+        this.notificationsLoading.set(false);
+      },
+      error: () => {
+        if (version === this.notificationsVersion) this.notificationsLoading.set(false);
+      }
+    });
+  }
+
+  private clearNotifications(): void {
+    ++this.notificationsVersion;
+    this.notifications.set([]);
+    this.unreadNotificationsCount.set(0);
+    this.notificationsLoading.set(false);
+  }
+
+  openNotification(n: NotificationItem): void {
+    if (!n.read) {
+      this.notifications.update(list => list.map(x => x.id === n.id ? { ...x, read: true } : x));
+      this.unreadNotificationsCount.update(c => Math.max(0, c - 1));
+      this.notificationApi.markRead(n.id).subscribe({ error: () => { /* lần tải sau sẽ đồng bộ lại */ } });
+    }
+    this.closeAllPopovers();
+    if (n.link && n.link.startsWith('/')) void this.router.navigateByUrl(n.link);
+  }
+
+  protected notificationVisual(type: string): { icon: ZenIconName; tone: string } {
+    switch (type) {
+      case 'MEMBERSHIP_EXPIRING': return { icon: 'clock', tone: 'class-icon' };
+      case 'MEMBERSHIP_EXPIRED': return { icon: 'alert-circle', tone: 'danger-icon' };
+      case 'SESSIONS_LOW': return { icon: 'ticket', tone: 'class-icon' };
+      case 'COURSE_STARTING': return { icon: 'graduation-cap', tone: 'pass-icon' };
+      default: return { icon: 'info', tone: 'info-icon' };
+    }
+  }
+
+  protected relativeTime(iso: string): string {
+    return relativeTimeVi(iso);
   }
 
   toggleSettings(): void {
@@ -1238,7 +1360,9 @@ export class AppComponent {
   }
 
   markAllNotificationsAsRead(): void {
+    this.notifications.update(list => list.map(x => x.read ? x : { ...x, read: true }));
     this.unreadNotificationsCount.set(0);
+    this.notificationApi.markAllRead().subscribe({ error: () => this.loadNotifications() });
   }
 
   closeAllPopovers(): void {
@@ -1250,6 +1374,7 @@ export class AppComponent {
     this.closeAllPopovers();
     this.closeMobileMenu();
     this.auth.logout();
+    this.clearNotifications();
     void this.router.navigate(['/auth/login']);
   }
 }

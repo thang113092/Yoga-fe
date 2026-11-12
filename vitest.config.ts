@@ -11,7 +11,8 @@ const aliases: Record<string, string> = {
   '@yoga/mod-membership/data-access': 'modules/mod-membership/data-access/src/index.ts',
   '@yoga/mod-membership/feature': 'modules/mod-membership/feature/src/index.ts',
   '@yoga/mod-schedule/data-access': 'modules/mod-schedule/data-access/src/index.ts',
-  '@yoga/mod-landing/data-access': 'modules/mod-landing/data-access/src/index.ts'
+  '@yoga/mod-landing/data-access': 'modules/mod-landing/data-access/src/index.ts',
+  '@yoga/mod-content/data-access': 'modules/mod-content/data-access/src/index.ts'
 };
 export default defineConfig({
   resolve: { alias: Object.fromEntries(Object.entries(aliases).map(([key, path]) => [key, resolve(path)])) },

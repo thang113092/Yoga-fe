@@ -3,3 +3,4 @@ export * from './auth.service';
 export * from './auth.interceptor';
 export * from './auth.guard';
 export * from './user.api';
+export * from './notification.api';

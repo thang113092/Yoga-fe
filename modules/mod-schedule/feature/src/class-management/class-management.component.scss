@@ -443,3 +443,22 @@
   display: block;
   margin-bottom: 16px;
 }
+
+// Hybrid classes: studio class streamed on Zoom
+.schedule-card-event .card-tag--hybrid {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.hybrid-seats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: var(--text-sm);
+}
+
+.hybrid-toggle zen-icon {
+  vertical-align: -2px;
+}

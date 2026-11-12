@@ -61,6 +61,13 @@
           Đơn cơ sở
         </button>
       </div>
+      <div class="zen-segmented" role="group" aria-label="Hình thức học">
+        <button type="button" [class.is-active]="filterAccess() === 'ALL'" (click)="filterAccess.set('ALL')">Mọi hình thức</button>
+        <button type="button" [class.is-active]="filterAccess() === 'STUDIO'" (click)="filterAccess.set('STUDIO')">Tại phòng</button>
+        <button type="button" [class.is-active]="filterAccess() === 'ONLINE'" (click)="filterAccess.set('ONLINE')">
+          Online ({{ onlinePlanCount() }})
+        </button>
+      </div>
       <div toolbar-end>
         <button type="button" class="zen-btn zen-btn--outline" (click)="loadPlans()" [disabled]="isLoading()" title="Làm mới">
           <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
@@ -86,9 +93,14 @@
         <zen-card padding="none" class="plan-card" [class.inactive]="!plan.isActive">
           <div class="plan-body">
             <div class="zen-row zen-row--between">
-              <zen-badge size="sm" [tone]="plan.isAllBranches ? 'primary' : 'neutral'">
-                {{ plan.isAllBranches ? 'Toàn Hệ Thống' : 'Cơ Sở Hiện Tại' }}
-              </zen-badge>
+              <span class="zen-row">
+                <zen-badge size="sm" [tone]="plan.isAllBranches ? 'primary' : 'neutral'">
+                  {{ plan.isAllBranches ? 'Toàn Hệ Thống' : 'Cơ Sở Hiện Tại' }}
+                </zen-badge>
+                @if (isOnlinePlan(plan)) {
+                  <zen-badge size="sm" tone="info">{{ scopeLabel(plan.accessScope) }}</zen-badge>
+                }
+              </span>
               <zen-badge size="sm" dot [tone]="plan.isActive ? 'success' : 'neutral'">
                 {{ plan.isActive ? 'Đang phát hành' : 'Tạm ngừng' }}
               </zen-badge>
@@ -108,6 +120,14 @@
                   @case ('SESSION_BASED') { Theo số buổi }
                   @case ('COMBO') { Kết hợp linh hoạt }
                   @default { {{ plan.planType }} }
+                }
+              </dd>
+              <dt>Phạm vi học</dt>
+              <dd>
+                @switch (plan.accessScope) {
+                  @case ('ONLINE') { Chỉ lớp online }
+                  @case ('HYBRID') { Tại phòng + online }
+                  @default { Tại phòng (kèm lớp online) }
                 }
               </dd>
               <dt>Thời hạn / Số buổi</dt>
@@ -258,6 +278,21 @@
             />
           </div>
         }
+
+        <div class="zen-field zen-field--full">
+          <label class="zen-label" for="pScope">Phạm Vi Quyền<span class="zen-required">*</span></label>
+          <zen-select
+            id="pScope"
+            name="accessScope"
+            [options]="accessScopeOptions"
+            [ngModel]="formAccessScope()"
+            (ngModelChange)="formAccessScope.set($event)"
+            [disabled]="isSubmitting()"
+          />
+          <small class="zen-hint">
+            Thẻ online chỉ đặt được lớp online. Thẻ đã bán giữ nguyên phạm vi lúc mua; đổi ở đây chỉ áp dụng cho lần bán sau.
+          </small>
+        </div>
 
         <div class="zen-field zen-field--full">
           <label class="zen-label" for="pDesc">Mô Tả Quyền Lợi & Chính Sách</label>

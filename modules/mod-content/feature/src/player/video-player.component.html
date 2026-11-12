@@ -1,0 +1,160 @@
+<div class="zen-page zen-page--narrow">
+  <div class="top-links">
+    <a routerLink="/videos" class="zen-btn zen-btn--ghost zen-btn--sm">
+      <zen-icon name="arrow-left" [size]="15" />
+      <span>Thư viện video</span>
+    </a>
+    @if (collectionId()) {
+      <a [routerLink]="['/videos/collections', collectionId()]" class="zen-btn zen-btn--ghost zen-btn--sm">
+        <zen-icon name="list" [size]="15" />
+        <span>Về lộ trình</span>
+      </a>
+    }
+  </div>
+
+  @if (video(); as v) {
+    <header class="lesson-header">
+      <h1>{{ v.title }}</h1>
+      <div class="lesson-meta">
+        @if (v.level) { <zen-badge tone="primary" size="sm">{{ levelLabel(v.level) }}</zen-badge> }
+        @if (v.isFreePreview) { <zen-badge tone="success" size="sm">Miễn phí</zen-badge> }
+        @if (completed()) { <zen-badge tone="success" size="sm"><zen-icon name="check" [size]="12" /> Đã xong</zen-badge> }
+        <span class="zen-num">{{ formatDuration(v.durationSeconds) }}</span>
+        @if (v.instructorName) { <span>· {{ v.instructorName }}</span> }
+        @for (tag of v.tags; track tag) { <span class="tag">{{ tag }}</span> }
+      </div>
+    </header>
+  }
+
+  @if (warnings().length) {
+    <zen-alert tone="warning" heading="Lưu ý theo hồ sơ sức khỏe của bạn">
+      <ul class="warning-list">
+        @for (w of warnings(); track w) { <li>{{ w }}</li> }
+      </ul>
+    </zen-alert>
+  }
+
+  <section class="player-area" aria-label="Trình phát video">
+    @switch (state()) {
+      @case ('loading') {
+        <div class="player-box player-box--message"><zen-loading message="Đang tải video..." /></div>
+      }
+      @case ('starting') {
+        <div class="player-box player-box--message"><zen-loading message="Đang mở trình phát..." /></div>
+      }
+      @case ('playing') {
+        <div class="player-box">
+          @if (embedUrl(); as url) {
+            <iframe
+              (load)="onFrameLoad($any($event.target))"
+              [src]="url"
+              [title]="video()?.title || 'Video bài tập'"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowfullscreen
+              loading="eager"
+            ></iframe>
+          }
+          @if (playback()?.watermark) {
+            <span class="watermark" aria-hidden="true" [style.top.%]="watermarkSpot().top" [style.left.%]="watermarkSpot().left">
+              {{ playback()!.watermark }}
+            </span>
+          }
+        </div>
+      }
+      @case ('locked') {
+        <div class="player-box player-box--message player-box--locked">
+          <zen-icon name="lock" [size]="36" />
+          <p>Video này dành cho học viên có gói Online hoặc Kết hợp.</p>
+        </div>
+        <yoga-video-pass-banner heading="Cần gói Online hoặc Kết hợp để xem video này" />
+      }
+      @case ('waiver') {
+        <div class="player-box player-box--message">
+          <zen-icon name="shield-check" [size]="36" />
+          <p>Vui lòng đọc và xác nhận cam kết an toàn trước khi xem.</p>
+        </div>
+      }
+      @case ('devices') {
+        <zen-alert tone="warning" heading="Đã đạt giới hạn thiết bị">
+          <div class="alert-row">
+            <span>Tài khoản của bạn đang xem trên tối đa {{ maxDevices() }} thiết bị. Hãy dừng xem ở thiết bị khác rồi thử lại.</span>
+            <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" (click)="start()">
+              <zen-icon name="refresh" [size]="14" />
+              <span>Thử lại</span>
+            </button>
+          </div>
+        </zen-alert>
+      }
+      @case ('config') {
+        <zen-alert tone="info" heading="Thư viện video chưa được cấu hình">
+          Trung tâm đang thiết lập thư viện video. Vui lòng quay lại sau hoặc liên hệ quản trị.
+        </zen-alert>
+      }
+      @case ('error') {
+        <zen-alert tone="danger">
+          <div class="alert-row">
+            <span>{{ errorMessage() }}</span>
+            @if (video()) {
+              <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="start()">Thử lại</button>
+            }
+          </div>
+        </zen-alert>
+      }
+    }
+  </section>
+
+  @if (nextVideo(); as next) {
+    <a class="next-lesson" [routerLink]="['/videos', next.id]" [queryParams]="{ collection: collectionId() }">
+      <span class="next-label">Bài tiếp theo</span>
+      <span class="next-title">{{ next.title }}</span>
+      <zen-icon name="arrow-right" [size]="18" />
+    </a>
+  }
+
+  @if (detail(); as d) {
+    @if (d.video.description) {
+      <zen-card heading="Mô tả bài tập" padding="md">
+        <p class="text-block">{{ d.video.description }}</p>
+      </zen-card>
+    }
+    @if (d.contraindications) {
+      <zen-card heading="Chống chỉ định" padding="md">
+        <p class="text-block">{{ d.contraindications }}</p>
+      </zen-card>
+    }
+  }
+</div>
+
+@if (state() === 'waiver' && detail()) {
+  <zen-modal
+    heading="Cam kết an toàn khi tự tập"
+    [subtitle]="waiverVersion() ? 'Phiên bản ' + waiverVersion() : ''"
+    icon="shield-check"
+    size="md"
+    [closable]="!acceptingWaiver()"
+    (closed)="state.set('error'); errorMessage.set('Bạn cần đồng ý cam kết an toàn để xem video.')"
+  >
+    <div class="waiver-text">
+      <p>Bạn đang tự tập theo video, không có huấn luyện viên quan sát và chỉnh tư thế trực tiếp. Trước khi bắt đầu, vui lòng xác nhận:</p>
+      <ul>
+        <li>Tôi hiểu việc tự tập có thể gây chấn thương nếu thực hiện sai tư thế hoặc vượt quá khả năng của cơ thể.</li>
+        <li>Tôi sẽ dừng ngay khi thấy đau, chóng mặt, khó thở hoặc khó chịu bất thường.</li>
+        <li>Nếu đang mang thai, có bệnh tim mạch, huyết áp hoặc đang có chấn thương, tôi sẽ hỏi ý kiến bác sĩ trước khi tập.</li>
+        <li>Tôi chọn bài tập phù hợp với cấp độ của mình và tự chịu trách nhiệm về việc tập luyện tại nhà.</li>
+      </ul>
+      @if (waiverVersion()) {
+        <p class="zen-hint">Cam kết phiên bản {{ waiverVersion() }}. Bạn chỉ cần xác nhận một lần cho mỗi phiên bản.</p>
+      }
+      @if (errorMessage()) {
+        <p class="zen-error">{{ errorMessage() }}</p>
+      }
+    </div>
+    <ng-container modal-footer>
+      <a routerLink="/videos" class="zen-btn zen-btn--outline">Để sau</a>
+      <button type="button" class="zen-btn zen-btn--primary" (click)="acceptWaiver()" [disabled]="acceptingWaiver()">
+        <zen-icon name="check" [size]="16" />
+        <span>Tôi đồng ý</span>
+      </button>
+    </ng-container>
+  </zen-modal>
+}

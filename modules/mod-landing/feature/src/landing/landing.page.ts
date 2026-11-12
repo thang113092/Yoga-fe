@@ -114,7 +114,9 @@ export class LandingPage implements OnInit {
 
   private generatePlanHighlights(p: MembershipPlan): string[] {
     const list: string[] = [];
-    if (p.isAllBranches) {
+    if (p.accessScope === 'ONLINE') {
+      list.push('Học trực tiếp qua Zoom các lớp online của mọi cơ sở');
+    } else if (p.isAllBranches) {
       list.push('Tập luyện tại tất cả chi nhánh trong hệ thống An Yên');
     } else {
       list.push('Áp dụng tập luyện tại cơ sở đăng ký');

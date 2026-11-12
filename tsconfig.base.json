@@ -28,6 +28,8 @@
       "@yoga/mod-membership/feature": ["modules/mod-membership/feature/src/index.ts"],
       "@yoga/mod-schedule/data-access": ["modules/mod-schedule/data-access/src/index.ts"],
       "@yoga/mod-schedule/feature": ["modules/mod-schedule/feature/src/index.ts"],
+      "@yoga/mod-content/data-access": ["modules/mod-content/data-access/src/index.ts"],
+      "@yoga/mod-content/feature": ["modules/mod-content/feature/src/index.ts"],
       "@yoga/mod-identity/feature": ["modules/mod-identity/feature/src/index.ts"]
     }
   },

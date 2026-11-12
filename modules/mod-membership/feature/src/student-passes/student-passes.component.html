@@ -162,6 +162,9 @@
                         <zen-icon name="map-pin" [size]="12" />
                         <span>{{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : getBranchName(pass.registeredBranchId, pass) }}</span>
                       </span>
+                      @if (pass.accessScope === 'ONLINE' || pass.accessScope === 'HYBRID') {
+                        <zen-badge size="sm" tone="info">{{ scopeLabel(pass.accessScope) }}</zen-badge>
+                      }
                     </div>
                     <span class="mp-status" [class.frozen]="pass.status === 'FROZEN'">
                       <span class="mp-status-dot"></span>
@@ -174,7 +177,9 @@
                       <span class="mp-label">Mã thẻ hội viên</span>
                       <h3 class="mp-code" title="{{ pass.membershipCode }}">{{ pass.membershipCode }}</h3>
                       <p class="mp-note">
-                        @if (pass.isAllBranches) {
+                        @if (pass.accessScope === 'ONLINE') {
+                          Học các lớp online trực tiếp của mọi cơ sở. Thẻ không dùng cho lớp tại phòng.
+                        } @else if (pass.isAllBranches) {
                           Tập luyện tại tất cả chi nhánh trong hệ thống An Yên Yoga.
                         } @else {
                           Cơ sở đăng ký: <strong>{{ getBranchName(pass.registeredBranchId, pass) }}</strong>
@@ -323,7 +328,7 @@
                         <td>
                           <zen-badge [tone]="membershipStatusTone(pass.status)" size="sm" dot>{{ membershipStatusLabel(pass.status) }}</zen-badge>
                         </td>
-                        <td class="cell-muted">{{ pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký' }}</td>
+                        <td class="cell-muted">{{ pass.accessScope === 'ONLINE' ? 'Chỉ lớp online' : (pass.isAllBranches ? 'Toàn chuỗi chi nhánh' : 'Cơ sở đăng ký') }}</td>
                         <td>{{ pass.remainingSessions != null ? (pass.remainingSessions + ' buổi khả dụng') : 'Không giới hạn buổi' }}</td>
                         <td class="is-nowrap cell-muted">
                           {{ pass.startDate ? (pass.startDate | date:'dd/MM/yyyy') : '---' }}

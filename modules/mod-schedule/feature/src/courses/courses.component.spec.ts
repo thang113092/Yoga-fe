@@ -1,18 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AuthService, UserApi } from '@yoga/platform/auth';
-import { CourseApi, ScheduleApi } from '@yoga/mod-schedule/data-access';
+import { CourseApi, OnlineClassApi, ScheduleApi } from '@yoga/mod-schedule/data-access';
 import { PosApi, SelfCheckoutApi } from '@yoga/mod-membership/data-access';
+import { ZenToastService } from '@yoga/platform/ui';
 import { CoursesComponent } from './courses.component';
 
 describe('Course schedules',()=>{
   let component:CoursesComponent;
   beforeEach(()=>{
     TestBed.configureTestingModule({imports:[CoursesComponent],providers:[provideExperimentalZonelessChangeDetection(),provideRouter([]),
-      {provide:AuthService,useValue:{isSuperAdmin:()=>true,isBranchManager:()=>false,isStudent:()=>false,canAccessPos:()=>true,branchIds:()=>[],userHomeBranchId:()=>null,currentUserId:()=> 'admin'}},
-      {provide:CourseApi,useValue:{courses:()=>of([]),classes:()=>of([])}},{provide:ScheduleApi,useValue:{getBranches:()=>of([])}},{provide:PosApi,useValue:{}},{provide:UserApi,useValue:{}},{provide:SelfCheckoutApi,useValue:{}}]});
+      {provide:AuthService,useValue:{isSuperAdmin:()=>true,isBranchManager:()=>false,isInstructor:()=>false,isStudent:()=>false,canAccessPos:()=>true,branchIds:()=>[],userHomeBranchId:()=>null,currentUserId:()=> 'admin'}},
+      {provide:CourseApi,useValue:{courses:()=>of([]),classes:()=>of([])}},{provide:ScheduleApi,useValue:{getBranches:()=>of([])}},{provide:PosApi,useValue:{}},{provide:UserApi,useValue:{}},{provide:SelfCheckoutApi,useValue:{}},{provide:OnlineClassApi,useValue:{}}]});
     component=TestBed.createComponent(CoursesComponent).componentInstance;
     component.courses.set([{id:'course',code:'C',name:'Yoga',description:'',classTypeId:'type',totalSessions:12,defaultDurationMinutes:60,defaultFee:500000}]);
     component.classForm.courseId='course';component.startDate='2026-11-02';component.startTime='18:00';component.roomId='room';component.instructorId='teacher';component.weekdays=[1,3];
@@ -109,10 +110,11 @@ describe('Selling courses and paying online', () => {
     posApi = { startOnlinePayment: vi.fn().mockReturnValue(of({ ...link, providerOrderCode: 100888 })), getOnlinePayment: vi.fn().mockReturnValue(of(link)) };
     users = {};
     TestBed.configureTestingModule({ imports: [CoursesComponent], providers: [provideExperimentalZonelessChangeDetection(), provideRouter([]),
-      { provide: AuthService, useValue: { isSuperAdmin: () => false, isBranchManager: () => false, isStudent: () => student, canAccessPos: () => !student,
+      { provide: AuthService, useValue: { isSuperAdmin: () => false, isBranchManager: () => false, isInstructor: () => false, isStudent: () => student, canAccessPos: () => !student,
         branchIds: () => ['b-1'], userHomeBranchId: () => 'b-1', currentUserId: () => student ? 'student-1' : 'staff-1' } },
       { provide: CourseApi, useValue: courseApi }, { provide: ScheduleApi, useValue: { getBranches: () => of([{ id: 'b-1', name: 'An Yên Q1' }]) } },
-      { provide: PosApi, useValue: posApi }, { provide: UserApi, useValue: users }, { provide: SelfCheckoutApi, useValue: selfCheckout }] });
+      { provide: PosApi, useValue: posApi }, { provide: UserApi, useValue: users }, { provide: SelfCheckoutApi, useValue: selfCheckout },
+      { provide: OnlineClassApi, useValue: {} }] });
   }
 
   async function render() {
@@ -182,5 +184,180 @@ describe('Selling courses and paying online', () => {
 
     button(fixture, 'Thanh toán').click();
     expect(navigate).toHaveBeenCalledWith(['/membership/checkout', 'order-1']);
+  });
+});
+
+describe('Online courses', () => {
+  const rooms = [
+    { id: 'r-1', branchId: 'b-1', name: 'Studio Sen', maxCapacity: 20, isActive: true, roomType: 'PHYSICAL' },
+    { id: 'v-1', branchId: 'b-1', name: 'Zoom 1', maxCapacity: 100, isActive: true, roomType: 'VIRTUAL', liveHostAccount: 'host@zoom' },
+    { id: 'v-off', branchId: 'b-1', name: 'Zoom cũ', maxCapacity: 100, isActive: false, roomType: 'VIRTUAL' }
+  ];
+  const course = { id: 'course', code: 'C', name: 'Yoga', description: '', classTypeId: 'type', totalSessions: 2, defaultDurationMinutes: 60, defaultFee: 500000 };
+  const minutes = (m: number) => new Date(Date.now() + m * 60_000).toISOString();
+  const onlineSession = (over: Record<string, unknown> = {}) => ({ id: 's-1', sessionNumber: 1, roomId: 'v-1', instructorId: 'i-1', roomName: 'Zoom 1',
+    instructorName: 'Minh', startTime: minutes(5), endTime: minutes(65), status: 'SCHEDULED', deliveryMode: 'ONLINE', bookingId: 'bk-1',
+    bookingCode: 'BK-1', bookingStatus: 'CONFIRMED', attendanceState: 'UPCOMING', ...over });
+  const enrollment = (over: Record<string, unknown> = {}) => ({ id: 'enr-1', enrollmentCode: 'CE01', courseClassId: 'class-1', studentId: 'student-1',
+    studentName: 'Lan', studentPhone: '', className: 'Yoga online', classCode: 'YO1', courseName: 'Yoga', branchName: 'An Yên Q1', status: 'ACTIVE',
+    orderId: 'order-1', paymentStatus: 'PAID', totalAmount: 500000, reservedUntil: minutes(60), plannedSessions: 2, attendedSessions: 0, heldSessions: 0,
+    startTime: minutes(5), endTime: minutes(2000), deliveryMode: 'ONLINE', sessions: [onlineSession(), onlineSession({ id: 's-2', sessionNumber: 2,
+      bookingId: 'bk-2', startTime: minutes(1440), endTime: minutes(1500) })], ...over });
+
+  let courseApi: Record<string, ReturnType<typeof vi.fn>>;
+  let onlineApi: Record<string, ReturnType<typeof vi.fn>>;
+
+  function setUp(student: boolean, classes: unknown[] = []) {
+    courseApi = { courses: vi.fn().mockReturnValue(of([course])), classes: vi.fn().mockReturnValue(of(classes)), mine: vi.fn().mockReturnValue(of([])),
+      preview: vi.fn().mockReturnValue(of([])), enrollment: vi.fn().mockReturnValue(of(enrollment())) };
+    onlineApi = { join: vi.fn().mockReturnValue(of({ joinUrl: 'https://zoom.us/w/9?tk=x' })), getSession: vi.fn().mockReturnValue(of(null)), resync: vi.fn() };
+    TestBed.configureTestingModule({ imports: [CoursesComponent], providers: [provideExperimentalZonelessChangeDetection(), provideRouter([]),
+      { provide: AuthService, useValue: { isSuperAdmin: () => !student, isBranchManager: () => false, isInstructor: () => false, isReceptionist: () => false,
+        isStudent: () => student, canAccessPos: () => !student, branchIds: () => ['b-1'], userHomeBranchId: () => 'b-1',
+        currentUserId: () => student ? 'student-1' : 'admin' } },
+      { provide: CourseApi, useValue: courseApi },
+      { provide: ScheduleApi, useValue: { getBranches: () => of([{ id: 'b-1', name: 'An Yên Q1' }]), getRoomsByBranch: () => of(rooms),
+        getInstructors: () => of([{ id: 'i-1', fullName: 'Minh' }]) } },
+      { provide: PosApi, useValue: {} }, { provide: UserApi, useValue: {} }, { provide: SelfCheckoutApi, useValue: {} },
+      { provide: OnlineClassApi, useValue: onlineApi }] });
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CoursesComponent);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.busy()).toBe(false));
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const buttons = (el: HTMLElement) => [...el.querySelectorAll('button')] as HTMLButtonElement[];
+
+  it('offers only physical rooms for an in-person class and only online rooms for an online class', async () => {
+    setUp(false);
+    const page = (await render()).componentInstance;
+    page.openClass();
+    await vi.waitFor(() => expect(page.busy()).toBe(false));
+    expect(page.classForm.deliveryMode).toBe('IN_PERSON');
+    expect(page.rooms().map(r => r.id)).toEqual(['r-1']);
+    expect(page.roomId).toBe('r-1');
+
+    page.startDate = '2030-11-04'; page.weekdays = [1, 3];
+    page.generate();
+    expect(page.classForm.sessions.map(s => s.roomId)).toEqual(['r-1', 'r-1']);
+
+    page.setDeliveryMode('ONLINE');
+    expect(page.rooms().map(r => r.id)).toEqual(['v-1']);
+    expect(page.roomId).toBe('v-1');
+    expect(page.classForm.sessions.map(s => s.roomId)).toEqual(['v-1', 'v-1']);
+
+    page.setDeliveryMode('IN_PERSON');
+    expect(page.roomId).toBe('r-1');
+    expect(page.classForm.sessions.map(s => s.roomId)).toEqual(['r-1', 'r-1']);
+  });
+
+  it('sends the delivery mode with the schedule check', async () => {
+    setUp(false);
+    const page = (await render()).componentInstance;
+    page.openClass();
+    await vi.waitFor(() => expect(page.busy()).toBe(false));
+    page.setDeliveryMode('ONLINE');
+    page.startDate = '2030-11-04'; page.weekdays = [1, 3];
+    page.generate();
+    page.checkSchedule();
+    await vi.waitFor(() => expect(page.previewed()).toBe(true));
+    expect(courseApi['preview']).toHaveBeenCalledWith(expect.objectContaining({ deliveryMode: 'ONLINE',
+      sessions: [expect.objectContaining({ roomId: 'v-1' }), expect.objectContaining({ roomId: 'v-1' })] }));
+  });
+
+  it('limits the change-session dialog to rooms of the class\u2019s mode', async () => {
+    setUp(false);
+    const page = (await render()).componentInstance;
+    page.selected.set({ id: 'class-1', courseId: 'course', code: 'YO1', name: 'Yoga online', courseName: 'Yoga', description: '', branchId: 'b-1',
+      branchName: 'An Yên Q1', plannedSessions: 2, maxCapacity: 20, tuitionFee: 0, status: 'OPEN', startTime: minutes(5), endTime: minutes(65),
+      enrolledCount: 0, heldSessions: 0, deliveryMode: 'ONLINE', sessions: [] });
+    await page.editSession(onlineSession() as any);
+    expect(page.rooms().map(r => r.id)).toEqual(['v-1']);
+    expect(page.editing()?.roomId).toBe('v-1');
+  });
+
+  it('marks online classes in the catalog and filters by delivery mode', async () => {
+    const base = { courseId: 'course', courseName: 'Yoga', description: '', branchId: 'b-1', branchName: 'An Yên Q1', plannedSessions: 2,
+      maxCapacity: 20, tuitionFee: 0, status: 'OPEN', startTime: minutes(5), endTime: minutes(65), enrolledCount: 0, heldSessions: 0, sessions: [] };
+    setUp(true, [{ ...base, id: 'on', code: 'ON', name: 'Yoga online', deliveryMode: 'ONLINE' }, { ...base, id: 'off', code: 'OFF', name: 'Yoga tại phòng', deliveryMode: 'IN_PERSON' }]);
+    const fixture = await render();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Học qua Zoom');
+    expect(fixture.nativeElement.querySelectorAll('.online-badge')).toHaveLength(1);
+    fixture.componentInstance.modeFilter.set('ONLINE');
+    expect(fixture.componentInstance.filteredClasses().map(c => c.id)).toEqual(['on']);
+    fixture.componentInstance.modeFilter.set('IN_PERSON');
+    expect(fixture.componentInstance.filteredClasses().map(c => c.id)).toEqual(['off']);
+  });
+
+  it('shows a join button instead of the QR code for the next online session', async () => {
+    setUp(true);
+    const fixture = await render();
+    fixture.componentInstance.enrollment.set(enrollment() as any);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('yoga-qr-code')).toBeNull();
+    expect(el.textContent).toContain('Học qua Zoom');
+    expect(el.textContent).toContain('Online (Zoom)');
+    const join = buttons(el).filter(b => b.textContent?.trim() === 'Vào lớp');
+    // The next-session card and the first row; the session tomorrow is outside the join window.
+    expect(join).toHaveLength(2);
+
+    const tab = { location: { href: '' }, opener: {}, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as any);
+    join[0].click();
+    expect(onlineApi['join']).toHaveBeenCalledWith('bk-1');
+    expect(tab.location.href).toBe('https://zoom.us/w/9?tk=x');
+    expect(courseApi['enrollment']).toHaveBeenCalledWith('enr-1');
+    open.mockRestore();
+  });
+
+  it('offers to rejoin after attending and keeps the QR code for in-person courses', async () => {
+    setUp(true);
+    const fixture = await render();
+    fixture.componentInstance.enrollment.set(enrollment({ sessions: [onlineSession({ attendanceState: 'ATTENDED' })] }) as any);
+    fixture.detectChanges();
+    expect(buttons(fixture.nativeElement).some(b => b.textContent?.trim() === 'Vào lại lớp')).toBe(true);
+
+    fixture.componentInstance.enrollment.set(enrollment({ deliveryMode: 'IN_PERSON',
+      sessions: [onlineSession({ deliveryMode: 'IN_PERSON', startTime: minutes(120), endTime: minutes(180) })] }) as any);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('yoga-qr-code')).toBeTruthy();
+    expect(buttons(fixture.nativeElement).some(b => b.textContent?.includes('Vào lớp'))).toBe(false);
+  });
+
+  it('asks an unpaid student to pay before entering the online class', async () => {
+    setUp(true);
+    const fixture = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.enrollment.set(enrollment({ status: 'PENDING_PAYMENT', paymentStatus: 'PENDING' }) as any);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('yoga-qr-code')).toBeNull();
+    expect(buttons(el).some(b => b.textContent?.trim() === 'Vào lớp')).toBe(false);
+    const pay = buttons(el).find(b => b.textContent?.includes('Thanh toán để vào lớp'));
+    expect(pay).toBeTruthy();
+    pay!.click();
+    expect(navigate).toHaveBeenCalledWith(['/membership/checkout', 'order-1']);
+  });
+
+  it('shows the join error in a toast', async () => {
+    setUp(true);
+    const fixture = await render();
+    const toast = TestBed.inject(ZenToastService);
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => undefined as any);
+    onlineApi['join'].mockReturnValue(throwError(() => ({ error: { message: 'Khóa học chưa được thanh toán.' } })));
+    const tab = { location: { href: '' }, opener: {}, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as any);
+    const e = enrollment() as any;
+    fixture.componentInstance.joinSession(e, e.sessions[0]);
+    expect(tab.close).toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith('Khóa học chưa được thanh toán.');
+    expect(fixture.componentInstance.joiningBookingId()).toBeNull();
+    open.mockRestore();
   });
 });

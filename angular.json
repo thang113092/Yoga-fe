@@ -22,7 +22,8 @@
             "styles": [
               "apps/web-app/src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": ["player.js", "url-parse"]
           },
           "configurations": {
             "production": {

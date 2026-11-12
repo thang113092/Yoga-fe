@@ -250,12 +250,15 @@
                         @if (item.schedule.courseClassId) {
                           <span class="card-tag card-tag--end" title="Buổi học thuộc khóa đào tạo">Khóa</span>
                         }
+                        @if (isHybrid(item.schedule)) {
+                          <span class="card-tag card-tag--end card-tag--hybrid" title="Lớp hybrid: học tại phòng và phát trực tiếp qua Zoom">Hybrid</span>
+                        }
                       </span>
                       <strong class="card-class-title">{{ item.schedule.className }}</strong>
                       <span class="card-meta-row">
                         <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">{{ item.schedule.instructorName }}</span>
-                        <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
-                          {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                        <span class="card-capacity" [class.is-full]="isScheduleFull(item.schedule)" [title]="isHybrid(item.schedule) ? 'Tại phòng: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity + ' · Online: ' + (item.schedule.onlineBookedCount ?? 0) + '/' + (item.schedule.onlineCapacity ?? 0) : 'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                          {{ capacityLabel(item.schedule) }}
                         </span>
                       </span>
                     </button>
@@ -307,11 +310,14 @@
                       <span class="card-top-row">
                         <span class="card-time">{{ formatTime(item.schedule.startTime) }} – {{ formatTime(item.schedule.endTime) }}</span>
                         <span class="card-tag">{{ item.end - item.start }}p</span>
+                        @if (isHybrid(item.schedule)) {
+                          <span class="card-tag card-tag--end card-tag--hybrid" title="Lớp hybrid: học tại phòng và phát trực tiếp qua Zoom">Hybrid</span>
+                        }
                       </span>
                       <span class="card-meta-row">
                         <span class="card-instructor" [title]="'Huấn luyện viên: ' + item.schedule.instructorName">{{ item.schedule.instructorName }}</span>
-                        <span class="card-capacity" [class.is-full]="item.schedule.bookedCount >= item.schedule.maxCapacity" [title]="'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
-                          {{ item.schedule.bookedCount }}/{{ item.schedule.maxCapacity }}
+                        <span class="card-capacity" [class.is-full]="isScheduleFull(item.schedule)" [title]="isHybrid(item.schedule) ? 'Tại phòng: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity + ' · Online: ' + (item.schedule.onlineBookedCount ?? 0) + '/' + (item.schedule.onlineCapacity ?? 0) : 'Đã đặt: ' + item.schedule.bookedCount + '/' + item.schedule.maxCapacity">
+                          {{ capacityLabel(item.schedule) }}
                         </span>
                       </span>
                     </button>
@@ -461,6 +467,47 @@
             (ngModelChange)="scheduleForm().maxCapacity = $event"
           />
         </label>
+
+        @if (selectedFormRoomIsPhysical()) {
+          <label class="zen-check zen-field--full hybrid-toggle">
+            <input type="checkbox" [checked]="scheduleForm().hybrid" (change)="setScheduleFormHybrid(!scheduleForm().hybrid)" />
+            <span><zen-icon name="monitor" [size]="14" /> Phát trực tiếp (lớp hybrid)</span>
+          </label>
+
+          @if (scheduleForm().hybrid) {
+            @if (liveRooms().length === 0) {
+              <div class="zen-field--full">
+                <zen-alert tone="warning">Cơ sở này chưa có phòng online đang hoạt động để phát trực tiếp. Hãy thêm phòng online (Zoom) cho cơ sở trước.</zen-alert>
+              </div>
+            } @else {
+              <div class="zen-field">
+                <span class="zen-label">Phòng Online Phát Trực Tiếp <span class="zen-required">*</span></span>
+                <zen-select
+                  [options]="liveRoomSelectOptions()"
+                  [ngModel]="scheduleForm().liveRoomId"
+                  (ngModelChange)="onScheduleFormLiveRoomChange($event)"
+                  placeholder="Chọn phòng online..."
+                />
+                <span class="zen-hint">Tài khoản Zoom của phòng online sẽ phát buổi học.</span>
+              </div>
+
+              <label class="zen-field">
+                <span class="zen-label">Số Chỗ Online <span class="zen-required">*</span></span>
+                <input
+                  type="number"
+                  class="zen-control"
+                  min="1"
+                  [max]="selectedLiveRoom()?.maxCapacity ?? null"
+                  [ngModel]="scheduleForm().onlineCapacity"
+                  (ngModelChange)="onScheduleFormOnlineCapacityChange($event)"
+                />
+                @if (selectedLiveRoom(); as live) {
+                  <span class="zen-hint">Tối đa {{ live.maxCapacity }} chỗ (sức chứa phòng online).</span>
+                }
+              </label>
+            }
+          }
+        }
       </div>
 
       <zen-alert tone="info">Sau khi tạo, ca học sẽ lập tức hiển thị trên ứng dụng để hội viên có thẻ tập hợp lệ tiến hành đặt chỗ.</zen-alert>
@@ -489,7 +536,14 @@
     size="xl"
     (closed)="closeAttendeesModal()"
   >
-    @if (selectedScheduleForAttendees()?.deliveryMode === 'ONLINE') {
+    @if (isHybrid(selectedScheduleForAttendees()) && selectedScheduleForAttendees(); as hs) {
+      <div class="hybrid-seats">
+        <zen-badge tone="info"><zen-icon name="monitor" [size]="12" /> Hybrid</zen-badge>
+        <span>Tại phòng: <strong class="zen-strong">{{ hs.bookedCount }}/{{ hs.maxCapacity }}</strong></span>
+        <span>Online: <strong class="zen-strong">{{ hs.onlineBookedCount ?? 0 }}/{{ hs.onlineCapacity ?? 0 }}</strong></span>
+      </div>
+    }
+    @if (hasZoomRoom(selectedScheduleForAttendees())) {
       <yoga-online-session-panel class="online-panel-host" [scheduleId]="selectedScheduleForAttendees()!.id" />
     }
     @if (isLoadingAttendees()) {
@@ -516,7 +570,13 @@
           <tbody>
             @for (item of attendeesList(); track item.id) {
               <tr>
-                <td><zen-badge size="sm" tone="primary">Thảm #{{ item.matNumber || 'Tự do' }}</zen-badge></td>
+                <td>
+                  @if (isHybrid(selectedScheduleForAttendees()) && !item.matNumber) {
+                    <zen-badge size="sm" tone="info">Online</zen-badge>
+                  } @else {
+                    <zen-badge size="sm" tone="primary">Thảm #{{ item.matNumber || 'Tự do' }}</zen-badge>
+                  }
+                </td>
                 <td><span class="zen-mono">{{ item.bookingCode }}</span></td>
                 <td><span class="cell-primary">{{ item.studentName }}</span></td>
                 <td>{{ item.studentPhone }}</td>
@@ -645,12 +705,20 @@
               @if (sched.deliveryMode === 'ONLINE') {
                 <zen-badge size="sm" tone="info"><zen-icon name="monitor" [size]="12" /> Online</zen-badge>
               }
+              @if (isHybrid(sched)) {
+                <zen-badge size="sm" tone="info"><zen-icon name="monitor" [size]="12" /> Hybrid</zen-badge>
+              }
             </div>
 
             <div class="info-chips">
               <span class="zen-row"><zen-icon name="clock" />{{ formatTime(sched.startTime) }} – {{ formatTime(sched.endTime) }}</span>
               <span class="zen-row"><zen-icon name="user" />HLV: <strong class="zen-strong">{{ sched.instructorName }}</strong></span>
-              <span class="zen-row"><zen-icon name="users" />Sĩ số: <strong class="zen-strong">{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
+              @if (isHybrid(sched)) {
+                <span class="zen-row"><zen-icon name="users" />Tại phòng: <strong class="zen-strong">{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
+                <span class="zen-row"><zen-icon name="monitor" />Online: <strong class="zen-strong">{{ sched.onlineBookedCount ?? 0 }}/{{ sched.onlineCapacity ?? 0 }}</strong> chỗ</span>
+              } @else {
+                <span class="zen-row"><zen-icon name="users" />Sĩ số: <strong class="zen-strong">{{ sched.bookedCount }}/{{ sched.maxCapacity }}</strong> thảm</span>
+              }
             </div>
 
             @if (sched.sessionTitle) {

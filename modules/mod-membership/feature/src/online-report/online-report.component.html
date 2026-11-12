@@ -1,0 +1,253 @@
+<div class="zen-page online-report">
+  <zen-page-header
+    eyebrow="Báo cáo vận hành"
+    heading="Báo cáo học online"
+    subtitle="Lớp online trực tiếp, gói thẻ & khóa học online và thư viện video."
+  >
+    <zen-badge title-extra tone="primary">
+      <zen-icon name="map-pin" [size]="12" />
+      {{ selectedBranchName() }}
+    </zen-badge>
+
+    <button
+      actions
+      type="button"
+      class="zen-btn zen-btn--outline"
+      (click)="loadReport()"
+      [disabled]="isLoading()"
+      title="Làm mới số liệu"
+    >
+      <zen-icon name="refresh" [class.zen-spin]="isLoading()" />
+      <span>Làm mới</span>
+    </button>
+  </zen-page-header>
+
+  <zen-card padding="sm" aria-label="Bộ lọc báo cáo học online">
+    <zen-toolbar>
+      <div class="zen-segmented" role="group" aria-label="Chọn khoảng thời gian nhanh">
+        <button type="button" [class.is-active]="selectedPreset() === 'TODAY'" (click)="applyDatePreset('TODAY')">Hôm nay</button>
+        <button type="button" [class.is-active]="selectedPreset() === 'LAST_7_DAYS'" (click)="applyDatePreset('LAST_7_DAYS')">7 ngày</button>
+        <button type="button" [class.is-active]="selectedPreset() === 'LAST_30_DAYS'" (click)="applyDatePreset('LAST_30_DAYS')">30 ngày</button>
+        <button type="button" [class.is-active]="selectedPreset() === 'THIS_MONTH'" (click)="applyDatePreset('THIS_MONTH')">Tháng này</button>
+      </div>
+
+      <div class="date-range">
+        <zen-input
+          id="onlineStartDate"
+          name="startDate"
+          type="date"
+          [ngModel]="startDate()"
+          (ngModelChange)="onStartDateChange($event)"
+          title="Từ ngày"
+        />
+        <span class="zen-text-muted" aria-hidden="true">—</span>
+        <zen-input
+          id="onlineEndDate"
+          name="endDate"
+          type="date"
+          [ngModel]="endDate()"
+          (ngModelChange)="onEndDateChange($event)"
+          title="Đến ngày"
+        />
+      </div>
+
+      <zen-select
+        class="zen-toolbar-item"
+        id="onlineBranchSelect"
+        name="onlineBranchSelect"
+        [options]="branchOptions()"
+        [ngModel]="selectedBranchId() || 'ALL'"
+        (ngModelChange)="onBranchChange($event)"
+        [disabled]="branchLocked()"
+        placeholder="Tất cả cơ sở"
+      />
+    </zen-toolbar>
+  </zen-card>
+
+  @if (errorMessage()) {
+    <zen-alert tone="danger">{{ errorMessage() }}</zen-alert>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-bar" role="progressbar" aria-label="Đang tải báo cáo"><span></span></div>
+  }
+
+  @if (report(); as data) {
+    <div class="zen-grid zen-grid--stats">
+      <zen-stat-card
+        class="kpi-sessions"
+        label="Buổi học online"
+        [value]="formatNumber(data.kpi.sessions)"
+        icon="monitor"
+        [hint]="formatNumber(data.kpi.heldSessions) + ' buổi đã diễn ra'"
+      />
+      <zen-stat-card
+        class="kpi-joins"
+        label="Lượt vào lớp"
+        [value]="formatNumber(data.kpi.joins)"
+        icon="users"
+        tone="success"
+        [hint]="formatNumber(data.kpi.bookings) + ' lượt đặt · tỉ lệ tham gia ' + formatNumber(data.kpi.attendanceRate, 1) + '%'"
+      />
+      <zen-stat-card
+        label="Học viên online"
+        [value]="formatNumber(data.kpi.uniqueStudents)"
+        icon="user"
+        tone="info"
+        [hint]="formatNumber(data.kpi.activeOnlinePasses) + ' thẻ online/kết hợp đang hoạt động'"
+      />
+      <zen-stat-card
+        class="kpi-revenue"
+        label="Doanh thu online"
+        [value]="formatCurrency(totalOnlineRevenue())"
+        icon="wallet"
+        tone="warning"
+        [hint]="'Gói thẻ ' + formatCurrency(data.kpi.packageRevenue) + ' · Khóa học ' + formatCurrency(data.kpi.courseRevenue)"
+      />
+      <zen-stat-card
+        label="Lượt xem video"
+        [value]="formatNumber(data.kpi.videoPlays)"
+        icon="play"
+        [hint]="formatNumber(data.kpi.videoViewers) + ' người xem · ' + formatNumber(data.kpi.videoCompletions) + ' lượt xem hết'"
+      />
+      <zen-stat-card
+        label="Giờ xem video"
+        [value]="formatNumber(data.kpi.videoHours, 1)"
+        icon="clock"
+        hint="Tổng thời lượng học viên đã xem"
+      />
+    </div>
+
+    <zen-card
+      heading="Hoạt động theo ngày"
+      [subtitle]="'Lượt vào lớp online và lượt xem video từ ' + formatDateDisplay(data.startDate) + ' đến ' + formatDateDisplay(data.endDate)"
+    >
+      <span card-actions class="chart-legend">
+        <span class="legend-dot"></span>Vào lớp
+        <span class="legend-dot is-secondary"></span>Xem video
+      </span>
+
+      @if (!data.daily.length || !hasDailyActivity()) {
+        <zen-empty-state compact icon="bar-chart" heading="Chưa có hoạt động học online trong khoảng thời gian này." />
+      } @else {
+        <div class="chart-bars-track">
+          @for (day of data.daily; track day.date; let idx = $index; let total = $count) {
+            <div class="bar-column" [title]="formatDateDisplay(day.date) + ': ' + day.joins + ' lượt vào lớp, ' + day.videoPlays + ' lượt xem video'">
+              <div class="bar-tooltip">
+                <span class="tooltip-date">{{ formatDateDisplay(day.date) }}</span>
+                <span>{{ day.joins }} lượt vào lớp</span>
+                <span>{{ day.videoPlays }} lượt xem video</span>
+              </div>
+              <div class="bar-fill-wrapper">
+                <div class="bar-fill" [style.height.%]="(day.joins / maxDaily()) * 100" [class.has-data]="day.joins > 0"></div>
+                <div class="bar-fill is-secondary" [style.height.%]="(day.videoPlays / maxDaily()) * 100" [class.has-data]="day.videoPlays > 0"></div>
+              </div>
+              <span class="bar-label">
+                @if (total <= 14 || idx % 2 === 0 || idx === total - 1) {
+                  {{ day.date.slice(8) }}/{{ day.date.slice(5, 7) }}
+                }
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </zen-card>
+
+    <section class="analytics-row">
+      <zen-card padding="none" heading="Lớp online theo cơ sở" subtitle="Số buổi, lượt đặt và lượt vào lớp của từng cơ sở">
+        @if (!data.branches.length) {
+          <zen-empty-state compact icon="building" heading="Chưa có lớp online trong kỳ." />
+        } @else {
+          <div class="zen-table-wrap">
+            <table class="zen-table branch-table">
+              <thead>
+                <tr>
+                  <th>Cơ sở</th>
+                  <th class="is-numeric">Buổi học</th>
+                  <th class="is-numeric">Lượt đặt</th>
+                  <th class="is-numeric">Vào lớp</th>
+                  <th class="is-numeric">Tỉ lệ tham gia</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (b of data.branches; track b.branchId) {
+                  <tr>
+                    <td><span class="cell-primary">{{ b.branchName }}</span></td>
+                    <td class="is-numeric zen-num">{{ formatNumber(b.sessions) }}</td>
+                    <td class="is-numeric zen-num">{{ formatNumber(b.bookings) }}</td>
+                    <td class="is-numeric zen-num">{{ formatNumber(b.joins) }}</td>
+                    <td class="is-numeric zen-num">{{ formatNumber(b.attendanceRate, 1) }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </zen-card>
+
+      <zen-card padding="none" heading="Gói thẻ online đã bán" subtitle="Gói Online và Kết hợp bán trong kỳ">
+        @if (!data.plans.length) {
+          <zen-empty-state compact icon="layers" heading="Chưa bán gói thẻ online nào trong kỳ." />
+        } @else {
+          <div class="zen-table-wrap">
+            <table class="zen-table plan-table">
+              <thead>
+                <tr>
+                  <th>Gói thẻ</th>
+                  <th>Phạm vi</th>
+                  <th class="is-numeric">Đã bán</th>
+                  <th class="is-numeric">Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of data.plans; track p.planName + p.accessScope) {
+                  <tr>
+                    <td><span class="cell-primary">{{ p.planName }}</span></td>
+                    <td><zen-badge size="sm" tone="primary">{{ scopeLabel(p.accessScope) }}</zen-badge></td>
+                    <td class="is-numeric zen-num">{{ formatNumber(p.sold) }}</td>
+                    <td class="is-numeric"><span class="zen-price">{{ formatCurrency(p.revenue) }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </zen-card>
+    </section>
+
+    <zen-card padding="none" heading="Video được xem nhiều nhất" subtitle="Xếp theo lượt xem trong kỳ báo cáo">
+      @if (!data.topVideos.length) {
+        <zen-empty-state compact icon="play" heading="Chưa có lượt xem video trong kỳ." />
+      } @else {
+        <div class="zen-table-wrap">
+          <table class="zen-table video-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Video</th>
+                <th class="is-numeric">Lượt xem</th>
+                <th class="is-numeric">Người xem</th>
+                <th class="is-numeric">Xem hết</th>
+                <th class="is-numeric">Giờ xem</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of data.topVideos; track v.videoId; let i = $index) {
+                <tr>
+                  <td class="cell-muted zen-num">{{ i + 1 }}</td>
+                  <td class="is-wrap"><span class="cell-primary">{{ v.title }}</span></td>
+                  <td class="is-numeric zen-num">{{ formatNumber(v.plays) }}</td>
+                  <td class="is-numeric zen-num">{{ formatNumber(v.viewers) }}</td>
+                  <td class="is-numeric zen-num">{{ formatNumber(v.completions) }}</td>
+                  <td class="is-numeric zen-num">{{ formatNumber(v.hours, 1) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </zen-card>
+  } @else if (!isLoading() && !errorMessage()) {
+    <zen-empty-state icon="activity" heading="Chưa có dữ liệu báo cáo" description="Chọn khoảng thời gian và cơ sở để xem báo cáo học online." />
+  }
+</div>

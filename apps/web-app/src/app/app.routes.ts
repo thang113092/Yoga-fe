@@ -23,6 +23,10 @@ export const appRoutes: Routes = [
     loadChildren: () => import('@yoga/mod-schedule/feature').then(m => m.SCHEDULE_ROUTES)
   },
   {
+    path: 'videos',
+    loadChildren: () => import('@yoga/mod-content/feature').then(m => m.CONTENT_ROUTES)
+  },
+  {
     path: 'users',
     canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'])],
     loadComponent: () => import('@yoga/mod-identity/feature').then(m => m.UserManagementComponent),

@@ -47,5 +47,11 @@ export const MEMBERSHIP_ROUTES: Routes = [
     canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
     loadComponent: () => import('./revenue-report/revenue-report.component').then(m => m.RevenueReportComponent),
     title: 'Báo Cáo Doanh Thu - An Yên Yoga'
+  },
+  {
+    path: 'online-report',
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER'])],
+    loadComponent: () => import('./online-report/online-report.component').then(m => m.OnlineReportComponent),
+    title: 'Báo Cáo Học Online - An Yên Yoga'
   }
 ];
