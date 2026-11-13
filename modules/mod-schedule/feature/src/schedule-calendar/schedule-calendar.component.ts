@@ -648,6 +648,11 @@ export class ScheduleCalendarComponent implements OnInit {
   }
 
   /** The card offers booking when some eligible pass has a free seat it may take; otherwise the waitlist. */
+  /** Some seat of any type is still free (for hybrid classes: studio or online). */
+  hasFreeSeatAny(schedule: ClassSchedule): boolean {
+    return this.isHybrid(schedule) ? this.seatFree(schedule, 'IN_PERSON') || this.seatFree(schedule, 'ONLINE') : schedule.availableSlots > 0;
+  }
+
   hasBookableSeat(schedule: ClassSchedule): boolean {
     if (!this.isHybrid(schedule)) return schedule.availableSlots > 0;
     return this.eligiblePasses(schedule).some(p => this.bookableSeats(schedule, p).length > 0);

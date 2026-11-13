@@ -73,4 +73,100 @@ describe('Calendar',()=>{
     expect(tab.location.href).toBe('');
     open.mockRestore();
   });
+
+  describe('hybrid classes', () => {
+    const hybrid = (over: any = {}) => ({ id: 'hy', branchId: 'b1', deliveryMode: 'HYBRID', startTime: '2026-10-10T10:00:00Z', endTime: '2026-10-10T11:00:00Z',
+      maxCapacity: 20, bookedCount: 3, availableSlots: 17, onlineCapacity: 30, onlineBookedCount: 5, status: 'SCHEDULED', ...over } as any);
+    const studioPass = { id: 'studio', status: 'ACTIVE', remainingSessions: 5, isAllBranches: false, registeredBranchId: 'b1' } as any;
+
+    it('sends the chosen seat type when booking a hybrid class', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      page.studentPasses.set([studioPass]);
+      page.openBookingModal(hybrid());
+      expect(page.bookingSeatChoices().map(c => [c.mode, c.disabled])).toEqual([['IN_PERSON', false], ['ONLINE', false]]);
+      expect(page.selectedAttendanceMode()).toBe('IN_PERSON');
+      page.selectSeat(page.bookingSeatChoices()[1]);
+      page.submitBooking();
+      expect(createBooking.mock.calls[0][0]).toEqual({ scheduleId: 'hy', studentId: 'student-actual', membershipId: 'studio', attendanceMode: 'ONLINE' });
+    });
+
+    it('disables a full seat type and defaults to the free one', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      page.studentPasses.set([studioPass]);
+      const full = hybrid({ bookedCount: 20, availableSlots: 0 });
+      expect(page.hasBookableSeat(full)).toBe(true);
+      page.openBookingModal(full);
+      const studio = page.bookingSeatChoices()[0];
+      expect(studio.full).toBe(true);
+      expect(studio.disabled).toBe(true);
+      expect(page.selectedAttendanceMode()).toBe('ONLINE');
+      page.selectSeat(studio);
+      expect(page.selectedAttendanceMode()).toBe('ONLINE');
+      // Waitlist is only for the full seat type.
+      page.closeBookingModal();
+      page.openWaitlistModal(full);
+      expect(page.waitlistSeatChoices().map(c => c.disabled)).toEqual([false, true]);
+      expect(page.selectedAttendanceMode()).toBe('IN_PERSON');
+    });
+
+    it('offers the waitlist when every seat the pass may take is full', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      page.studentPasses.set([{ ...studioPass, accessScope: 'ONLINE' }]);
+      expect(page.hasBookableSeat(hybrid({ onlineBookedCount: 30 }))).toBe(false);
+      expect(page.hasBookableSeat(hybrid())).toBe(true);
+    });
+
+    it('forces an online pass to an online seat', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      page.studentPasses.set([{ ...studioPass, id: 'online', accessScope: 'ONLINE' }]);
+      expect(page.canBookSchedule(hybrid())).toBe(true);
+      page.openBookingModal(hybrid());
+      const [studio, online] = page.bookingSeatChoices();
+      expect(studio.allowed).toBe(false);
+      expect(studio.disabled).toBe(true);
+      expect(online.disabled).toBe(false);
+      expect(page.selectedAttendanceMode()).toBe('ONLINE');
+      page.submitBooking();
+      expect(createBooking.mock.calls[0][0].attendanceMode).toBe('ONLINE');
+    });
+
+    it('lets a single-branch pass of another branch take only an online seat', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      page.studentPasses.set([{ ...studioPass, registeredBranchId: 'b2' }]);
+      expect(page.eligiblePasses(hybrid()).map(p => p.id)).toEqual(['studio']);
+      expect(page.passSeats(hybrid(), page.studentPasses()[0])).toEqual(['ONLINE']);
+      expect(page.canBookSchedule({ ...hybrid(), deliveryMode: 'IN_PERSON' })).toBe(false);
+      page.studentPasses.set([{ ...studioPass, registeredBranchId: 'b2', isAllBranches: true }]);
+      expect(page.passSeats(hybrid(), page.studentPasses()[0])).toEqual(['IN_PERSON', 'ONLINE']);
+    });
+
+    it('shows the join button only for the online seat of a hybrid class', () => {
+      const page = TestBed.createComponent(ScheduleCalendarComponent).componentInstance;
+      const b = { id: 'bk', status: 'CONFIRMED', deliveryMode: 'HYBRID', startTime: '2026-11-04T12:00:00Z', endTime: '2026-11-04T13:00:00Z' } as any;
+      page.now.set(Date.parse('2026-11-04T12:05:00Z'));
+      expect(page.canJoinOnline({ ...b, attendanceMode: 'ONLINE' })).toBe(true);
+      expect(page.canJoinOnline({ ...b, attendanceMode: 'IN_PERSON' })).toBe(false);
+      expect(page.canJoinOnline(b)).toBe(false);
+      expect(page.canJoinOnline({ ...b, deliveryMode: 'ONLINE' })).toBe(true);
+    });
+
+    it('renders the hybrid label, both availabilities and the seat choice', async () => {
+      Object.assign(TestBed.inject(AuthService), { canManageClasses: () => false });
+      const fixture = TestBed.createComponent(ScheduleCalendarComponent);
+      const page = fixture.componentInstance;
+      fixture.detectChanges(); await fixture.whenStable();
+      page.studentPasses.set([studioPass]);
+      page.schedules.set([hybrid({ startTime: '2099-10-10T10:00:00Z', endTime: '2099-10-10T11:00:00Z', className: 'Hatha', instructorName: 'Lan', roomName: 'Studio' })]);
+      fixture.detectChanges(); await fixture.whenStable();
+      const text = fixture.nativeElement.textContent as string;
+      expect(text).toContain('Hybrid');
+      expect(text.replace(/\s+/g, ' ')).toContain('Tại phòng 3/20 · Online 5/30');
+      page.openBookingModal(page.schedules()[0]);
+      fixture.detectChanges(); await fixture.whenStable();
+      const seats = document.querySelectorAll('.seat-option');
+      expect(seats.length).toBe(2);
+      expect(document.body.textContent).toContain('Học tại phòng');
+      expect(document.body.textContent).toContain('Học online');
+    });
+  });
 });

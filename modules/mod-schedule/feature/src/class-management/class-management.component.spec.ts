@@ -696,4 +696,98 @@ describe('ClassManagementComponent', () => {
     expect(comp.scheduleForm().startTimeStr).toBe('08:00');
     expect(comp.scheduleForm().roomId).toBe('room-2');
   });
+
+  describe('hybrid classes', () => {
+    const hybridRooms = [
+      { id: 'studio', branchId: 'branch-1', name: 'Studio Sen', maxCapacity: 20, isActive: true, roomType: 'PHYSICAL' },
+      { id: 'zoom-1', branchId: 'branch-1', name: 'Phòng online 1', maxCapacity: 15, isActive: true, roomType: 'VIRTUAL', liveHostAccount: 'zoom1@anyen.vn' },
+      { id: 'zoom-2', branchId: 'branch-1', name: 'Phòng online 2', maxCapacity: 50, isActive: true, roomType: 'VIRTUAL' },
+      { id: 'zoom-other', branchId: 'branch-2', name: 'Phòng online CS2', maxCapacity: 50, isActive: true, roomType: 'VIRTUAL' }
+    ];
+
+    function setUp() {
+      scheduleApiMock.getRoomsByBranch = vi.fn((branchId: string) => of(hybridRooms.filter(r => r.branchId === branchId)));
+      scheduleApiMock.getSchedules = vi.fn().mockReturnValue(of([]));
+      toastMock.warning = vi.fn();
+      TestBed.configureTestingModule({
+        imports: [ClassManagementComponent],
+        providers: [
+          provideExperimentalZonelessChangeDetection(),
+          provideRouter([]),
+          {
+            provide: AuthService,
+            useValue: {
+              isSuperAdmin: () => true, isBranchManager: () => false, isReceptionist: () => false, isInstructor: () => false,
+              isStudent: () => false, currentUserId: () => 'user-1', userHomeBranchId: () => null, branchIds: () => [], userFullName: () => 'Admin'
+            }
+          },
+          { provide: ScheduleApi, useValue: scheduleApiMock },
+          { provide: OnlineClassApi, useValue: { getSession: vi.fn().mockReturnValue(of(null)), resync: vi.fn() } },
+          { provide: ZenConfirmService, useValue: confirmMock },
+          { provide: ZenToastService, useValue: toastMock }
+        ]
+      });
+      const comp = TestBed.createComponent(ClassManagementComponent).componentInstance;
+      comp.ngOnInit();
+      comp.onBranchFilterChange('branch-1');
+      comp.openCreateScheduleModal();
+      comp.onScheduleFormRoomChange('studio');
+      comp.scheduleForm.update(f => ({ ...f, date: '2099-01-01', startTimeStr: '08:00' }));
+      return comp;
+    }
+
+    it('sends the live room and online seats of a hybrid class', () => {
+      const comp = setUp();
+      expect(comp.selectedFormRoomIsPhysical()).toBe(true);
+      expect(comp.liveRoomSelectOptions().map(o => o.value)).toEqual(['zoom-1', 'zoom-2']);
+      expect(comp.liveRoomSelectOptions()[0].sublabel).toContain('zoom1@anyen.vn');
+      comp.setScheduleFormHybrid(true);
+      // Default 20 online seats, capped by the first live room's capacity.
+      expect(comp.scheduleForm().liveRoomId).toBe('zoom-1');
+      expect(comp.scheduleForm().onlineCapacity).toBe(15);
+      comp.onScheduleFormLiveRoomChange('zoom-2');
+      comp.onScheduleFormOnlineCapacityChange(30);
+      comp.submitCreateSchedule();
+      expect(scheduleApiMock.createSchedule).toHaveBeenCalledWith(expect.objectContaining({
+        branchId: 'branch-1', roomId: 'studio', maxCapacity: 20, liveRoomId: 'zoom-2', onlineCapacity: 30
+      }));
+    });
+
+    it('keeps a studio-only class payload unchanged and rejects too many online seats', () => {
+      const comp = setUp();
+      comp.submitCreateSchedule();
+      const req = scheduleApiMock.createSchedule.mock.calls[0][0];
+      expect(req).not.toHaveProperty('liveRoomId');
+      expect(req).not.toHaveProperty('onlineCapacity');
+
+      comp.openCreateScheduleModal();
+      comp.onScheduleFormRoomChange('studio');
+      comp.scheduleForm.update(f => ({ ...f, date: '2099-01-01', startTimeStr: '08:00' }));
+      comp.setScheduleFormHybrid(true);
+      comp.onScheduleFormOnlineCapacityChange(16);
+      comp.submitCreateSchedule();
+      expect(scheduleApiMock.createSchedule).toHaveBeenCalledTimes(1);
+      expect(toastMock.warning).toHaveBeenCalled();
+    });
+
+    it('does not offer streaming for an online room', () => {
+      const comp = setUp();
+      comp.setScheduleFormHybrid(true);
+      comp.onScheduleFormRoomChange('zoom-1');
+      expect(comp.selectedFormRoomIsPhysical()).toBe(false);
+      expect(comp.scheduleForm().hybrid).toBe(false);
+      comp.setScheduleFormHybrid(true);
+      expect(comp.scheduleForm().hybrid).toBe(false);
+    });
+
+    it('labels hybrid schedules with studio and online seats', () => {
+      const comp = setUp();
+      const s = { deliveryMode: 'HYBRID', bookedCount: 3, maxCapacity: 20, onlineBookedCount: 5, onlineCapacity: 30 } as any;
+      expect(comp.isHybrid(s)).toBe(true);
+      expect(comp.hasZoomRoom(s)).toBe(true);
+      expect(comp.hasZoomRoom({ deliveryMode: 'IN_PERSON' })).toBe(false);
+      expect(comp.capacityLabel(s)).toBe('3/20 · Online 5/30');
+      expect(comp.capacityLabel({ ...s, deliveryMode: 'IN_PERSON' })).toBe('3/20');
+    });
+  });
 });

@@ -1,0 +1,288 @@
+<div class="zen-page payroll-page">
+  <zen-page-header
+    eyebrow="Quản trị nhân sự"
+    heading="Thù lao HLV"
+    [subtitle]="isInstructorOnly() ? 'Các buổi bạn đã dạy trong tháng và thù lao tạm tính theo đơn giá.' : 'Bảng lương tạm tính theo buổi dạy, hình thức lớp và số học viên tham gia.'"
+  >
+    @if (activeTab() === 'preview') {
+      <button actions type="button" class="zen-btn zen-btn--outline btn-export" (click)="exportCsv()" [disabled]="!preview()?.instructors?.length">
+        <zen-icon name="download" />
+        <span>Xuất CSV</span>
+      </button>
+    } @else if (canAdmin()) {
+      <button actions type="button" class="zen-btn zen-btn--primary btn-create-policy" (click)="openCreate()">
+        <zen-icon name="plus" />
+        <span>Thêm đơn giá</span>
+      </button>
+    }
+  </zen-page-header>
+
+  <zen-tabs [items]="tabs" [active]="activeTab()" (activeChange)="setTab($event)" />
+
+  @if (activeTab() === 'preview') {
+    <zen-card padding="sm" aria-label="Bộ lọc bảng lương">
+      <zen-toolbar>
+        <div class="month-picker">
+          <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="shiftMonth(-1)" title="Tháng trước" aria-label="Tháng trước">
+            <zen-icon name="chevron-left" />
+          </button>
+          <zen-select class="month-select" name="payrollMonth" [options]="monthOptions" [ngModel]="'' + month()" (ngModelChange)="onMonthChange($event)" />
+          <zen-select class="year-select" name="payrollYear" [options]="yearOptions()" [ngModel]="'' + year()" (ngModelChange)="onYearChange($event)" />
+          <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" (click)="shiftMonth(1)" title="Tháng sau" aria-label="Tháng sau">
+            <zen-icon name="chevron-right" />
+          </button>
+        </div>
+        @if (showBranchFilter()) {
+          <zen-select
+            class="zen-toolbar-item"
+            name="payrollBranch"
+            [options]="branchOptions()"
+            [ngModel]="branchId() || 'ALL'"
+            (ngModelChange)="onBranchChange($event)"
+            [disabled]="branchOptions().length <= 1"
+            placeholder="Chọn cơ sở..."
+          />
+        }
+        <div toolbar-end>
+          <button type="button" class="zen-btn zen-btn--outline" (click)="loadPreview()" [disabled]="loadingPreview()" title="Tải lại">
+            <zen-icon name="refresh" [class.zen-spin]="loadingPreview()" />
+            <span>Làm mới</span>
+          </button>
+        </div>
+      </zen-toolbar>
+    </zen-card>
+
+    @if (previewError()) {
+      <zen-alert tone="danger" dismissible (dismissed)="previewError.set(null)">{{ previewError() }}</zen-alert>
+    }
+
+    <div class="zen-grid zen-grid--stats">
+      <zen-stat-card class="kpi-total" label="Tổng thù lao tạm tính" [value]="formatCurrency(summary().total)" icon="wallet" tone="success" />
+      <zen-stat-card label="Buổi đã dạy" [value]="summary().sessions" icon="calendar" [hint]="summary().instructors + ' huấn luyện viên'" />
+      <zen-stat-card label="Lượt học viên" [value]="summary().attended" icon="users" tone="info" />
+      <zen-stat-card label="Buổi chưa có đơn giá" [value]="summary().unpriced" icon="alert-triangle" [tone]="summary().unpriced > 0 ? 'warning' : 'neutral'" />
+    </div>
+
+    @if (summary().unpriced > 0) {
+      <zen-alert tone="warning">
+        Có {{ summary().unpriced }} buổi chưa có đơn giá áp dụng nên chưa được tính tiền.
+        @if (canAdmin()) { Thêm đơn giá ở tab "Đơn giá". } @else { Liên hệ quản trị hệ thống để thiết lập đơn giá. }
+      </zen-alert>
+    }
+
+    <zen-card padding="none" [heading]="'Bảng lương tháng ' + month() + '/' + year()" subtitle="Chỉ tính các buổi đã kết thúc, không bị hủy.">
+      @if (loadingPreview() && !preview()) {
+        <zen-loading message="Đang tải bảng lương..." />
+      } @else if (!preview()?.instructors?.length) {
+        <zen-empty-state icon="banknote" heading="Chưa có buổi dạy nào trong tháng này" description="Bảng lương hiện các buổi đã dạy xong trong tháng được chọn." />
+      } @else {
+        <div class="zen-table-wrap">
+          <table class="zen-table payroll-table">
+            <thead>
+              <tr>
+                <th class="is-actions"></th>
+                <th>Huấn luyện viên</th>
+                <th class="is-numeric">Tại phòng</th>
+                <th class="is-numeric">Online</th>
+                <th class="is-numeric">Hybrid</th>
+                <th class="is-numeric">Học viên</th>
+                <th class="is-numeric">Thù lao</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of preview()!.instructors; track p.instructorId) {
+                <tr class="instructor-row" (click)="toggleExpanded(p.instructorId)" [class.is-open]="isExpanded(p.instructorId)">
+                  <td class="is-actions">
+                    <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm btn-expand" [attr.aria-expanded]="isExpanded(p.instructorId)"
+                            [attr.aria-label]="(isExpanded(p.instructorId) ? 'Thu gọn' : 'Xem chi tiết') + ' ' + p.instructorName"
+                            (click)="$event.stopPropagation(); toggleExpanded(p.instructorId)">
+                      <zen-icon [name]="isExpanded(p.instructorId) ? 'chevron-down' : 'chevron-right'" />
+                    </button>
+                  </td>
+                  <td>
+                    <span class="cell-primary">{{ p.instructorName }}</span>
+                    <span class="cell-sub">{{ totalSessions(p) }} buổi</span>
+                    @if (p.unpricedSessions > 0) {
+                      <zen-badge class="unpriced-badge" size="sm" tone="warning">{{ p.unpricedSessions }} buổi chưa có đơn giá</zen-badge>
+                    }
+                  </td>
+                  <td class="is-numeric zen-num">{{ p.studioSessions }}</td>
+                  <td class="is-numeric zen-num">{{ p.onlineSessions }}</td>
+                  <td class="is-numeric zen-num">{{ p.hybridSessions }}</td>
+                  <td class="is-numeric zen-num">
+                    {{ p.attended }}
+                    @if (p.onlineAttended > 0) { <span class="cell-sub">{{ p.onlineAttended }} online</span> }
+                  </td>
+                  <td class="is-numeric"><span class="zen-price">{{ formatCurrency(p.total) }}</span></td>
+                </tr>
+                @if (isExpanded(p.instructorId)) {
+                  <tr class="lines-row">
+                    <td colspan="7">
+                      <table class="zen-table lines-table">
+                        <thead>
+                          <tr>
+                            <th>Thời gian</th>
+                            <th>Lớp</th>
+                            <th>Hình thức</th>
+                            <th class="is-numeric">Học viên</th>
+                            <th class="is-numeric">Đơn giá buổi</th>
+                            <th class="is-numeric">Thưởng/HV</th>
+                            <th class="is-numeric">Thành tiền</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (l of p.lines; track l.scheduleId) {
+                            <tr [class.is-unpriced]="l.lineTotal === null">
+                              <td class="is-nowrap">{{ l.startTime | date:'EEE dd/MM HH:mm':'+0700' }}</td>
+                              <td class="is-wrap">{{ l.className }}</td>
+                              <td><zen-badge size="sm" [tone]="l.deliveryMode === 'ONLINE' ? 'info' : (l.deliveryMode === 'HYBRID' ? 'primary' : 'neutral')">{{ modeLabel(l.deliveryMode) }}</zen-badge></td>
+                              <td class="is-numeric zen-num">{{ l.attended }}@if (l.onlineAttended > 0) { <span class="zen-text-muted"> ({{ l.onlineAttended }} online)</span> }</td>
+                              <td class="is-numeric zen-num">{{ l.sessionRate === null ? '—' : formatCurrency(l.sessionRate) }}</td>
+                              <td class="is-numeric zen-num">{{ l.bonusPerStudent === null ? '—' : formatCurrency(l.bonusPerStudent) }}</td>
+                              <td class="is-numeric">
+                                @if (l.lineTotal === null) {
+                                  <zen-badge size="sm" tone="warning">Chưa có đơn giá</zen-badge>
+                                } @else {
+                                  <span class="zen-price">{{ formatCurrency(l.lineTotal) }}</span>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td class="zen-strong">Tổng cộng</td>
+                <td colspan="4"></td>
+                <td class="is-numeric"><span class="zen-price grand-total">{{ formatCurrency(preview()!.total) }}</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+    </zen-card>
+  } @else {
+    <zen-alert tone="info">
+      Mỗi buổi dạy được tính: đơn giá buổi + thưởng × số học viên tham gia. Đơn giá online trống thì buổi online tính theo đơn giá tại phòng.
+      Đơn giá riêng của cơ sở được ưu tiên hơn đơn giá áp dụng chung.
+    </zen-alert>
+
+    @if (policiesError()) {
+      <zen-alert tone="danger" dismissible (dismissed)="policiesError.set(null)">{{ policiesError() }}</zen-alert>
+    }
+
+    <zen-card padding="none" heading="Đơn giá thù lao" [subtitle]="canAdmin() ? 'Tạo đơn giá mới sẽ đóng đơn giá đang áp dụng cùng HLV và phạm vi.' : 'Chỉ quản trị hệ thống được thay đổi đơn giá.'">
+      <label card-actions class="zen-row zen-text-sm inactive-toggle">
+        <input type="checkbox" [ngModel]="showInactive()" (ngModelChange)="showInactive.set($event)" />
+        Hiện đơn giá đã ngừng
+      </label>
+      @if (loadingPolicies()) {
+        <zen-loading message="Đang tải đơn giá..." />
+      } @else if (!visiblePolicies().length) {
+        <zen-empty-state icon="tag" heading="Chưa có đơn giá nào" [description]="canAdmin() ? 'Bấm &quot;Thêm đơn giá&quot; để thiết lập thù lao cho huấn luyện viên.' : 'Đơn giá do quản trị hệ thống thiết lập sẽ hiện ở đây.'" />
+      } @else {
+        <div class="zen-table-wrap">
+          <table class="zen-table policy-table">
+            <thead>
+              <tr>
+                <th>Huấn luyện viên</th>
+                <th>Phạm vi</th>
+                <th class="is-numeric">Tại phòng / buổi</th>
+                <th class="is-numeric">Online / buổi</th>
+                <th class="is-numeric">Thưởng / học viên</th>
+                <th>Hiệu lực</th>
+                <th>Trạng thái</th>
+                @if (canAdmin()) { <th class="is-actions"></th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of visiblePolicies(); track p.id) {
+                <tr [class.is-muted]="!p.active">
+                  <td><span class="cell-primary">{{ p.instructorName }}</span></td>
+                  <td>{{ p.branchName || 'Mọi cơ sở' }}</td>
+                  <td class="is-numeric"><span class="zen-price">{{ formatCurrency(p.basePayPerClass) }}</span></td>
+                  <td class="is-numeric">
+                    @if (p.onlinePayPerClass === null) {
+                      <span class="zen-text-muted" title="Buổi online tính theo đơn giá tại phòng">Theo tại phòng</span>
+                    } @else {
+                      <span class="zen-price">{{ formatCurrency(p.onlinePayPerClass) }}</span>
+                    }
+                  </td>
+                  <td class="is-numeric zen-num">{{ formatCurrency(p.headcountBonusPerStudent) }}</td>
+                  <td class="is-nowrap">
+                    {{ p.effectiveFrom | date:'dd/MM/yyyy':'+0700' }} – {{ p.effectiveTo ? (p.effectiveTo | date:'dd/MM/yyyy':'+0700') : 'nay' }}
+                  </td>
+                  <td>
+                    @if (!p.active) {
+                      <zen-badge size="sm" tone="neutral">Đã ngừng</zen-badge>
+                    } @else if (p.effectiveTo) {
+                      <zen-badge size="sm" tone="neutral">Đã thay thế</zen-badge>
+                    } @else {
+                      <zen-badge size="sm" tone="success" dot>Đang áp dụng</zen-badge>
+                    }
+                  </td>
+                  @if (canAdmin()) {
+                    <td class="is-actions">
+                      @if (p.active) {
+                        <button type="button" class="zen-btn zen-btn--danger-outline zen-btn--sm btn-deactivate" (click)="deactivate(p)">Ngừng</button>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </zen-card>
+  }
+</div>
+
+@if (formOpen() && form(); as f) {
+  <zen-modal heading="Thêm đơn giá thù lao" subtitle="Áp dụng cho các buổi dạy từ ngày hiệu lực." icon="banknote" size="lg" (closed)="closeCreate()">
+    <div class="zen-stack">
+      @if (formError()) {
+        <zen-alert tone="danger">{{ formError() }}</zen-alert>
+      }
+      <div class="form-grid">
+        <div class="zen-field">
+          <span class="zen-label">Huấn luyện viên <span class="zen-required">*</span></span>
+          <zen-select name="policyInstructor" [options]="instructorOptions()" [ngModel]="f.instructorId" (ngModelChange)="patchForm({ instructorId: $event })" placeholder="Chọn huấn luyện viên..." />
+        </div>
+        <div class="zen-field">
+          <span class="zen-label">Cơ sở</span>
+          <zen-select name="policyBranch" [options]="formBranchOptions()" [ngModel]="f.branchId" (ngModelChange)="patchForm({ branchId: $event })" placeholder="Mọi cơ sở (áp dụng chung)" />
+        </div>
+        <label class="zen-field">
+          <span class="zen-label">Đơn giá tại phòng / buổi (₫) <span class="zen-required">*</span></span>
+          <input type="number" class="zen-control" name="basePay" min="0" step="10000" [ngModel]="f.basePayPerClass" (ngModelChange)="patchForm({ basePayPerClass: $event })" />
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Đơn giá online / buổi (₫)</span>
+          <input type="number" class="zen-control" name="onlinePay" min="0" step="10000" [ngModel]="f.onlinePayPerClass" (ngModelChange)="patchForm({ onlinePayPerClass: $event })" placeholder="Để trống = theo đơn giá tại phòng" />
+          <span class="zen-hint">Đơn giá online trống thì buổi online tính theo đơn giá tại phòng.</span>
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Thưởng / học viên tham gia (₫)</span>
+          <input type="number" class="zen-control" name="bonus" min="0" step="1000" [ngModel]="f.headcountBonusPerStudent" (ngModelChange)="patchForm({ headcountBonusPerStudent: $event })" placeholder="0" />
+        </label>
+        <label class="zen-field">
+          <span class="zen-label">Ngày hiệu lực</span>
+          <input type="date" class="zen-control" name="effectiveFrom" [ngModel]="f.effectiveFrom" (ngModelChange)="patchForm({ effectiveFrom: $event })" />
+        </label>
+      </div>
+    </div>
+    <ng-container modal-footer>
+      <button type="button" class="zen-btn zen-btn--outline" (click)="closeCreate()" [disabled]="saving()">Hủy bỏ</button>
+      <button type="button" class="zen-btn zen-btn--primary btn-save-policy" (click)="submit()" [disabled]="saving()">
+        {{ saving() ? 'Đang lưu...' : 'Lưu đơn giá' }}
+      </button>
+    </ng-container>
+  </zen-modal>
+}

@@ -12,10 +12,99 @@ import {
 } from '@yoga/platform/ui';
 
 const NOTIFICATION_POLL_MS = 5 * 60_000;
+interface NavLink {
+  link: string;
+  label: string;
+  icon: ZenIconName;
+  /** Mô tả ngắn hiện trong bảng xổ xuống. */
+  hint: string;
+}
+
+/** Nhóm menu; nhóm chỉ có một mục được hiện thành link thẳng. */
+export interface NavGroup {
+  id: string;
+  label: string;
+  icon: ZenIconName;
+  items: NavLink[];
+}
+
+type NavAuth = Pick<
+  AuthService,
+  | 'canAccessStudentPortal'
+  | 'isSuperAdmin'
+  | 'isBranchManager'
+  | 'isReceptionist'
+  | 'isInstructor'
+  | 'canManageUsers'
+  | 'canManageClasses'
+  | 'canAccessPos'
+>;
+
+export function buildNavGroups(a: NavAuth): NavGroup[] {
+  const plans: NavLink = { link: '/membership/plans', label: 'Gói Thẻ Tập', icon: 'layers', hint: 'Bảng giá và các gói thẻ' };
+  const branches: NavLink = { link: '/branches', label: 'Chi Nhánh', icon: 'map-pin', hint: 'Địa chỉ, phòng tập, giờ mở cửa' };
+  const subjects: NavLink = { link: '/schedule/subjects', label: 'Bộ Môn', icon: 'book', hint: 'Các bộ môn yoga và trị liệu' };
+  const courses: NavLink = { link: '/schedule/courses', label: 'Khóa Học', icon: 'graduation-cap', hint: 'Chương trình và lớp theo khóa' };
+  const calendar: NavLink = { link: '/schedule/calendar', label: 'Lịch & Đặt Chỗ', icon: 'calendar', hint: 'Xem lịch và đặt chỗ lớp học' };
+
+  if (a.canAccessStudentPortal()) {
+    return [
+      { id: 'mine', label: 'Của Tôi', icon: 'user', items: [
+        { link: '/membership/my-passes', label: 'Thẻ Của Tôi', icon: 'shield-check', hint: 'Thẻ tập đang dùng và hạn dùng' },
+        { link: '/membership/history', label: 'Lịch Sử Tập', icon: 'clock', hint: 'Các buổi đã đặt và đã tập' }
+      ] },
+      { id: 'calendar', label: calendar.label, icon: calendar.icon, items: [calendar] },
+      { id: 'courses', label: courses.label, icon: courses.icon, items: [courses] },
+      { id: 'videos', label: 'Thư Viện Video', icon: 'play', items: [
+        { link: '/videos', label: 'Thư Viện Video', icon: 'play', hint: 'Bài tập video theo yêu cầu' }
+      ] },
+      { id: 'explore', label: 'Khám Phá', icon: 'sparkles', items: [subjects, plans, branches] }
+    ];
+  }
+
+  const managers = a.isSuperAdmin() || a.isBranchManager();
+  const posOnly = a.canAccessPos() && !managers;
+  const groups: NavGroup[] = [
+    { id: 'schedule', label: 'Lịch Học', icon: 'calendar', items: [
+      ...(a.canManageClasses() ? [
+        { link: '/schedule/timetable', label: 'Lịch Học', icon: 'calendar', hint: 'Thời khóa biểu tại phòng' } as NavLink,
+        { link: '/schedule/online', label: 'Lớp Online', icon: 'monitor', hint: 'Lớp Zoom và lớp hybrid' } as NavLink
+      ] : []),
+      courses,
+      ...(a.canManageClasses() ? [subjects] : []),
+      ...(!managers && !a.isReceptionist() && !a.isInstructor() ? [calendar] : []),
+      ...(a.isInstructor() ? [{ link: '/schedule/check-in', label: 'Điểm Danh', icon: 'check-square', hint: 'Quét mã học viên vào lớp' } as NavLink] : [])
+    ] },
+    { id: 'videos', label: 'Video', icon: 'play', items: managers || a.isInstructor() ? [
+      { link: '/videos/manage', label: 'Video', icon: 'play', hint: 'Quản lý thư viện video' }
+    ] : [] },
+    { id: 'business', label: 'Kinh Doanh', icon: 'shopping-bag', items: [
+      ...(managers ? [{ link: '/membership/orders', label: 'Đơn Hàng', icon: 'receipt', hint: 'Đơn mua thẻ, khóa học, thanh toán' } as NavLink] : []),
+      ...(posOnly ? [{ link: '/membership/pos', label: 'Bán Thẻ POS', icon: 'credit-card', hint: 'Bán thẻ tại quầy' } as NavLink] : []),
+      plans,
+      ...(managers ? [
+        { link: '/membership/revenue', label: 'Doanh Thu', icon: 'bar-chart', hint: 'Doanh thu theo cơ sở, theo ngày' } as NavLink,
+        { link: '/membership/online-report', label: 'Báo Cáo Online', icon: 'activity', hint: 'Lớp online, video, tỷ lệ vào lớp' } as NavLink
+      ] : [])
+    ] },
+    { id: 'admin', label: 'Quản Trị', icon: 'building', items: [
+      ...(a.canManageUsers() || a.isReceptionist() ? [{
+        link: '/users',
+        label: a.isReceptionist() ? 'Học Viên' : 'Người Dùng',
+        icon: 'users',
+        hint: a.isReceptionist() ? 'Danh sách và hồ sơ học viên' : 'Tài khoản và phân quyền'
+      } as NavLink] : []),
+      ...(managers || a.isInstructor() ? [{ link: '/schedule/payroll', label: 'Thù Lao HLV', icon: 'banknote', hint: 'Bảng lương theo buổi dạy' } as NavLink] : []),
+      branches
+    ] }
+  ];
+  return groups.filter(g => g.items.length > 0);
+}
 
 @Component({
   selector: 'yoga-root',
   standalone: true,
+  host: { '(document:keydown.escape)': 'closeAllPopovers()' },
   imports: [CommonModule, RouterModule, RouterOutlet, ZenConfirmModalComponent, ZenIconComponent, ZenAvatarComponent],
   template: `
     @if (!isStandalonePage()) {
@@ -32,137 +121,44 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
 
         <!-- DESKTOP NAVIGATION MENU -->
         <nav class="desktop-nav" aria-label="Menu điều hướng chính">
-            <!-- Học viên: nhóm cá nhân | nhóm danh mục -->
-            @if (auth.canAccessStudentPortal()) {
-              <a routerLink="/membership/my-passes" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="shield-check" />
-                <span>Thẻ Của Tôi</span>
-              </a>
-              <a routerLink="/membership/history" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="clock" />
-                <span>Lịch Sử Tập</span>
-              </a>
-              <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="graduation-cap" />
-                <span>Khóa Học</span>
-              </a>
-              <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="calendar" />
-                <span>Lịch & Đặt Chỗ</span>
-              </a>
-              <a routerLink="/videos" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="play" />
-                <span>Thư Viện Video</span>
-              </a>
-              <span class="nav-divider" aria-hidden="true"></span>
-              <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="book" />
-                <span>Bộ Môn</span>
-              </a>
-              <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="layers" />
-                <span>Gói Thẻ Tập</span>
-              </a>
-              <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="map-pin" />
-                <span>Chi Nhánh</span>
+          @for (group of navGroups(); track group.id) {
+            @if (group.items.length === 1) {
+              <a [routerLink]="group.items[0].link" routerLinkActive="active" class="nav-tab">
+                <zen-icon class="nav-icon" [name]="group.items[0].icon" />
+                <span>{{ group.items[0].label }}</span>
               </a>
             } @else {
-              @if (auth.canManageUsers() || auth.isReceptionist()) {
-                <a routerLink="/users" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="users" />
-                  <span>{{ auth.isReceptionist() ? 'Học Viên' : 'Người Dùng' }}</span>
-                </a>
-              }
-              @if (auth.canManageClasses()) {
-                <a routerLink="/schedule/timetable" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="calendar" />
-                  <span>Lịch Học</span>
-                </a>
-                <a routerLink="/schedule/online" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="monitor" />
-                  <span>Lớp Online</span>
-                </a>
-              }
-              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
-                <a routerLink="/videos/manage" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="play" />
-                  <span>Video</span>
-                </a>
-              }
-              <a routerLink="/schedule/courses" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="graduation-cap" />
-                <span>Khóa Học</span>
-              </a>
-              @if (auth.isSuperAdmin() || auth.isBranchManager()) {
-                <a routerLink="/membership/orders" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="shopping-bag" />
-                  <span>Đơn Hàng</span>
-                </a>
-                <a routerLink="/membership/revenue" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="bar-chart" />
-                  <span>Doanh Thu</span>
-                </a>
-                <a routerLink="/membership/online-report" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="activity" />
-                  <span>Báo Cáo Online</span>
-                </a>
-              }
-              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
-                <a routerLink="/schedule/payroll" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="banknote" />
-                  <span>Thù Lao HLV</span>
-                </a>
-              }
-              @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
-                <a routerLink="/membership/pos" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="credit-card" />
-                  <span>Bán Thẻ POS</span>
-                </a>
-              }
-              @if (auth.isInstructor()) {
-                <a routerLink="/schedule/check-in" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="check-square" />
-                  <span>Điểm Danh</span>
-                </a>
-              }
-
-              @if (auth.canManageUsers() || auth.canManageClasses() || auth.isSuperAdmin() || auth.isBranchManager() || (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) || auth.isInstructor()) {
-                <span class="nav-divider" aria-hidden="true"></span>
-              }
-
-              @if (auth.canAccessStudentPortal()) {
-                <a routerLink="/membership/my-passes" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="shield-check" />
-                  <span>Thẻ Của Tôi</span>
-                </a>
-                <a routerLink="/membership/history" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="clock" />
-                  <span>Lịch Sử Tập</span>
-                </a>
-              }
-              @if (auth.canManageClasses()) {
-                <a routerLink="/schedule/subjects" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="book" />
-                  <span>Bộ Môn</span>
-                </a>
-              }
-              <a routerLink="/membership/plans" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="layers" />
-                <span>Gói Thẻ Tập</span>
-              </a>
-              <a routerLink="/branches" routerLinkActive="active" class="nav-tab">
-                <zen-icon class="nav-icon" name="map-pin" />
-                <span>Chi Nhánh</span>
-              </a>
-              @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
-                <a routerLink="/schedule/calendar" routerLinkActive="active" class="nav-tab">
-                  <zen-icon class="nav-icon" name="calendar" />
-                  <span>Lịch & Đặt Chỗ</span>
-                </a>
-              }
+              <div class="popover-wrapper nav-group">
+                <button
+                  type="button"
+                  class="nav-tab nav-group-btn"
+                  [class.active]="isGroupActive(group)"
+                  [class.open]="openNavGroup() === group.id"
+                  (click)="toggleNavGroup(group.id)"
+                  [attr.aria-expanded]="openNavGroup() === group.id"
+                  aria-haspopup="menu"
+                >
+                  <zen-icon class="nav-icon" [name]="group.icon" />
+                  <span>{{ group.label }}</span>
+                  <zen-icon class="nav-icon nav-group-chevron" name="chevron-down" [size]="14" />
+                </button>
+                @if (openNavGroup() === group.id) {
+                  <div class="popover-panel nav-group-panel" role="menu" [attr.aria-label]="group.label">
+                    @for (item of group.items; track item.link) {
+                      <a [routerLink]="item.link" routerLinkActive="active" class="nav-group-item" role="menuitem" (click)="closeAllPopovers()">
+                        <span class="nav-group-item-icon"><zen-icon [name]="item.icon" [size]="18" /></span>
+                        <span class="nav-group-item-text">
+                          <span class="nav-group-item-label">{{ item.label }}</span>
+                          <span class="nav-group-item-hint">{{ item.hint }}</span>
+                        </span>
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
             }
-          </nav>
+          }
+        </nav>
 
         <div class="user-profile-bar">
           @if (auth.isAuthenticated()) {
@@ -341,7 +337,7 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
               </div>
             </div>
 
-            @if (isNotificationsOpen() || isSettingsOpen()) {
+            @if (isNotificationsOpen() || isSettingsOpen() || openNavGroup()) {
               <div class="popover-backdrop" (click)="closeAllPopovers()"></div>
             }
 
@@ -413,143 +409,24 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
           }
 
           <nav class="drawer-nav">
-            <div class="drawer-section-title">Điều hướng chính</div>
-
-            @if (auth.canAccessStudentPortal()) {
-              <a routerLink="/membership/my-passes" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="shield-check" />
-                <span>Thẻ Của Tôi</span>
-              </a>
-              <a routerLink="/membership/history" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="clock" />
-                <span>Lịch Sử Tập</span>
-              </a>
-              <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="graduation-cap" />
-                <span>Khóa Học</span>
-              </a>
-              <a routerLink="/schedule/calendar" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="calendar" />
-                <span>Lịch & Đặt Chỗ</span>
-              </a>
-              <a routerLink="/videos" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="play" />
-                <span>Thư Viện Video</span>
-              </a>
-              <div class="drawer-section-title">Danh mục</div>
-              <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="book" />
-                <span>Bộ Môn</span>
-              </a>
-              <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="layers" />
-                <span>Gói Thẻ Tập</span>
-              </a>
-              <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="map-pin" />
-                <span>Chi Nhánh</span>
-              </a>
-            } @else {
-
-              @if (auth.canManageUsers() || auth.isReceptionist()) {
-                <a routerLink="/users" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="users" />
-                  <span>{{ auth.isReceptionist() ? 'Danh Sách Học Viên' : 'Phân Quyền & Người Dùng' }}</span>
+            @if (drawerShortcuts().length > 0) {
+              <div class="drawer-section-title">Điều hướng chính</div>
+              @for (item of drawerShortcuts(); track item.link) {
+                <a [routerLink]="item.link" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                  <zen-icon [name]="item.icon" />
+                  <span>{{ item.label }}</span>
                 </a>
               }
-
-              @if (auth.canManageClasses()) {
-                <a routerLink="/schedule/timetable" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="calendar" />
-                  <span>Lịch Học</span>
-                </a>
-                <a routerLink="/schedule/online" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="monitor" />
-                  <span>Lớp Online</span>
-                </a>
-              }
-
-              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
-                <a routerLink="/videos/manage" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="play" />
-                  <span>Video</span>
-                </a>
-              }
-
-              <a routerLink="/schedule/courses" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="graduation-cap" />
-                <span>Khóa Học</span>
-              </a>
-
-              @if (auth.isSuperAdmin() || auth.isBranchManager()) {
-                <a routerLink="/membership/orders" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="shopping-bag" />
-                  <span>Danh Sách Đơn Hàng</span>
-                </a>
-                <a routerLink="/membership/revenue" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="bar-chart" />
-                  <span>Báo Cáo Doanh Thu</span>
-                </a>
-                <a routerLink="/membership/online-report" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="activity" />
-                  <span>Báo Cáo Online</span>
-                </a>
-              }
-
-              @if (auth.isSuperAdmin() || auth.isBranchManager() || auth.isInstructor()) {
-                <a routerLink="/schedule/payroll" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="banknote" />
-                  <span>Thù Lao HLV</span>
-                </a>
-              }
-
-              @if (auth.canAccessPos() && !auth.isSuperAdmin() && !auth.isBranchManager()) {
-                <a routerLink="/membership/pos" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="credit-card" />
-                  <span>Quầy Bán Thẻ (POS)</span>
-                </a>
-              }
-
-              @if (auth.isInstructor()) {
-                <a routerLink="/schedule/check-in" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="check-square" />
-                  <span>Điểm Danh</span>
-                </a>
-              }
-
-              @if (auth.canAccessStudentPortal()) {
-                <a routerLink="/membership/my-passes" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="shield-check" />
-                  <span>Thẻ Của Tôi</span>
-                </a>
-                <a routerLink="/membership/history" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="clock" />
-                  <span>Lịch Sử Tập</span>
-                </a>
-              }
-
-              @if (auth.canManageClasses()) {
-                <a routerLink="/schedule/subjects" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="book" />
-                  <span>Bộ Môn</span>
-                </a>
-              }
-
-              <a routerLink="/membership/plans" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="layers" />
-                <span>Gói Thẻ Tập</span>
-              </a>
-
-              <a routerLink="/branches" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                <zen-icon name="map-pin" />
-                <span>Chi Nhánh</span>
-              </a>
-
-              @if (!auth.isSuperAdmin() && !auth.isBranchManager() && !auth.isReceptionist() && !auth.isInstructor()) {
-                <a routerLink="/schedule/calendar" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
-                  <zen-icon name="calendar" />
-                  <span>Lịch & Đặt Chỗ</span>
-                </a>
+            }
+            @for (group of navGroups(); track group.id) {
+              @if (group.items.length > 1) {
+                <div class="drawer-section-title">{{ group.label }}</div>
+                @for (item of group.items; track item.link) {
+                  <a [routerLink]="item.link" (click)="closeMobileMenu()" routerLinkActive="active" class="drawer-nav-item">
+                    <zen-icon [name]="item.icon" />
+                    <span>{{ item.label }}</span>
+                  </a>
+                }
               }
             }
           </nav>
@@ -641,10 +518,12 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 2px;
+      gap: 4px;
       flex: 1;
       min-width: 0;
     }
+
+
 
     .nav-tab {
       display: inline-flex;
@@ -675,6 +554,49 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
         .nav-icon { color: var(--color-primary); }
       }
     }
+
+    .nav-group { flex-shrink: 0; }
+    .nav-group-btn {
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      cursor: pointer;
+
+      &.open:not(.active) { color: var(--color-text-main); background: var(--color-surface-hover); }
+    }
+    .nav-group-chevron { transition: transform var(--duration-fast) ease; }
+    .nav-group-btn.open .nav-group-chevron { transform: rotate(180deg); }
+
+    .popover-panel.nav-group-panel {
+      left: 0;
+      right: auto;
+      width: 300px;
+      padding: 6px;
+    }
+    .nav-group-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      color: var(--color-text-main);
+      text-decoration: none;
+      transition: background-color var(--duration-fast) ease;
+
+      &:hover { background: var(--color-surface-hover); }
+      &.active {
+        background: var(--color-primary-soft);
+        .nav-group-item-icon, .nav-group-item-label, .nav-group-item-hint { color: var(--color-primary); }
+      }
+    }
+    .nav-group-item-icon {
+      display: inline-flex;
+      margin-top: 1px;
+      color: var(--color-text-muted);
+    }
+    .nav-group-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .nav-group-item-label { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+    .nav-group-item-hint { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.4; }
 
     .nav-divider {
       width: 1px;
@@ -1177,21 +1099,16 @@ const NOTIFICATION_POLL_MS = 5 * 60_000;
     .drawer-auth-actions { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 
     /* ---------- Breakpoints ---------- */
-    /* Màn vừa: thu gọn khối người dùng để menu không tràn (Ban Giám Đốc có nhiều mục) */
-    @media (max-width: 1535px) {
+    /* Màn vừa: menu đã gom nhóm nên chỉ cần thu khoảng cách và nút đăng xuất. */
+    @media (max-width: 1439px) {
       .app-header { gap: var(--spacing-md); padding: 0 var(--spacing-md); }
-      .user-details, .header-divider { display: none; }
       .btn-logout { width: 36px; padding: 0; justify-content: center; }
       .btn-logout .logout-text { display: none; }
-      .nav-tab { padding: 0 10px; }
-      .brand-sub { display: none; }
     }
 
     @media (max-width: 1279px) {
       .desktop-nav { display: none; }
       .btn-mobile-toggle { display: inline-flex; }
-      .user-details, .header-divider { display: flex; }
-      .brand-sub { display: block; }
     }
 
     @media (max-width: 640px) {
@@ -1237,6 +1154,12 @@ export class AppComponent {
   protected readonly isMobileMenuOpen = signal(false);
   protected readonly isNotificationsOpen = signal(false);
   protected readonly isSettingsOpen = signal(false);
+  protected readonly openNavGroup = signal<string | null>(null);
+
+  /** Menu chính theo vai trò, gom theo công việc. Dùng chung cho thanh menu desktop và drawer điện thoại. */
+  protected readonly navGroups = computed<NavGroup[]>(() => buildNavGroups(this.auth));
+  /** Drawer: các nhóm chỉ một mục được gom vào mục "Điều hướng chính". */
+  protected readonly drawerShortcuts = computed(() => this.navGroups().filter(g => g.items.length === 1).map(g => g.items[0]));
   protected readonly notifications = signal<NotificationItem[]>([]);
   protected readonly unreadNotificationsCount = signal(0);
   protected readonly notificationsLoading = signal(false);
@@ -1304,6 +1227,7 @@ export class AppComponent {
   toggleNotifications(): void {
     this.isNotificationsOpen.update(v => !v);
     this.isSettingsOpen.set(false);
+    this.openNavGroup.set(null);
     if (this.isNotificationsOpen() && this.auth.isAuthenticated()) this.loadNotifications();
   }
 
@@ -1357,6 +1281,7 @@ export class AppComponent {
   toggleSettings(): void {
     this.isSettingsOpen.update(v => !v);
     this.isNotificationsOpen.set(false);
+    this.openNavGroup.set(null);
   }
 
   markAllNotificationsAsRead(): void {
@@ -1368,6 +1293,18 @@ export class AppComponent {
   closeAllPopovers(): void {
     this.isNotificationsOpen.set(false);
     this.isSettingsOpen.set(false);
+    this.openNavGroup.set(null);
+  }
+
+  toggleNavGroup(id: string): void {
+    const open = this.openNavGroup() !== id;
+    this.closeAllPopovers();
+    this.openNavGroup.set(open ? id : null);
+  }
+
+  protected isGroupActive(group: NavGroup): boolean {
+    const url = this.currentUrl().split('?')[0].split('#')[0];
+    return group.items.some(item => url === item.link || url.startsWith(item.link + '/'));
   }
 
   onLogout(): void {

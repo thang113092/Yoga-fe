@@ -1,0 +1,43 @@
+:host { display: block; }
+
+.month-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 6px);
+
+  .month-select { width: 130px; }
+  .year-select { width: 100px; }
+}
+
+.instructor-row {
+  cursor: pointer;
+
+  &.is-open { background: var(--color-surface-variant); }
+}
+
+.unpriced-badge { display: inline-block; margin-top: 4px; }
+
+.lines-row > td {
+  padding: 0 0 0 48px;
+  background: var(--color-surface-variant);
+}
+
+.lines-table {
+  font-size: var(--text-xs);
+
+  tr.is-unpriced td { color: var(--color-warning); }
+}
+
+.grand-total { font-size: var(--text-md); }
+
+.inactive-toggle { gap: 6px; cursor: pointer; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

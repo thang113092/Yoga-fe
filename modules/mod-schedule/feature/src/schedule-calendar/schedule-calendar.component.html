@@ -133,7 +133,7 @@
         @for (schedule of filteredSchedules(); track schedule.id) {
           <article
             class="schedule-card"
-            [class.is-full]="schedule.availableSlots === 0"
+            [class.is-full]="!hasFreeSeatAny(schedule)"
             [class.is-booked]="isBooked(schedule.id)"
           >
             <div class="card-top">
@@ -145,6 +145,8 @@
               <div class="zen-row">
                 @if (isOnline(schedule)) {
                   <zen-badge size="sm" tone="info"><zen-icon name="monitor" [size]="12" /> Online</zen-badge>
+                } @else if (isHybrid(schedule)) {
+                  <zen-badge size="sm" tone="info" title="Học tại phòng hoặc học online qua Zoom"><zen-icon name="monitor" [size]="12" /> Hybrid</zen-badge>
                 }
                 <zen-badge size="sm" [tone]="categoryTone(getCategoryBadge(schedule.className).type)">
                   {{ getCategoryBadge(schedule.className).label }}
@@ -179,6 +181,38 @@
               </div>
             </div>
 
+            @if (isHybrid(schedule)) {
+            <div class="capacity-section">
+              <div class="zen-row zen-row--between zen-text-xs">
+                <span class="capacity-label"><zen-icon name="users" [size]="13" />Chỗ trống</span>
+                <span class="zen-num hybrid-availability">
+                  Tại phòng <strong [class.is-full-text]="!seatFree(schedule, 'IN_PERSON')">{{ schedule.bookedCount }}/{{ schedule.maxCapacity }}</strong>
+                  · Online <strong [class.is-full-text]="!seatFree(schedule, 'ONLINE')">{{ schedule.onlineBookedCount ?? 0 }}/{{ schedule.onlineCapacity ?? 0 }}</strong>
+                </span>
+              </div>
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  [class.full]="!seatFree(schedule, 'IN_PERSON')"
+                  [style.width.%]="schedule.maxCapacity ? (schedule.bookedCount / schedule.maxCapacity) * 100 : 100"
+                ></div>
+              </div>
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  [class.full]="!seatFree(schedule, 'ONLINE')"
+                  [style.width.%]="schedule.onlineCapacity ? ((schedule.onlineBookedCount ?? 0) / schedule.onlineCapacity) * 100 : 100"
+                ></div>
+              </div>
+              <div class="slot-status">
+                @if (hasFreeSeatAny(schedule)) {
+                  <span class="is-available">Chọn học tại phòng hoặc học online khi đặt chỗ</span>
+                } @else {
+                  <span class="is-danger">Đã kín chỗ · Nhận đăng ký hàng chờ</span>
+                }
+              </div>
+            </div>
+            } @else {
             <div class="capacity-section">
               <div class="zen-row zen-row--between zen-text-xs">
                 <span class="capacity-label"><zen-icon name="users" [size]="13" />Sĩ số lớp</span>
@@ -204,6 +238,7 @@
                 }
               </div>
             </div>
+            }
 
             <div class="card-footer">
               @if (schedule.courseClassId) {
@@ -247,7 +282,7 @@
                   <span class="state-head"><zen-icon name="info" [size]="14" />Chỉ xem · Chưa có thẻ phù hợp</span>
                   <span class="state-sub">Vui lòng đăng ký thẻ tập để giữ chỗ</span>
                 </div>
-              } @else if (schedule.availableSlots > 0) {
+              } @else if (hasBookableSeat(schedule)) {
                 <button type="button" class="zen-btn zen-btn--primary zen-btn--block" (click)="openBookingModal(schedule)">
                   <span>Đặt chỗ ngay</span>
                   <zen-icon name="arrow-right" />
@@ -289,14 +324,19 @@
                 </div>
                 <div class="booking-meta">
                   <span><zen-icon name="clock" [size]="14" />{{ b.startTime | date:'EEEE, dd/MM HH:mm' }} – {{ b.endTime | date:'HH:mm' }}</span>
-                  @if (isOnline(b)) {
+                  @if (isOnlineSeat(b)) {
                     <span><zen-icon name="monitor" [size]="14" />Học online qua Zoom</span>
                   } @else {
                     <span><zen-icon name="map-pin" [size]="14" />{{ b.roomName }} · {{ b.branchName }}</span>
                   }
                   <span><zen-icon name="user" [size]="14" />HLV: <strong>{{ b.instructorName }}</strong></span>
-                  @if (isOnline(b)) {
-                    <zen-badge size="sm" tone="info">Online</zen-badge>
+                  @if (isHybrid(b)) {
+                    <zen-badge size="sm" tone="info">Hybrid · {{ b.attendanceMode === 'ONLINE' ? 'Học online' : 'Học tại phòng' }}</zen-badge>
+                  }
+                  @if (isOnlineSeat(b)) {
+                    @if (!isHybrid(b)) {
+                      <zen-badge size="sm" tone="info">Online</zen-badge>
+                    }
                   } @else {
                     <zen-badge size="sm" tone="primary">Thảm số {{ b.matNumber || 1 }}</zen-badge>
                   }
@@ -315,7 +355,7 @@
                       {{ b.status === 'ATTENDED' ? 'Vào lại lớp' : 'Vào lớp' }}
                     }
                   </button>
-                } @else if (isOnline(b) && b.status === 'CONFIRMED' && isUpcoming(b)) {
+                } @else if (isOnlineSeat(b) && b.status === 'CONFIRMED' && isUpcoming(b)) {
                   <span class="zen-text-xs zen-text-muted">Nút vào lớp mở lúc {{ joinOpensLabel(b) }}</span>
                 }
                 @if (b.status === 'CONFIRMED' && b.canCancel) {
@@ -394,7 +434,7 @@
             id="passSelect"
             [options]="bookingPassOptions()"
             [ngModel]="selectedPassId()"
-            (ngModelChange)="selectedPassId.set($event)"
+            (ngModelChange)="onModalPassChange($event, 'booking')"
             placeholder="Chọn thẻ tập áp dụng"
           />
         } @else {
@@ -402,12 +442,34 @@
         }
         @if (isOnline(m)) {
           <span class="zen-hint">Lớp online: mọi thẻ tập đang hoạt động đều dùng được, không phụ thuộc cơ sở đăng ký.</span>
+        } @else if (isHybrid(m)) {
+          <span class="zen-hint">Lớp hybrid: chỗ online nhận mọi thẻ tập; chỗ tại phòng cần thẻ của cơ sở này hoặc thẻ liên cơ sở.</span>
         } @else {
           <span class="zen-hint">Vị trí thảm tập sẽ được tự động xếp chỗ tối ưu khi giữ chỗ.</span>
         }
       </div>
 
-      @if (isOnline(m)) {
+      @if (isHybrid(m)) {
+        <div class="zen-field">
+          <span class="zen-label">Hình thức học <span class="zen-required">*</span></span>
+          <div class="seat-options" role="radiogroup" aria-label="Hình thức học">
+            @for (c of bookingSeatChoices(); track c.mode) {
+              <button type="button" class="seat-option" role="radio"
+                      [class.is-active]="selectedAttendanceMode() === c.mode"
+                      [attr.aria-checked]="selectedAttendanceMode() === c.mode"
+                      [disabled]="c.disabled"
+                      [attr.data-seat]="c.mode"
+                      (click)="selectSeat(c)">
+                <span class="seat-head"><zen-icon [name]="c.mode === 'ONLINE' ? 'monitor' : 'map-pin'" [size]="14" />{{ c.label }}</span>
+                <span class="seat-count">{{ c.booked }}/{{ c.capacity }}</span>
+                <span class="seat-hint">{{ c.hint }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (isOnline(m) || (isHybrid(m) && selectedAttendanceMode() === 'ONLINE')) {
         <zen-alert tone="info" heading="Học online qua Zoom">
           Hệ thống giữ 1 lượt tập trong thẻ. Từ 15 phút trước giờ học, vào "Lịch đã đặt của tôi" và bấm "Vào lớp": hệ thống tự điểm danh và mở Zoom bằng link riêng của bạn. Có thể hủy trước giờ học để nhận lại lượt.
         </zen-alert>
@@ -420,7 +482,7 @@
 
     <ng-container modal-footer>
       <button type="button" class="zen-btn zen-btn--outline" (click)="closeBookingModal()" [disabled]="isSubmittingBooking()">Hủy bỏ</button>
-      <button type="button" class="zen-btn zen-btn--primary" (click)="submitBooking()" [disabled]="isSubmittingBooking() || !selectedPassId()">
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitBooking()" [disabled]="isSubmittingBooking() || !selectedPassId() || (isHybrid(m) && !selectedAttendanceMode())">
         @if (isSubmittingBooking()) {
           <zen-loading inline />
           <span>Đang xác nhận...</span>
@@ -441,7 +503,11 @@
         <p class="zen-text-sm zen-text-muted">
           {{ m.startTime | date:'HH:mm' }} – {{ m.endTime | date:'HH:mm' }} · {{ m.roomName }} · HLV: {{ m.instructorName }}
         </p>
-        <zen-badge tone="danger" size="sm">Ca học này hiện đã kín {{ m.maxCapacity }}/{{ m.maxCapacity }} thảm tập.</zen-badge>
+        @if (isHybrid(m)) {
+          <zen-badge tone="danger" size="sm">Hàng chờ theo loại chỗ: chỉ chọn được loại chỗ đã kín.</zen-badge>
+        } @else {
+          <zen-badge tone="danger" size="sm">Ca học này hiện đã kín {{ m.maxCapacity }}/{{ m.maxCapacity }} thảm tập.</zen-badge>
+        }
       </div>
 
       <div class="zen-field">
@@ -451,13 +517,33 @@
             id="waitlistPassSelect"
             [options]="waitlistPassOptions()"
             [ngModel]="selectedPassId()"
-            (ngModelChange)="selectedPassId.set($event)"
+            (ngModelChange)="onModalPassChange($event, 'waitlist')"
             placeholder="Chọn thẻ tập liên kết"
           />
         } @else {
           <zen-alert tone="danger">Học viên chưa có thẻ tập hoạt động phù hợp với cơ sở của ca học này.</zen-alert>
         }
       </div>
+
+      @if (isHybrid(m)) {
+        <div class="zen-field">
+          <span class="zen-label">Chờ chỗ <span class="zen-required">*</span></span>
+          <div class="seat-options" role="radiogroup" aria-label="Loại chỗ chờ">
+            @for (c of waitlistSeatChoices(); track c.mode) {
+              <button type="button" class="seat-option" role="radio"
+                      [class.is-active]="selectedAttendanceMode() === c.mode"
+                      [attr.aria-checked]="selectedAttendanceMode() === c.mode"
+                      [disabled]="c.disabled"
+                      [attr.data-seat]="c.mode"
+                      (click)="selectSeat(c)">
+                <span class="seat-head"><zen-icon [name]="c.mode === 'ONLINE' ? 'monitor' : 'map-pin'" [size]="14" />{{ c.label }}</span>
+                <span class="seat-count">{{ c.booked }}/{{ c.capacity }}</span>
+                <span class="seat-hint">{{ c.hint }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
 
       <zen-alert tone="warning" heading="Cơ chế hàng đợi tự động">
         Hệ thống không trừ lượt tập khi bạn đang trong hàng chờ. Ngay khi có bất kỳ học viên nào hủy chỗ, vị trí số 1 sẽ được tự động đôn lên thành ca giữ chỗ chính thức.
@@ -466,7 +552,7 @@
 
     <ng-container modal-footer>
       <button type="button" class="zen-btn zen-btn--outline" (click)="closeWaitlistModal()" [disabled]="isSubmittingWaitlist()">Đóng</button>
-      <button type="button" class="zen-btn zen-btn--primary" (click)="submitWaitlist()" [disabled]="isSubmittingWaitlist() || !selectedPassId()">
+      <button type="button" class="zen-btn zen-btn--primary" (click)="submitWaitlist()" [disabled]="isSubmittingWaitlist() || !selectedPassId() || (isHybrid(m) && !selectedAttendanceMode())">
         @if (isSubmittingWaitlist()) {
           <zen-loading inline />
           <span>Đang xếp hàng...</span>

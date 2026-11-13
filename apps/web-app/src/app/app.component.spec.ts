@@ -3,7 +3,7 @@ import { provideExperimentalZonelessChangeDetection, signal } from '@angular/cor
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, NotificationApi, NotificationInbox, relativeTimeVi } from '@yoga/platform/auth';
-import { AppComponent } from './app.component';
+import { AppComponent, buildNavGroups } from './app.component';
 
 describe('AppComponent Header Menu', () => {
   const authenticated = signal(true);
@@ -94,22 +94,38 @@ describe('AppComponent Header Menu', () => {
     expect(roleBadge?.textContent?.trim()).toBe('Quản Trị Viên');
   });
 
-  it('renders navigation tabs with SVG icons for Super Admin', async () => {
+  it('groups the Super Admin menu and opens a group to show its links', async () => {
     const fixture = TestBed.createComponent(AppComponent);
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/users');
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+    // Route thử nghiệm cũng render AppComponent bên trong, nên chỉ xét thanh menu ngoài cùng.
+    const compiled = (fixture.nativeElement as HTMLElement).querySelector('.desktop-nav') as HTMLElement;
 
-    const navTabs = compiled.querySelectorAll('.desktop-nav .nav-tab');
-    expect(navTabs.length).toBeGreaterThan(0);
+    const topLevel = Array.from(compiled.querySelectorAll(':scope > .nav-tab, :scope .nav-group-btn'))
+      .map(el => el.textContent?.trim());
+    expect(topLevel).toEqual(['Lịch Học', 'Video', 'Kinh Doanh', 'Quản Trị']);
+    expect(compiled.querySelector('.nav-tab .nav-icon svg')).toBeTruthy();
 
-    const firstTabIcon = navTabs[0].querySelector('.nav-icon svg');
-    expect(firstTabIcon).toBeTruthy();
+    // Trang /users thuộc nhóm Quản Trị → nút nhóm được tô sáng.
+    const groupButtons = Array.from(compiled.querySelectorAll<HTMLButtonElement>('.nav-group-btn'));
+    const admin = groupButtons.find(b => b.textContent?.includes('Quản Trị'))!;
+    expect(admin.classList).toContain('active');
+    expect(compiled.querySelector('.nav-group-panel')).toBeNull();
 
-    const hrefs = Array.from(navTabs).map(a => a.getAttribute('href'));
-    expect(hrefs).toContain('/membership/online-report');
-    expect(hrefs).toContain('/schedule/payroll');
+    groupButtons.find(b => b.textContent?.includes('Kinh Doanh'))!.click();
+    fixture.detectChanges();
+    const hrefs = Array.from(compiled.querySelectorAll('.nav-group-panel a')).map(a => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/membership/orders', '/membership/plans', '/membership/revenue', '/membership/online-report']);
+
+    // Mở nhóm khác thì nhóm cũ đóng; Esc đóng tất cả.
+    admin.click();
+    fixture.detectChanges();
+    expect(compiled.querySelectorAll('.nav-group-panel').length).toBe(1);
+    expect(Array.from(compiled.querySelectorAll('.nav-group-panel a')).map(a => a.getAttribute('href'))).toContain('/schedule/payroll');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(compiled.querySelector('.nav-group-panel')).toBeNull();
   });
 
   it('toggles mobile menu drawer', () => {
@@ -196,5 +212,57 @@ describe('AppComponent Header Menu', () => {
     expect(relativeTimeVi('2026-11-12T09:35:00Z', now)).toBe('25 phút trước');
     expect(relativeTimeVi('2026-11-11T08:00:00Z', now)).toBe('Hôm qua');
     expect(relativeTimeVi('2026-11-08T10:00:00Z', now)).toBe('4 ngày trước');
+  });
+});
+
+describe('buildNavGroups', () => {
+  const role = (overrides: Partial<Record<string, boolean>>) => {
+    const flags: Record<string, boolean> = {
+      canAccessStudentPortal: false, isSuperAdmin: false, isBranchManager: false, isReceptionist: false,
+      isInstructor: false, canManageUsers: false, canManageClasses: false, canAccessPos: false, ...overrides
+    };
+    return Object.fromEntries(Object.entries(flags).map(([k, v]) => [k, () => v])) as unknown as Parameters<typeof buildNavGroups>[0];
+  };
+  const summary = (groups: ReturnType<typeof buildNavGroups>) =>
+    groups.map(g => `${g.label}: ${g.items.map(i => i.label).join(', ')}`);
+
+  it('keeps every Branch Manager page reachable in four groups', () => {
+    const groups = buildNavGroups(role({ isBranchManager: true, canManageUsers: true, canManageClasses: true, canAccessPos: true }));
+    expect(summary(groups)).toEqual([
+      'Lịch Học: Lịch Học, Lớp Online, Khóa Học, Bộ Môn',
+      'Video: Video',
+      'Kinh Doanh: Đơn Hàng, Gói Thẻ Tập, Doanh Thu, Báo Cáo Online',
+      'Quản Trị: Người Dùng, Thù Lao HLV, Chi Nhánh'
+    ]);
+  });
+
+  it('gives instructors check-in, video and payroll', () => {
+    const groups = buildNavGroups(role({ isInstructor: true }));
+    expect(summary(groups)).toEqual([
+      'Lịch Học: Khóa Học, Điểm Danh',
+      'Video: Video',
+      'Kinh Doanh: Gói Thẻ Tập',
+      'Quản Trị: Thù Lao HLV, Chi Nhánh'
+    ]);
+  });
+
+  it('gives receptionists students and the POS counter', () => {
+    const groups = buildNavGroups(role({ isReceptionist: true, canAccessPos: true }));
+    expect(summary(groups)).toEqual([
+      'Lịch Học: Khóa Học',
+      'Kinh Doanh: Bán Thẻ POS, Gói Thẻ Tập',
+      'Quản Trị: Học Viên, Chi Nhánh'
+    ]);
+  });
+
+  it('groups the student portal into personal and explore menus', () => {
+    const groups = buildNavGroups(role({ canAccessStudentPortal: true }));
+    expect(summary(groups)).toEqual([
+      'Của Tôi: Thẻ Của Tôi, Lịch Sử Tập',
+      'Lịch & Đặt Chỗ: Lịch & Đặt Chỗ',
+      'Khóa Học: Khóa Học',
+      'Thư Viện Video: Thư Viện Video',
+      'Khám Phá: Bộ Môn, Gói Thẻ Tập, Chi Nhánh'
+    ]);
   });
 });

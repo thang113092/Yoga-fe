@@ -24,6 +24,12 @@ export const SCHEDULE_ROUTES: Routes = [
     title: 'Khóa học - An Yên'
   },
   {
+    path: 'payroll',
+    canActivate: [roleGuard(['SUPER_ADMIN', 'BRANCH_MANAGER', 'INSTRUCTOR'])],
+    loadComponent: () => import('./payroll/payroll.component').then(m => m.PayrollComponent),
+    title: 'Thù lao HLV - An Yên'
+  },
+  {
     path: '',
     redirectTo: 'calendar',
     pathMatch: 'full'
