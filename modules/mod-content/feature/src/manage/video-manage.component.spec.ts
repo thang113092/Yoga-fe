@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AuthService } from '@yoga/platform/auth';
 import { ZenConfirmService, ZenToastService } from '@yoga/platform/ui';
 import { ScheduleApi } from '@yoga/mod-schedule/data-access';
-import { AdminVideo, VideoAdminApi, VideoStatus } from '@yoga/mod-content/data-access';
+import { AdminVideo, VideoAdminApi, VideoAiApi, VideoStatus, VideoTagSuggestion } from '@yoga/mod-content/data-access';
 import { TUS_LOADER, TusUploadOptions } from '../shared/video-loaders';
-import { TUS_RETRY_DELAYS, VideoManageComponent } from './video-manage.component';
+import { mergeSuggestion, TUS_RETRY_DELAYS, VideoForm, VideoManageComponent } from './video-manage.component';
 
 const adminVideo = (id: string, status: VideoStatus, patch: Partial<AdminVideo> = {}): AdminVideo => ({
   id, title: `Video ${id}`, description: null, level: 'BEGINNER', durationSeconds: status === 'DRAFT' || status === 'PROCESSING' ? null : 600,
@@ -16,8 +16,14 @@ const adminVideo = (id: string, status: VideoStatus, patch: Partial<AdminVideo> 
   tagIds: [], createdBy: 'i1', publishedAt: null, createdAt: null, updatedAt: null, viewers: 0, canEdit: true, ...patch
 });
 
+const suggestion = (patch: Partial<VideoTagSuggestion> = {}): VideoTagSuggestion => ({
+  id: 's1', videoId: 'r', tagIds: ['t1'], tagCodes: ['HATHA'], level: 'BEGINNER', description: 'Bài Hatha nhẹ nhàng cho người mới.',
+  contraindications: 'Tránh khi đau lưng cấp.', notForPregnancy: false, notForHeartBp: true, notForInjuries: false, model: 'm', ...patch
+});
+
 describe('VideoManageComponent', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
+  let aiApi: Record<string, ReturnType<typeof vi.fn>>;
   let tusOptions: TusUploadOptions | null;
   let tusStart: ReturnType<typeof vi.fn>;
   let tusFactory: ReturnType<typeof vi.fn>;
@@ -26,7 +32,12 @@ describe('VideoManageComponent', () => {
     adminVideo('pub', 'PUBLISHED'), adminVideo('a', 'ARCHIVED'), adminVideo('f', 'FAILED')
   ];
 
-  function setup(role: 'SUPER_ADMIN' | 'INSTRUCTOR') {
+  function setup(role: 'SUPER_ADMIN' | 'INSTRUCTOR', aiOn = false) {
+    aiApi = {
+      status: vi.fn().mockReturnValue(of({ videoTagging: aiOn })),
+      suggestTags: vi.fn().mockReturnValue(of(suggestion())),
+      review: vi.fn().mockReturnValue(of(undefined))
+    };
     tusOptions = null;
     tusStart = vi.fn();
     tusFactory = vi.fn((_file: File, options: TusUploadOptions) => { tusOptions = options; return { start: tusStart, abort: vi.fn() }; });
@@ -49,6 +60,7 @@ describe('VideoManageComponent', () => {
         provideExperimentalZonelessChangeDetection(),
         provideRouter([]),
         { provide: VideoAdminApi, useValue: api },
+        { provide: VideoAiApi, useValue: aiApi },
         { provide: ScheduleApi, useValue: { getInstructors: vi.fn().mockReturnValue(of([{ id: 'i1', fullName: 'Lan', phone: '0900' }])) } },
         { provide: TUS_LOADER, useValue: () => Promise.resolve(tusFactory) },
         { provide: ZenToastService, useValue: { success: vi.fn(), error: vi.fn(), info: vi.fn() } },
@@ -148,5 +160,87 @@ describe('VideoManageComponent', () => {
     page.publish(videos[2]);
     expect(api['publish']).toHaveBeenCalledWith('r');
     expect(page.videos().find(v => v.id === 'r')?.status).toBe('PUBLISHED');
+  });
+
+  it('hides the AI box when the feature is off or the video is new', () => {
+    const off = setup('SUPER_ADMIN');
+    off.page.openEdit(videos[2]);
+    off.fixture.detectChanges();
+    expect(document.body.querySelector('[data-action="ai-suggest"]')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const on = setup('SUPER_ADMIN', true);
+    on.page.openCreate();
+    on.fixture.detectChanges();
+    expect(document.body.querySelector('[data-action="ai-suggest"]')).toBeNull();
+    on.page.openEdit(videos[2]);
+    on.fixture.detectChanges();
+    expect(on.fixture.nativeElement.querySelector('[data-action="ai-suggest"]') ?? document.body.querySelector('[data-action="ai-suggest"]')).not.toBeNull();
+  });
+
+  it('asks AI with the unsaved form text and fills the form on apply', () => {
+    const { page } = setup('INSTRUCTOR', true);
+    page.openEdit(videos[2]);
+    page.patchForm({ title: ' Hatha cho người mới ', description: '' });
+    page.suggestWithAi();
+    expect(aiApi['suggestTags']).toHaveBeenCalledWith('r', 'Hatha cho người mới', '');
+    expect(page.aiSuggestion()?.id).toBe('s1');
+
+    page.applySuggestion();
+    expect(page.form()).toMatchObject({
+      level: 'BEGINNER', description: 'Bài Hatha nhẹ nhàng cho người mới.', tagIds: ['t1'], notForHeartBp: true,
+      contraindications: 'Tránh khi đau lưng cấp.'
+    });
+    expect(aiApi['review']).toHaveBeenCalledWith('s1', 'APPLIED');
+    expect(page.aiSuggestion()).toBeNull();
+    expect(api['update']).not.toHaveBeenCalled();
+  });
+
+  it('records a dismissed or abandoned suggestion as rejected', () => {
+    const { page } = setup('SUPER_ADMIN', true);
+    page.openEdit(videos[2]);
+    page.suggestWithAi();
+    page.closeForm();
+    expect(aiApi['review']).toHaveBeenCalledWith('s1', 'REJECTED');
+  });
+
+  it('needs a title before asking AI', () => {
+    const { page } = setup('SUPER_ADMIN', true);
+    page.openEdit(videos[2]);
+    page.patchForm({ title: '  ' });
+    page.suggestWithAi();
+    expect(aiApi['suggestTags']).not.toHaveBeenCalled();
+    expect(page.aiError()).toContain('tiêu đề');
+  });
+
+  it('shows the server message when AI fails', () => {
+    const { page } = setup('SUPER_ADMIN', true);
+    aiApi['suggestTags'].mockReturnValue(throwError(() => ({ error: { code: 'AI_429_QUOTA', message: 'Bạn đã dùng hết lượt AI hôm nay.' } })));
+    page.openEdit(videos[2]);
+    page.suggestWithAi();
+    expect(page.aiLoading()).toBe(false);
+    expect(page.aiError()).toBe('Bạn đã dùng hết lượt AI hôm nay.');
+  });
+});
+
+describe('mergeSuggestion', () => {
+  const form: VideoForm = {
+    title: 'T', description: 'Mô tả của HLV', level: 'ADVANCED', instructorId: '', isFreePreview: false,
+    notForPregnancy: true, notForHeartBp: false, notForInjuries: false, contraindications: 'Không tập khi sốt.', tagIds: ['t2']
+  };
+
+  it('keeps what staff entered and only adds safety', () => {
+    const merged = mergeSuggestion(form, suggestion({ notForPregnancy: false, description: null }));
+    expect(merged.tagIds).toEqual(['t2', 't1']);
+    expect(merged.notForPregnancy).toBe(true);
+    expect(merged.notForHeartBp).toBe(true);
+    expect(merged.description).toBe('Mô tả của HLV');
+    expect(merged.level).toBe('BEGINNER');
+    expect(merged.contraindications).toBe('Không tập khi sốt.\nTránh khi đau lưng cấp.');
+  });
+
+  it('does not repeat a note that is already there', () => {
+    const merged = mergeSuggestion({ ...form, contraindications: 'Tránh khi đau lưng cấp.' }, suggestion());
+    expect(merged.contraindications).toBe('Tránh khi đau lưng cấp.');
   });
 });

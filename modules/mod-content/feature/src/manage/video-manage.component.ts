@@ -14,8 +14,10 @@ import {
   VideoAdminApi,
   videoErrorMessage,
   VideoLevel,
+  VideoAiApi,
   VideoStatus,
-  VideoTag
+  VideoTag,
+  VideoTagSuggestion
 } from '@yoga/mod-content/data-access';
 import { formatDuration, LEVEL_OPTIONS, levelLabel, STATUS_OPTIONS, statusLabel, statusTone } from '../shared/video-format';
 import { TUS_LOADER, TusUpload, TusUploadFactory } from '../shared/video-loaders';
@@ -45,6 +47,25 @@ export const TUS_RETRY_DELAYS = [0, 3000, 5000, 10000, 20000];
 const POLL_EVERY_MS = 10_000;
 const POLL_MAX_TRIES = 18;
 
+/**
+ * Copies an AI suggestion into the form without losing what staff entered: tags are added to the chosen ones,
+ * safety flags can only be switched on, an existing note is kept and the suggested one appended.
+ */
+export function mergeSuggestion(form: VideoForm, s: VideoTagSuggestion): VideoForm {
+  const note = s.contraindications?.trim() ?? '';
+  const current = form.contraindications.trim();
+  return {
+    ...form,
+    level: s.level ?? form.level,
+    description: s.description?.trim() || form.description,
+    tagIds: [...new Set([...form.tagIds, ...(s.tagIds ?? [])])],
+    notForPregnancy: form.notForPregnancy || !!s.notForPregnancy,
+    notForHeartBp: form.notForHeartBp || !!s.notForHeartBp,
+    notForInjuries: form.notForInjuries || !!s.notForInjuries,
+    contraindications: !note || current.includes(note) ? form.contraindications : (current ? `${current}\n${note}` : note)
+  };
+}
+
 const EMPTY_FORM: VideoForm = {
   title: '', description: '', level: '', instructorId: '', isFreePreview: false,
   notForPregnancy: false, notForHeartBp: false, notForInjuries: false, contraindications: '', tagIds: []
@@ -61,6 +82,7 @@ const EMPTY_FORM: VideoForm = {
 })
 export class VideoManageComponent implements OnInit, OnDestroy {
   private readonly api = inject(VideoAdminApi);
+  private readonly aiApi = inject(VideoAiApi);
   private readonly scheduleApi = inject(ScheduleApi);
   private readonly toast = inject(ZenToastService);
   private readonly confirm = inject(ZenConfirmService);
@@ -85,6 +107,12 @@ export class VideoManageComponent implements OnInit, OnDestroy {
   readonly formError = signal<string | null>(null);
 
   readonly uploads = signal<Record<string, UploadProgress>>({});
+
+  /** AI suggestions (Gemini): shown only when the backend has the feature on. */
+  readonly aiEnabled = signal(false);
+  readonly aiLoading = signal(false);
+  readonly aiError = signal<string | null>(null);
+  readonly aiSuggestion = signal<VideoTagSuggestion | null>(null);
 
   readonly previewUrl = signal<SafeResourceUrl | null>(null);
   readonly previewTitle = signal('');
@@ -125,6 +153,7 @@ export class VideoManageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.load();
     this.loadTags();
+    this.aiApi.status().subscribe({ next: s => this.aiEnabled.set(!!s?.videoTagging), error: () => this.aiEnabled.set(false) });
     if (this.canManage()) {
       this.scheduleApi.getInstructors().subscribe({ next: list => this.instructors.set(list ?? []), error: () => this.instructors.set([]) });
     }
@@ -176,6 +205,7 @@ export class VideoManageComponent implements OnInit, OnDestroy {
   // ---- create / edit ----
 
   openCreate(): void {
+    this.resetAi();
     this.editing.set(null);
     this.form.set({ ...EMPTY_FORM, tagIds: [] });
     this.formError.set(null);
@@ -183,6 +213,7 @@ export class VideoManageComponent implements OnInit, OnDestroy {
   }
 
   openEdit(v: AdminVideo): void {
+    this.resetAi();
     this.editing.set(v);
     this.form.set({
       title: v.title ?? '',
@@ -201,7 +232,51 @@ export class VideoManageComponent implements OnInit, OnDestroy {
   }
 
   closeForm(): void {
-    if (!this.saving()) this.formOpen.set(false);
+    if (this.saving()) return;
+    this.dismissSuggestion();
+    this.formOpen.set(false);
+  }
+
+  // ---- AI suggestion ----
+
+  /** Asks Gemini for tags/level/description/safety notes from the form's current title and description. */
+  suggestWithAi(): void {
+    const editing = this.editing();
+    const f = this.form();
+    if (!editing || this.aiLoading()) return;
+    if (!f.title.trim()) {
+      this.aiError.set('Nhập tiêu đề trước để AI có thông tin gợi ý.');
+      return;
+    }
+    this.dismissSuggestion();
+    this.aiLoading.set(true);
+    this.aiError.set(null);
+    this.aiApi.suggestTags(editing.id, f.title.trim(), f.description.trim()).subscribe({
+      next: s => { this.aiLoading.set(false); this.aiSuggestion.set(s); },
+      error: err => { this.aiLoading.set(false); this.aiError.set(videoErrorMessage(err, 'AI chưa gợi ý được. Vui lòng thử lại.')); }
+    });
+  }
+
+  applySuggestion(): void {
+    const s = this.aiSuggestion();
+    if (!s) return;
+    this.form.update(f => mergeSuggestion(f, s));
+    this.aiSuggestion.set(null);
+    this.aiApi.review(s.id, 'APPLIED').subscribe({ error: () => undefined });
+    this.toast.info('Đã điền gợi ý vào biểu mẫu. Kiểm tra lại rồi bấm “Lưu thay đổi”.');
+  }
+
+  dismissSuggestion(): void {
+    const s = this.aiSuggestion();
+    if (!s) return;
+    this.aiSuggestion.set(null);
+    this.aiApi.review(s.id, 'REJECTED').subscribe({ error: () => undefined });
+  }
+
+  private resetAi(): void {
+    this.aiSuggestion.set(null);
+    this.aiError.set(null);
+    this.aiLoading.set(false);
   }
 
   patchForm(patch: Partial<VideoForm>): void {

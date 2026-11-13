@@ -191,6 +191,47 @@
     (closed)="closeForm()"
   >
     @let f = form();
+    @if (aiEnabled() && editing()) {
+      <section class="ai-box" aria-label="Gợi ý bằng AI">
+        <div class="ai-box__head">
+          <div>
+            <p class="ai-box__title"><zen-icon name="sparkles" [size]="16" /> Gợi ý bằng AI</p>
+            <p class="zen-hint">Đề xuất chủ đề, cấp độ, mô tả và lưu ý an toàn từ tiêu đề và mô tả bên dưới.</p>
+          </div>
+          <button type="button" class="zen-btn zen-btn--outline zen-btn--sm" data-action="ai-suggest" (click)="suggestWithAi()" [disabled]="aiLoading() || saving()">
+            <zen-icon name="sparkles" [size]="14" [class.zen-spin]="aiLoading()" />
+            {{ aiLoading() ? 'Đang gợi ý...' : (aiSuggestion() ? 'Gợi ý lại' : 'Gợi ý') }}
+          </button>
+        </div>
+        @if (aiError()) {
+          <zen-alert tone="warning" dismissible (dismissed)="aiError.set(null)">{{ aiError() }}</zen-alert>
+        }
+        @if (aiSuggestion(); as s) {
+          <dl class="ai-suggestion" data-testid="ai-suggestion">
+            <dt>Chủ đề</dt>
+            <dd>
+              @for (id of s.tagIds; track id) { <span class="zen-chip is-active">{{ tagNames().get(id) ?? id }}</span> }
+              @empty { <span class="zen-hint">Không có chủ đề phù hợp trong danh sách</span> }
+            </dd>
+            <dt>Cấp độ</dt>
+            <dd>{{ levelLabel(s.level) }}</dd>
+            @if (s.description) { <dt>Mô tả</dt><dd>{{ s.description }}</dd> }
+            @if (s.notForPregnancy || s.notForHeartBp || s.notForInjuries) {
+              <dt>Không phù hợp cho</dt>
+              <dd>
+                {{ [s.notForPregnancy ? 'Phụ nữ mang thai' : '', s.notForHeartBp ? 'Bệnh tim / huyết áp' : '', s.notForInjuries ? 'Đang có chấn thương' : ''].filter(Boolean).join(', ') }}
+              </dd>
+            }
+            @if (s.contraindications) { <dt>Lưu ý</dt><dd>{{ s.contraindications }}</dd> }
+          </dl>
+          <p class="zen-hint ai-disclaimer">AI chỉ đọc tiêu đề và mô tả, không xem video, nên có thể sai. Vui lòng kiểm tra trước khi lưu.</p>
+          <div class="ai-box__actions">
+            <button type="button" class="zen-btn zen-btn--ghost zen-btn--sm" data-action="ai-dismiss" (click)="dismissSuggestion()">Bỏ qua</button>
+            <button type="button" class="zen-btn zen-btn--primary zen-btn--sm" data-action="ai-apply" (click)="applySuggestion()">Điền vào biểu mẫu</button>
+          </div>
+        }
+      </section>
+    }
     <div class="zen-form-grid">
       <label class="zen-field zen-field--full">
         <span class="zen-label">Tiêu đề <span class="zen-required">*</span></span>
